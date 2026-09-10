@@ -1,34 +1,35 @@
 {
-    "name":  "parking-superadmin-neon",
-    "version":  "1.0.0",
-    "private":  true,
-    "scripts":  {
-                    "dev":  "next dev",
-                    "build":  "next build",
-                    "start":  "next start",
-                    "prisma:generate":  "prisma generate",
-                    "db:push":  "prisma db push",
-                    "db:seed":  "node prisma/seed.cjs",
-                    "db:remove-offices":  "prisma db execute --file prisma/remove-offices.sql --schema prisma/schema.prisma",
-                    "test:e2e":  "playwright test",
-                    "db:parking":  "prisma db execute --file prisma/rename-company-parking.sql --schema prisma/schema.prisma",
-                    "db:usernames":  "prisma db execute --file prisma/allow-shared-usernames.sql --schema prisma/schema.prisma",
-                    "db:employees": "prisma db execute --file prisma/add-employee-role.sql --schema prisma/schema.prisma; prisma db execute --file prisma/migrate-generated-user-ids.sql --schema prisma/schema.prisma",
-                    "db:repair-building-ids": "prisma db execute --file prisma/repair-building-user-ids.sql --schema prisma/schema.prisma"
-                    ,"db:employee-vehicles": "prisma db execute --file prisma/migrate-employee-vehicles.sql --schema prisma/schema.prisma"
-                },
-    "dependencies":  {
-                         "@prisma/client":  "6.19.3",
-                         "next":  "16.2.9",
-                         "react":  "19.2.0",
-                         "react-dom":  "19.2.0"
-                     },
-    "devDependencies":  {
-                            "@playwright/test":  "^1.63.0",
-                            "@types/node":  "^22.10.0",
-                            "@types/react":  "^19.0.0",
-                            "@types/react-dom":  "^19.0.0",
-                            "prisma":  "6.19.3",
-                            "typescript":  "^5.7.2"
-                        }
+    "name": "parking-superadmin-neon",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "prisma generate && next build",
+        "start": "next start",
+        "prisma:generate": "prisma generate",
+        "db:push": "prisma db push",
+        "db:seed": "node prisma/seed.cjs",
+        "db:remove-offices": "prisma db execute --file prisma/remove-offices.sql --schema prisma/schema.prisma",
+        "test:e2e": "playwright test",
+        "db:parking": "prisma db execute --file prisma/rename-company-parking.sql --schema prisma/schema.prisma",
+        "db:usernames": "prisma db execute --file prisma/allow-shared-usernames.sql --schema prisma/schema.prisma",
+        "db:employees": "prisma db execute --file prisma/add-employee-role.sql --schema prisma/schema.prisma; prisma db execute --file prisma/migrate-generated-user-ids.sql --schema prisma/schema.prisma",
+        "db:repair-building-ids": "prisma db execute --file prisma/repair-building-user-ids.sql --schema prisma/schema.prisma",
+        "db:employee-vehicles": "prisma db execute --file prisma/migrate-employee-vehicles.sql --schema prisma/schema.prisma",
+        "postinstall": "prisma generate"
+    },
+    "dependencies": {
+        "@prisma/client": "6.19.3",
+        "next": "16.2.9",
+        "react": "19.2.0",
+        "react-dom": "19.2.0"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.63.0",
+        "@types/node": "^22.10.0",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "prisma": "6.19.3",
+        "typescript": "^5.7.2"
+    }
 }
