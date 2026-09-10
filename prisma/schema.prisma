@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  BUILDING_OWNER
+  BUILDING_ADMIN
+  COMPANY_ADMIN
+  EMPLOYEE
+}
+
+model User {
+  id       String   @id @default(cuid())
+  userId   String   @unique
+  username String
+  password String   @default("")
+  role     UserRole
+
+  buildingId String?
+  companyId  String?
+
+  building Building? @relation("BuildingUsers", fields: [buildingId], references: [id], onDelete: Cascade)
+  company  Company?  @relation("CompanyUsers", fields: [companyId], references: [id], onDelete: Cascade)
+
+  employee Employee? @relation("EmployeeAccount")
+  idReservations UserIdReservation[]
+  identities EntityIdentity[]
+  cardEnrollments RfidEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([buildingId])
+  @@index([companyId])
+  @@index([username])
+  @@map("users")
+}
+
+model Building {
+  id             String @id @default(cuid())
+  name           String @unique
+  totalParking   Int
+  ownerParking   Int
+  companyParking Int
+
+  users     User[]    @relation("BuildingUsers")
+  companies Company[]
+  readers RfidReader[]
+  rfidEvents RfidEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("buildings")
+}
+
+model Company {
+  id                String @id @default(cuid())
+  name              String
+  parkingAllocation Int    @default(0)
+
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  users User[] @relation("CompanyUsers")
+  employees Employee[]
+  vehicles Vehicle[]
+  cardEnrollments RfidEnrollment[]
+  rfidEvents RfidEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([buildingId, name])
+  @@index([buildingId])
+  @@map("companies")
+}
+
+model Employee {
+  id        String @id @default(cuid())
+  name      String
+  userId    String @unique
+  companyId String
+  accountId String? @unique
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  account User? @relation("EmployeeAccount", fields: [accountId], references: [id], onDelete: SetNull)
+  vehicles Vehicle[]
+  cardEnrollments RfidEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("employees")
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  ownerName   String
+  plateNumber String
+  vehicleType String
+  isStaff     Boolean  @default(false)
+  department  String
+  rfidCardNo  String? @unique
+  isInside Boolean @default(false)
+  lastAccessAt DateTime?
+  lastAccessDevice String?
+  cardEnrollments RfidEnrollment[]
+  rfidEvents RfidEvent[]
+  companyId   String
+  employeeId  String
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@unique([companyId, plateNumber])
+  @@index([companyId, isInside])
+  @@map("vehicles")
+}
+
+model EntityIdentity {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  userId     String   @unique
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([entityType, entityId])
+  @@index([entityType, entityId])
+  @@map("entity_identities")
+}
+
+model UserIdReservation {
+  id        String @id @default(cuid())
+  userId    String
+  ownerId   String
+  kind      String
+  scopeId   String
+  nameKey   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([expiresAt])
+  @@index([userId])
+  @@map("user_id_reservations")
+}
+
+model RfidReader {
+  id           String   @id @default(cuid())
+  deviceNumber String   @unique
+  name         String
+  mode         String   @default("ENTRY_EXIT")
+  enabled      Boolean  @default(false)
+  buildingId   String?
+  lastSeenAt   DateTime?
+  heartbeatSeconds Int @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  building    Building?        @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  enrollments RfidEnrollment[]
+  events      RfidEvent[]
+
+  @@index([buildingId])
+  @@map("rfid_readers")
+}
+
+model RfidEnrollment {
+  id         String   @id @default(cuid())
+  readerId   String
+  ownerId    String
+  companyId  String
+  employeeId String
+  vehicleId  String?
+  cardNo     String?
+  status     String   @default("WAITING")
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  reader   RfidReader @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  owner    User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle?   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([readerId, status])
+  @@index([ownerId])
+  @@map("rfid_enrollments")
+}
+
+model RfidEvent {
+  id           String   @id @default(cuid())
+  readerId     String?
+  buildingId   String?
+  companyId    String?
+  vehicleId    String?
+  deviceNumber String
+  cardNo       String
+  action       String
+  code         String
+  message      String
+  createdAt    DateTime @default(now())
+
+  reader   RfidReader? @relation(fields: [readerId], references: [id], onDelete: SetNull)
+  building Building?   @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  company  Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  vehicle  Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([buildingId, createdAt])
+  @@index([companyId, createdAt])
+  @@index([readerId, createdAt])
+  @@map("rfid_events")
+}
