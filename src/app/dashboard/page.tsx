@@ -23,15 +23,18 @@ export default async function DashboardPage() {
   if (!user) redirect("/");
 
   if (user.role === "SUPER_ADMIN") {
+    const isPrimarySuperAdmin = !user.createdBySuperAdminId;
     const buildings = await prisma.building.findMany({
+      where: isPrimarySuperAdmin ? undefined : { superAdminId: user.id },
       orderBy: { createdAt: "asc" },
       include: {
         _count: { select: { companies: true } },
         users: { where: { role: "BUILDING_ADMIN" }, select: { userId: true, username: true }, take: 1 },
       },
     });
-    return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
-      <header className="topbar"><div><div className="section-kicker">BUILDING PARKING</div><h1>Buildings</h1></div><div className="topbar-right"><div className="summary-card"><span>{roleLabel(user.role)}</span><strong>{user.username}</strong></div><SignOutButton /></div></header>
+    return <main className="dashboard-page"><Sidebar role={user.role} canCreateSuperAdmins={isPrimarySuperAdmin} /><section className="dashboard-main">
+      <header className="topbar"><div><div className="section-kicker">BUILDING PARKING</div><h1>{isPrimarySuperAdmin ? "Building portfolio" : "My buildings"}</h1></div><div className="topbar-right"><div className="summary-card"><span>{roleLabel(user.role)}</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
+      {!isPrimarySuperAdmin && buildings.length === 0 ? <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">GET STARTED</div><h2>Create your first building</h2><p>This Super Admin account is isolated from other Super Admins. Create a building to start managing its Admin, companies, Supervisor, RFID access and reports.</p></div></div></section> : null}
       <BuildingPortfolio buildings={buildings} />
     </section></main>;
   }
