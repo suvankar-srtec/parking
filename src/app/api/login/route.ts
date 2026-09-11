@@ -35,7 +35,8 @@ export async function POST(request: Request) {
     });
     return response;
   } catch (error) {
-    console.error("LOGIN_FAILED", loginErrorDiagnostic(error));
-    return NextResponse.json({ ok: false, message: "Unable to sign in. Please try again." }, { status: 500 });
+    const diagnostic = loginErrorDiagnostic(error);
+    console.error("LOGIN_FAILED", diagnostic);
+    return NextResponse.json({ ok: false, message: "Unable to sign in. Please try again.", reference: diagnostic.reason }, { status: 500 });
   }
 }
