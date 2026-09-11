@@ -173,3 +173,9 @@ npm run build
 ```
 
 The protocol suite uses a loopback TCP reader and mock HTTP server. The database/browser suite creates unique temporary fixtures, checks registration, entry/exit, capacity rejection, debounce, permissions and connection state, then deletes only its fixtures. These tests do not send success commands to the physical readers.
+
+## Vercel login configuration
+
+Local `.env` values are not included in GitHub. In Vercel, open the parking project's **Settings → Environment Variables** and add **DATABASE_URL** (the Neon connection string) and **SESSION_SECRET** (a stable random secret) for **Production**. Enter values without shell-style surrounding quotes. Add the RFID secrets too if this deployment receives gateway requests. Redeploy after changing variables; an existing deployment keeps its previous environment.
+
+If `POST /api/login` fails, open the deployment's runtime Logs and filter for that request. `LOGIN_CONFIGURATION_MISSING` lists missing variable names. `LOGIN_FAILED` includes a sanitized Prisma code and reason, such as `DATABASE_UNREACHABLE`, `DATABASE_AUTHENTICATION_FAILED`, or `DATABASE_TABLE_MISSING`. Check the connection string, database availability and applied migrations accordingly. Do not put passwords or connection strings in source code or public logs.

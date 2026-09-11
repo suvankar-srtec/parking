@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { missingLoginConfiguration, loginErrorDiagnostic } from "@/lib/login-diagnostics";
 import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
 
 export async function POST(request: Request) {
@@ -12,6 +13,11 @@ export async function POST(request: Request) {
     const password = typeof body?.password === "string" ? body.password : "";
     if (!userId || !username || !password) {
       return NextResponse.json({ ok: false, message: "User ID, username and password are required." }, { status: 400 });
+    }
+    const missing = missingLoginConfiguration(process.env);
+    if (missing.length) {
+      console.error("LOGIN_CONFIGURATION_MISSING", { missing });
+      return NextResponse.json({ ok: false, message: "Sign-in is not configured on this server. Please contact the administrator." }, { status: 503 });
     }
     // User ID identifies the account even when multiple users share a username.
     const user = await prisma.user.findUnique({ where: { userId } });
@@ -28,8 +34,8 @@ export async function POST(request: Request) {
       sameSite: "lax", path: "/", maxAge: SESSION_MAX_AGE,
     });
     return response;
-  } catch {
-    console.error("LOGIN_FAILED");
+  } catch (error) {
+    console.error("LOGIN_FAILED", loginErrorDiagnostic(error));
     return NextResponse.json({ ok: false, message: "Unable to sign in. Please try again." }, { status: 500 });
   }
 }
