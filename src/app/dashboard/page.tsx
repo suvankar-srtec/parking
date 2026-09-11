@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { roleLabel } from "@/lib/roles";
+import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 import Sidebar from "@/components/Sidebar";
 import BuildingPortfolio from "@/components/BuildingPortfolio";
 import BuildingAdminPanel from "@/components/BuildingAdminPanel";
@@ -23,18 +24,18 @@ export default async function DashboardPage() {
   if (!user) redirect("/");
 
   if (user.role === "SUPER_ADMIN") {
-    const isPrimarySuperAdmin = !user.createdBySuperAdminId;
+    const primary = isPrimarySuperAdmin(user);
     const buildings = await prisma.building.findMany({
-      where: isPrimarySuperAdmin ? undefined : { superAdminId: user.id },
+      where: primary ? undefined : { superAdminId: user.id },
       orderBy: { createdAt: "asc" },
       include: {
         _count: { select: { companies: true } },
         users: { where: { role: "BUILDING_ADMIN" }, select: { userId: true, username: true }, take: 1 },
       },
     });
-    return <main className="dashboard-page"><Sidebar role={user.role} canCreateSuperAdmins={isPrimarySuperAdmin} /><section className="dashboard-main">
-      <header className="topbar"><div><div className="section-kicker">BUILDING PARKING</div><h1>{isPrimarySuperAdmin ? "Building portfolio" : "My buildings"}</h1></div><div className="topbar-right"><div className="summary-card"><span>{roleLabel(user.role)}</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
-      {!isPrimarySuperAdmin && buildings.length === 0 ? <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">GET STARTED</div><h2>Create your first building</h2><p>This Super Admin account is isolated from other Super Admins. Create a building to start managing its Admin, companies, Supervisor, RFID access and reports.</p></div></div></section> : null}
+    return <main className="dashboard-page"><Sidebar role={user.role} canCreateSuperAdmins={primary} /><section className="dashboard-main">
+      <header className="topbar"><div><div className="section-kicker">BUILDING PARKING</div><h1>{primary ? "Building portfolio" : "My buildings"}</h1></div><div className="topbar-right"><div className="summary-card"><span>{roleLabel(user.role)}</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
+      {!primary && buildings.length === 0 ? <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">GET STARTED</div><h2>Create your first building</h2><p>This Super Admin account is isolated from other Super Admins. Create a building to start managing its Admin, companies, Supervisor, RFID access and reports.</p></div></div></section> : null}
       <BuildingPortfolio buildings={buildings} />
     </section></main>;
   }
@@ -81,7 +82,7 @@ export default async function DashboardPage() {
   }
 
   return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
-    <header className="topbar"><div><div className="section-kicker">SUPERVISOR</div><h1>Live reports</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
+    <header className="topbar"><div><div className="section-kicker">SUPERVISOR</div><h1>Realtime Head Count</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
     {user.buildingId ? <SupervisorHeadcount /> : <AssignmentRequired title="Building not assigned" message="This Supervisor must be assigned to a building before realtime head count and reports are available." />}
   </section></main>;
 }
