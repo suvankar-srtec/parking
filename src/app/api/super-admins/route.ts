@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
 async function requireRootSuperAdmin() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "SUPER_ADMIN" || user.createdBySuperAdminId) return null;
+  if (!user || !isPrimarySuperAdmin(user)) return null;
   return user;
 }
 
 export async function GET() {
   const user = await requireRootSuperAdmin();
-  if (!user) return NextResponse.json({ ok: false, message: "Root Super Admin access required." }, { status: 403 });
+  if (!user) return NextResponse.json({ ok: false, message: "Primary Super Admin access required." }, { status: 403 });
 
   const admins = await prisma.user.findMany({
-    where: { role: "SUPER_ADMIN", createdBySuperAdminId: user.id },
+    where: { role: "SUPER_ADMIN", id: { not: user.id } },
     orderBy: { createdAt: "asc" },
     select: { id: true, userId: true, username: true, createdAt: true, _count: { select: { ownedBuildings: true } } },
   });
