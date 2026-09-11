@@ -9,6 +9,7 @@ import BuildingAdminPanel from "@/components/BuildingAdminPanel";
 import CompanyList from "@/components/CompanyList";
 import CreateEntityModal from "@/components/CreateEntityModal";
 import EmployeeList from "@/components/EmployeeList";
+import SupervisorHeadcount from "@/components/SupervisorHeadcount";
 
 function AssignmentRequired({ title, message }: { title: string; message: string }) {
   return <section className="portfolio-card building-management">
@@ -142,26 +143,14 @@ export default async function DashboardPage() {
     </main>;
   }
 
-  const events = await prisma.rfidEvent.findMany({
-    where: user.companyId ? { companyId: user.companyId } : user.buildingId ? { buildingId: user.buildingId } : undefined,
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
-
   return <main className="dashboard-page">
     <Sidebar role={user.role} />
     <section className="dashboard-main">
       <header className="topbar">
-        <div><div className="section-kicker">SUPERVISOR</div><h1>Live reports</h1></div>
+        <div><div className="section-kicker">SUPERVISOR</div><h1>Realtime Head Count</h1></div>
         <div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div>
       </header>
-      <section className="portfolio-card building-management">
-        <div className="portfolio-header"><div><div className="section-kicker">READ ONLY</div><h2>Latest parking activity</h2><p>Supervisor access is limited to live reports and report history.</p></div></div>
-        <div className="portfolio-divider" />
-        <div className="table-wrap"><table><thead><tr><th>Time</th><th>Device</th><th>Card</th><th>Action</th><th>Result</th></tr></thead><tbody>
-          {events.length ? events.map((event) => <tr key={event.id}><td>{event.createdAt.toLocaleString()}</td><td>{event.deviceNumber}</td><td>{event.cardNo}</td><td>{event.action}</td><td>{event.message}</td></tr>) : <tr><td colSpan={5}>No parking activity yet.</td></tr>}
-        </tbody></table></div>
-      </section>
+      {!user.buildingId ? <AssignmentRequired title="Building not assigned" message="This Supervisor account must be assigned to a building before realtime head count is available." /> : <SupervisorHeadcount />}
     </section>
   </main>;
 }
