@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Spinner } from "./LoadingIndicator";
+import styles from "./SupervisorHeadcount.module.css";
 
 type Headcount = {
   ok: true;
@@ -51,32 +52,32 @@ export default function SupervisorHeadcount() {
   }, [load]);
 
   if (loading && !data) {
-    return <section className="portfolio-card supervisor-headcount"><p><Spinner /> Loading realtime head count…</p></section>;
+    return <section className={`portfolio-card ${styles.headcount}`}><p><Spinner /> Loading realtime head count…</p></section>;
   }
 
-  return <section className="portfolio-card supervisor-headcount">
-    <div className="headcount-title-row">
+  return <section className={`portfolio-card ${styles.headcount}`}>
+    <div className={styles.titleRow}>
       <div>
-        <div className="section-kicker">REALTIME MONITOR</div>
+        <div className="section-kicker"><span className={styles.liveDot} />REALTIME MONITOR</div>
         <h2>Realtime Head Count</h2>
         <p>{data?.buildingName || "Assigned building"} · updates every 5 seconds</p>
       </div>
-      <div className="headcount-clock"><strong>{clock.toLocaleDateString()}</strong><span>{clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>
+      <div className={styles.clock}><strong>{clock.toLocaleDateString()}</strong><span>{clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>
     </div>
     <div className="portfolio-divider" />
-    {error ? <div className="parking-feedback parking-feedback-error">{error}</div> : null}
-    <div className="headcount-layout">
-      <div className="headcount-totals">
-        <article className="headcount-total-card headcount-in"><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article>
-        <article className="headcount-total-card headcount-out"><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article>
-        <article className="headcount-total-card headcount-onsite"><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article>
+    {error ? <div className={`parking-feedback parking-feedback-error ${styles.error}`}>{error}</div> : null}
+    <div className={styles.layout}>
+      <div className={styles.totals}>
+        <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article>
+        <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article>
+        <article className={`${styles.totalCard} ${styles.onsite}`}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article>
       </div>
-      <div className="headcount-departments">
+      <div className={styles.departments}>
         <h3>Department on Site</h3>
-        <div className="department-grid">
-          {data?.departments.length ? data.departments.map((department) => <article className="department-card" key={department.name}>
+        <div className={styles.departmentGrid}>
+          {data?.departments.length ? data.departments.map((department) => <article className={styles.departmentCard} key={department.name}>
             <span>{department.name}</span><strong>{department.count}</strong>
-          </article>) : <div className="empty-state"><p>No vehicles are currently on site.</p></div>}
+          </article>) : <div className={styles.empty}><p>No vehicles are currently on site.</p></div>}
         </div>
       </div>
     </div>
