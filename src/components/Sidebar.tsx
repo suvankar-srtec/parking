@@ -1,14 +1,15 @@
 "use client";
 
+import type { UserRole } from "@prisma/client";
 import Link from "@/components/AppLink";
 import { useState } from "react";
 import ReaderConsole from "./ReaderConsole";
+import { canConfigureReaders, dashboardLabel, roleLabel } from "@/lib/roles";
 
 export default function Sidebar({
-  roleLabel = "Super Admin",
+  role = "SUPER_ADMIN",
   dashboardHref = "/dashboard",
-  dashboardLabel = "Buildings",
-}: { roleLabel?: string; dashboardHref?: string; dashboardLabel?: string }) {
+}: { role?: UserRole; dashboardHref?: string }) {
   const [expanded, setExpanded] = useState({
     dashboard: true,
     personal: false,
@@ -19,11 +20,14 @@ export default function Sidebar({
     setExpanded((current) => ({ ...current, [section]: !current[section] }));
   }
 
+  const showPersonal = role !== "EMPLOYEE";
+  const showAccess = canConfigureReaders(role);
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="logo-box">P</div>
-        <div><strong>ParkControl</strong><span>{roleLabel}</span></div>
+        <div><strong>ParkControl</strong><span>{roleLabel(role)}</span></div>
       </div>
       <div className="sidebar-line" />
       <nav aria-label="Main navigation">
@@ -34,37 +38,35 @@ export default function Sidebar({
             <span>Dashboard</span><span className="menu-chevron" aria-hidden="true" />
           </button>
           <div id="dashboard-menu" className="menu-items" hidden={!expanded.dashboard}>
-            <Link className="menu-button menu-button-sub active-menu" href={dashboardHref}>{dashboardLabel}</Link>
+            <Link className="menu-button menu-button-sub active-menu" href={dashboardHref}>{dashboardLabel(role)}</Link>
           </div>
         </div>
 
-        <div className="menu-group">
+        {showPersonal ? <div className="menu-group">
           <button type="button" className="menu-section-title menu-toggle"
             aria-expanded={expanded.personal} aria-controls="personal-menu"
             onClick={() => toggle("personal")}>
             <span>Personal</span><span className="menu-chevron" aria-hidden="true" />
           </button>
           <div id="personal-menu" className="menu-items" hidden={!expanded.personal}>
-            <div className="menu-button dark-menu">Person</div>
+            <Link className="menu-button dark-menu" href="/dashboard">Account overview</Link>
           </div>
-        </div>
+        </div> : null}
 
-        <div className="menu-group">
+        {showAccess ? <div className="menu-group">
           <button type="button" className="menu-section-title menu-toggle"
             aria-expanded={expanded.access} aria-controls="access-menu"
             onClick={() => toggle("access")}>
             <span>Access Control</span><span className="menu-chevron" aria-hidden="true" />
           </button>
           <div id="access-menu" className="menu-items" hidden={!expanded.access}>
-            <Link className="menu-button dark-menu" href="/access-control">Device</Link>
-            <div className="menu-button dark-menu">Slot Allocation</div>
-            <div className="menu-button dark-menu">Manual In/Out</div>
+            <Link className="menu-button dark-menu" href="/access-control">RFID devices</Link>
             <Link className="menu-button dark-menu" href="/access-control#activity">Real Time Monitor</Link>
           </div>
-        </div>
-        <div className="menu-section-title"><span>Report</span></div>
+        </div> : null}
+        <Link className="menu-section-title" href="/reports"><span>Report</span></Link>
       </nav>
-      <ReaderConsole compact />
+      {showAccess ? <ReaderConsole compact /> : null}
     </aside>
   );
 }
