@@ -8,21 +8,24 @@ export async function POST(request: Request) {
     let body;
     try { body = await request.json(); }
     catch { return NextResponse.json({ ok: false, message: "Invalid request body." }, { status: 400 }); }
+
     const userId = typeof body?.userId === "string" ? body.userId.trim() : "";
-    const username = typeof body?.username === "string" ? body.username.trim() : "";
     const password = typeof body?.password === "string" ? body.password : "";
-    if (!userId || !username || !password) {
-      return NextResponse.json({ ok: false, message: "User ID, username and password are required." }, { status: 400 });
+    if (!userId || !password) {
+      return NextResponse.json({ ok: false, message: "User ID and password are required." }, { status: 400 });
     }
+
     const missing = missingLoginConfiguration(process.env);
     if (missing.length) {
       console.error("LOGIN_CONFIGURATION_MISSING", { missing });
       return NextResponse.json({ ok: false, message: "Sign-in is not configured on this server. Please contact the administrator." }, { status: 503 });
     }
+
     const user = await prisma.user.findUnique({ where: { userId } });
-    if (!user || user.username !== username || user.password !== password) {
-      return NextResponse.json({ ok: false, message: "User ID, username, or password is incorrect." }, { status: 401 });
+    if (!user || user.password !== password) {
+      return NextResponse.json({ ok: false, message: "User ID or password is incorrect." }, { status: 401 });
     }
+
     const response = NextResponse.json({
       ok: true,
       message: "Signed in successfully.",
