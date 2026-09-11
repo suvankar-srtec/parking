@@ -19,19 +19,22 @@ export async function POST(request: Request) {
       console.error("LOGIN_CONFIGURATION_MISSING", { missing });
       return NextResponse.json({ ok: false, message: "Sign-in is not configured on this server. Please contact the administrator." }, { status: 503 });
     }
-    // User ID identifies the account even when multiple users share a username.
     const user = await prisma.user.findUnique({ where: { userId } });
-    if (!user || user.role === "EMPLOYEE" || user.username !== username || user.password !== password) {
+    if (!user || user.username !== username || user.password !== password) {
       return NextResponse.json({ ok: false, message: "User ID, username, or password is incorrect." }, { status: 401 });
     }
     const response = NextResponse.json({
-      ok: true, message: "Signed in successfully.",
-      redirectTo: user.role === "SUPER_ADMIN" ? "/dashboard" : "/account",
+      ok: true,
+      message: "Signed in successfully.",
+      redirectTo: "/dashboard",
       role: user.role,
     });
     response.cookies.set(SESSION_COOKIE, createSessionToken(user.id), {
-      httpOnly: true, secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", path: "/", maxAge: SESSION_MAX_AGE,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_MAX_AGE,
     });
     return response;
   } catch (error) {
