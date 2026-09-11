@@ -11,15 +11,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const { id: buildingId } = await context.params;
     const user = await getCurrentUser();
-    if (!user || user.role !== "BUILDING_ADMIN" || user.buildingId !== buildingId) {
-      return NextResponse.json({ ok: false, message: "Only this building's administrator can create companies." }, { status: 403 });
+    const authorized = user && (user.role === "SUPER_ADMIN" || (user.role === "BUILDING_ADMIN" && user.buildingId === buildingId));
+    if (!authorized || !user) {
+      return NextResponse.json({ ok: false, message: "Only a Super Admin or this building's Admin can create companies." }, { status: 403 });
     }
+
     let body;
     try { body = await request.json(); }
     catch { return NextResponse.json({ ok: false, message: "Invalid request body." }, { status: 400 }); }
     if (!body || typeof body !== "object") {
       return NextResponse.json({ ok: false, message: "Company details are required." }, { status: 400 });
     }
+
     const name = String(body.name ?? "").trim();
     const userId = String(body.userId ?? "").trim();
     const reservationId = String(body.reservationId ?? "");
@@ -43,6 +46,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (await tx.company.findFirst({ where: { buildingId, name }, select: { id: true } })) {
         throw new ParkingError("This company already exists in the building.", 409);
       }
+
       const company = await tx.company.create({ data: { name, parkingAllocation, buildingId } });
       const claimedUserId = await claimUserId(tx, { ownerId: user.id, reservationId, kind: "company", scopeId: buildingId, name });
       if (claimedUserId !== userId) throw new ParkingError("The generated User ID changed. Refresh the form and try again.", 409);
@@ -57,7 +61,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/buildings/${buildingId}`);
     return NextResponse.json({
-      ok: true, message: "Company created successfully.",
+      ok: true,
+      message: "Company created successfully.",
       company: { id: result.company.id, name: result.company.name, userId: result.account.userId, username: result.account.username },
     }, { status: 201 });
   } catch (error) {
