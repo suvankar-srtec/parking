@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
+import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 import Sidebar from "@/components/Sidebar";
 import SignOutButton from "@/components/SignOutButton";
 import SuperAdminManager from "@/components/SuperAdminManager";
@@ -7,7 +8,7 @@ import SuperAdminManager from "@/components/SuperAdminManager";
 export default async function SuperAdminsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
-  if (user.role !== "SUPER_ADMIN" || user.createdBySuperAdminId) redirect("/dashboard");
+  if (!isPrimarySuperAdmin(user)) redirect("/dashboard");
 
   return <main className="dashboard-page">
     <Sidebar role={user.role} canCreateSuperAdmins />
