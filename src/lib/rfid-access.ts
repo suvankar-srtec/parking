@@ -39,8 +39,18 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     const now = new Date();
     const reader = await tx.rfidReader.upsert({
       where: { deviceNumber: input.deviceNumber },
-      create: { deviceNumber: input.deviceNumber, name: "Reader " + input.deviceNumber, lastSeenAt: now },
-      update: { lastSeenAt: now },
+      create: {
+        deviceNumber: input.deviceNumber,
+        name: "Reader " + input.deviceNumber,
+        lastSeenAt: now,
+        connectionType: "HTTP",
+        tcpConnected: false,
+      },
+      update: {
+        lastSeenAt: now,
+        connectionType: "HTTP",
+        tcpConnected: false,
+      },
     });
     async function record(code: string, message: string, action = "DENIED", vehicleId?: string, companyId?: string) {
       await tx.rfidEvent.create({ data: {
