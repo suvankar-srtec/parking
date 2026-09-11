@@ -6,6 +6,7 @@ import { requireSuperAdmin } from "@/lib/session";
 import Sidebar from "@/components/Sidebar";
 import CompanyList from "@/components/CompanyList";
 import BuildingParkingEditor from "@/components/BuildingParkingEditor";
+import BuildingAdminPanel from "@/components/BuildingAdminPanel";
 
 export default async function BuildingPage({ params }: { params: Promise<{ id: string }> }) {
   const admin = await requireSuperAdmin();
@@ -31,7 +32,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
 
   return (
     <main className="dashboard-page">
-      <Sidebar />
+      <Sidebar role={admin.role} />
       <section className="dashboard-main">
         <header className="topbar">
           <div><div className="section-kicker">BUILDING PARKING</div><h1>{building.name}</h1></div>
@@ -45,7 +46,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
             <div>
               <div className="section-kicker">SUPER ADMIN</div>
               <h2>Building management</h2>
-              <p>Manage parking capacity and view companies in this building.</p>
+              <p>Manage parking capacity and company access for this building.</p>
             </div>
           </div>
           <div className="portfolio-divider" />
@@ -55,7 +56,11 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
           />
         </section>
         <section className="portfolio-card building-management">
-          <div className="section-kicker">COMPANIES</div>
+          <div className="portfolio-header">
+            <div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div>
+            <BuildingAdminPanel buildingId={building.id} />
+          </div>
+          <div className="portfolio-divider" />
           <CompanyList companies={building.companies} companyParking={building.companyParking} />
         </section>
       </section>
