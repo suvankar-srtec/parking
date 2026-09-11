@@ -49,14 +49,14 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     });
   }
   return <>
-    <section className="portfolio-card"><div className="portfolio-header"><div><div className="section-kicker">ACCESS CONTROL</div><h2>Reader configuration</h2><p>TCP listener: port 8080. Assign a building and operating mode.</p></div><strong>{activity.inside} vehicles inside</strong></div>
+    <section className="portfolio-card"><div className="portfolio-header"><div><div className="section-kicker">ACCESS CONTROL</div><h2>Reader configuration</h2><p>Readers communicate with Vercel through HTTPS. Assign a building and operating mode.</p></div><strong>{activity.inside} vehicles inside</strong></div>
       {!data ? <p><Spinner /> Loading readers…</p> : <div className="reader-grid">{data.readers.map((reader) => { const state = error ? { tone: "unknown", label: "Status unavailable" } : readerStatus(reader); return <article className="reader-card" key={reader.id}>
         <h3>{reader.name}</h3><p>{reader.deviceNumber} · {reader.readerIp || reader.connectionType}</p><div className="reader-line"><i className={"reader-dot " + state.tone} />{state.label}</div>
         <p>{data.buildings.find((building) => building.id === reader.buildingId)?.name || "Building not assigned"} · {reader.mode.replaceAll("_", " / ")}</p>
-        <p className="muted">{reader.enabled ? "Approved" : "Disabled"} · Last scan: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</p>
+        <p className="muted">{reader.enabled ? "Approved" : "Disabled"} · Last contact: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</p>
         {data.canManage && <button className="secondary-button" onClick={() => setEditing(reader)}>Configure reader</button>}
       </article>; })}</div>}
-      <p className="muted">Green: TCP connected. Red: socket disconnected. Amber: gateway status unavailable. The hardware red LED is separate and belongs to a successful scan response.</p>
+      <p className="muted">HTTPS readers are green after recent scan/heartbeat activity. If heartbeat is disabled, an idle reader is shown as idle rather than disconnected. The hardware red LED is separate and belongs to a successful scan response.</p>
     </section>
     <section className="portfolio-card" id="activity"><div className="section-kicker">LIVE ACTIVITY</div><h2>Card and parking events</h2><div className="reader-table-wrap"><table className="reader-table"><thead><tr><th>Time</th><th>Device</th><th>Card</th><th>Action</th><th>Result</th></tr></thead><tbody>{activity.events.map((event) => <tr key={event.id}><td>{new Date(event.createdAt).toLocaleString()}</td><td>{event.deviceNumber}</td><td>{event.cardNo}</td><td>{event.action}</td><td className={event.code === "0000" ? "reader-success" : "reader-failure"}>{event.message}</td></tr>)}</tbody></table>{!activity.events.length && <p>No scans received yet.</p>}</div></section>
     {editing && <div className="modal-backdrop"><section className="modal-card small-modal" role="dialog" aria-modal="true" aria-label="Configure reader"><div className="modal-head"><h2>Configure {editing.deviceNumber}</h2><button className="modal-close" disabled={pending} aria-label="Close reader settings" onClick={() => setEditing(null)}>×</button></div>
