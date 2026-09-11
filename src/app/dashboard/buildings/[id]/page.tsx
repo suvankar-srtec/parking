@@ -13,9 +13,10 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
   const admin = await requireSuperAdmin();
   if (!admin) redirect("/");
   const { id } = await params;
+  const isPrimarySuperAdmin = !admin.createdBySuperAdminId;
   const [building, supervisor] = await Promise.all([
-    prisma.building.findUnique({
-      where: { id },
+    prisma.building.findFirst({
+      where: isPrimarySuperAdmin ? { id } : { id, superAdminId: admin.id },
       include: {
         companies: {
           orderBy: { createdAt: "asc" },
@@ -31,7 +32,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
   if (!building) notFound();
 
   return <main className="dashboard-page">
-    <Sidebar role={admin.role} />
+    <Sidebar role={admin.role} canCreateSuperAdmins={isPrimarySuperAdmin} />
     <section className="dashboard-main">
       <header className="topbar">
         <div><div className="section-kicker">BUILDING PARKING</div><h1>{building.name}</h1></div>
