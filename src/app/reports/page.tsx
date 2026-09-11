@@ -21,19 +21,26 @@ export default async function ReportsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const eventWhere = user.role === "SUPER_ADMIN"
-    ? { action: { in: ["ENTRY", "EXIT"] } }
-    : user.role === "COMPANY_ADMIN" && user.companyId
-      ? { companyId: user.companyId, action: { in: ["ENTRY", "EXIT"] } }
-      : user.buildingId
-        ? { buildingId: user.buildingId, action: { in: ["ENTRY", "EXIT"] } }
-        : { id: "__no_scope__", action: { in: ["ENTRY", "EXIT"] } };
+  const isPrimarySuperAdmin = user.role === "SUPER_ADMIN" && !user.createdBySuperAdminId;
+  const isDelegatedSuperAdmin = user.role === "SUPER_ADMIN" && !!user.createdBySuperAdminId;
 
-  const buildingWhere = user.role === "SUPER_ADMIN"
+  const eventWhere = isPrimarySuperAdmin
+    ? { action: { in: ["ENTRY", "EXIT"] } }
+    : isDelegatedSuperAdmin
+      ? { building: { superAdminId: user.id }, action: { in: ["ENTRY", "EXIT"] } }
+      : user.role === "COMPANY_ADMIN" && user.companyId
+        ? { companyId: user.companyId, action: { in: ["ENTRY", "EXIT"] } }
+        : user.buildingId
+          ? { buildingId: user.buildingId, action: { in: ["ENTRY", "EXIT"] } }
+          : { id: "__no_scope__", action: { in: ["ENTRY", "EXIT"] } };
+
+  const buildingWhere = isPrimarySuperAdmin
     ? undefined
-    : user.buildingId
-      ? { id: user.buildingId }
-      : { id: "__no_scope__" };
+    : isDelegatedSuperAdmin
+      ? { superAdminId: user.id }
+      : user.buildingId
+        ? { id: user.buildingId }
+        : { id: "__no_scope__" };
 
   const [events, buildings] = await Promise.all([
     prisma.rfidEvent.findMany({
@@ -143,7 +150,7 @@ export default async function ReportsPage() {
   })));
 
   return <main className="dashboard-page">
-    <Sidebar role={user.role} />
+    <Sidebar role={user.role} canCreateSuperAdmins={isPrimarySuperAdmin} />
     <section className="dashboard-main">
       <header className="topbar">
         <div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>Parking reports</h1></div>
