@@ -5,3 +5,7 @@ test-results/
 *.tsbuildinfo
 *.db
 *.db-journal
+.env.*
+!.env.example
+*.log
+playwright-report/

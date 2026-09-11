@@ -1,38 +1,32 @@
 import { timingSafeEqual } from "node:crypto";
-import { parseRfidReaderMessage, readReaderBody } from "@/lib/rfid-reader";
+import { parseRfidReaderMessage, readReaderBody, readerReply } from "@/lib/rfid-reader";
 import { processReaderScan } from "@/lib/rfid-access";
 import { prisma } from "@/lib/prisma";
-
-function reply(code: string) {
-  return new Response("code=" + code, { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
-}
-function validToken(value: string | null) {
-  const expected = process.env.RFID_HTTP_TOKEN;
-  if (!expected) return value === null;
-  const a = Buffer.from(value || "");
-  const b = Buffer.from(expected);
+export function validReaderToken(value: string | null, secret = process.env.RFID_HTTP_TOKEN) {
+  if (!secret) return false;
+  const a = Buffer.from(value || ""), b = Buffer.from(secret);
   return a.length === b.length && timingSafeEqual(a, b);
 }
-export async function handleRfidPost(request: Request, path?: { key: string; deviceNumber: string }) {
-  const suppliedToken = path?.key || request.headers.get("x-reader-token") || new URL(request.url).searchParams.get("token");
-  if (!validToken(suppliedToken)) return reply("1004");
-  let parsed;
-  try {
-    parsed = parseRfidReaderMessage(await readReaderBody(request), request.headers.get("content-type")?.includes("application/x-www-form-urlencoded"));
-  } catch { return reply("1002"); }
-  if (!parsed || (path && path.deviceNumber !== parsed.deviceNumber)) return reply("1002");
-  try { return reply(await processReaderScan(parsed)); }
-  catch { console.error("RFID_SCAN_FAILED"); return reply("1003"); }
+function reply(success: boolean, message: string) {
+  return new Response(readerReply(success, message), { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
 }
-
-export async function handleRfidHeartbeat(request: Request, path: { key: string; deviceNumber: string }) {
-  if (!validToken(path.key) || !/^[a-zA-Z0-9_-]{1,64}$/.test(path.deviceNumber)) return reply("1004");
+export async function handleRfidPost(request: Request, path?: { key: string; deviceNumber: string }) {
+  const token = path?.key || request.headers.get("x-reader-token") || new URL(request.url).searchParams.get("token");
+  if (!validReaderToken(token)) return reply(false, "Reader is not authorized");
+  let parsed;
+  try { parsed = parseRfidReaderMessage(await readReaderBody(request), request.headers.get("content-type")?.includes("application/x-www-form-urlencoded")); }
+  catch { return reply(false, "Invalid reader packet"); }
+  if (!parsed || (path && parsed.deviceNumber !== path.deviceNumber)) return reply(false, "Invalid reader packet");
   try {
-    await prisma.rfidReader.upsert({
-      where: { deviceNumber: path.deviceNumber },
-      create: { deviceNumber: path.deviceNumber, name: "Reader " + path.deviceNumber, lastSeenAt: new Date() },
-      update: { lastSeenAt: new Date() },
-    });
-    return reply("0000");
-  } catch { return reply("1003"); }
+    const result = await processReaderScan(parsed);
+    return reply(result.code === "0000", result.message);
+  } catch { console.error("RFID_SCAN_FAILED"); return reply(false, "Parking server unavailable"); }
+}
+export async function handleRfidHeartbeat(_request: Request, path: { key: string; deviceNumber: string }) {
+  if (!validReaderToken(path.key)) return reply(false, "Reader is not authorized");
+  try {
+    const result = await prisma.rfidReader.updateMany({ where: { deviceNumber: path.deviceNumber }, data: { lastSeenAt: new Date() } });
+    // Heartbeats never trigger the hardware SuccessAction.
+    return reply(false, result.count ? "Heartbeat received" : "Reader is not registered");
+  } catch { return reply(false, "Parking server unavailable"); }
 }

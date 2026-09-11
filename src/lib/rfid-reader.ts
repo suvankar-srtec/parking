@@ -1,18 +1,23 @@
 export type ParsedRfidReaderMessage = { decodedResult: string; deviceNumber: string };
 export const READER_MODES = ["REGISTER", "ENTRY_EXIT", "ENTRY", "EXIT"] as const;
 export const SCAN_DEBOUNCE_MS = 3000;
-
 export function normalizeCard(value: string) { return value.trim().toUpperCase(); }
-
+export function readerReply(success: boolean, message: string) {
+  const description = message.replace(/[&=\r\n\u0000-\u001f]/g, " ").slice(0, 160);
+  return "code=" + (success ? "0000" : "0001") + "&&desc=" + description;
+}
 export function parseRfidReaderMessage(raw: string, formEncoded = false): ParsedRfidReaderMessage | null {
   if (!raw || raw.length > 4096) return null;
+  const firmware = /^vgdecoder{1,2}esult([a-f0-9]{1,128})devicenumber([0-9]{1,64})otherparams$/i.exec(raw.trim());
+  if (firmware) return { decodedResult: firmware[1], deviceNumber: firmware[2] };
   const fields = new Map<string, string>();
   try {
     for (const part of raw.trim().split(/&+/)) {
       if (!part.trim()) continue;
       const equals = part.indexOf("=");
       if (equals < 0) return null;
-      const key = part.slice(0, equals).trim().toLowerCase();
+      let key = part.slice(0, equals).trim().toLowerCase();
+      if (key === "vgdecoderesult") key = "vgdecoderresult";
       if (key !== "vgdecoderresult" && key !== "devicenumber") continue;
       if (fields.has(key)) return null;
       let value = part.slice(equals + 1).trim();
@@ -22,17 +27,14 @@ export function parseRfidReaderMessage(raw: string, formEncoded = false): Parsed
       fields.set(key, value);
     }
   } catch { return null; }
-  const decodedResult = fields.get("vgdecoderresult");
-  const deviceNumber = fields.get("devicenumber");
+  const decodedResult = fields.get("vgdecoderresult"), deviceNumber = fields.get("devicenumber");
   if (!decodedResult || decodedResult.length > 128 || !deviceNumber || !/^[a-zA-Z0-9_-]{1,64}$/.test(deviceNumber)) return null;
   return { decodedResult, deviceNumber };
 }
-
 export async function readReaderBody(request: Request) {
   const reader = request.body?.getReader();
   if (!reader) return "";
-  let size = 0;
-  let body = "";
+  let size = 0, body = "";
   const decoder = new TextDecoder("utf-8", { fatal: true });
   try {
     while (true) {

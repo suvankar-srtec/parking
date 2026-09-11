@@ -170,6 +170,12 @@ model RfidReader {
   buildingId   String?
   lastSeenAt   DateTime?
   heartbeatSeconds Int @default(0)
+  connectionType String @default("HTTP")
+  readerIp String?
+  sourcePort Int?
+  tcpConnected Boolean @default(false)
+  connectionId String?
+  lastGatewaySeenAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

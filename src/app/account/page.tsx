@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import CreateEntityModal from "@/components/CreateEntityModal";
 import EmployeeList from "@/components/EmployeeList";
+import Link from "@/components/AppLink";
 
 export default async function AccountPage() {
   const user = await getCurrentUser();
@@ -92,6 +93,7 @@ export default async function AccountPage() {
         <div className="employee-section-header"><div><span className="section-kicker">TEAM</span><h2>Employees</h2><p className="employee-parking-summary">Parking allotted to employees: {allottedEmployeeParking} · Unallotted: {unallottedEmployeeParking}</p></div><CreateEntityModal kind="employee" companyId={user.companyId} /></div>
         <EmployeeList companyId={user.companyId} employees={employees} />
       </section> : null}
+      <Link className="secondary-button link-button" href="/access-control">Reader activity</Link>
       <SignOutButton className="login-submit account-logout" />
     </section>
   </main>;

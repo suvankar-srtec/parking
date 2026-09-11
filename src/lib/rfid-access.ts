@@ -13,6 +13,7 @@ export async function rfidUser() {
   const user = await getCurrentUser();
   if (!user || !["SUPER_ADMIN", "BUILDING_ADMIN", "COMPANY_ADMIN"].includes(user.role)) throw new ParkingError("Sign in to manage RFID access.", 403);
   if (user.role !== "SUPER_ADMIN" && !user.buildingId) throw new ParkingError("No building is assigned to this account.", 403);
+  if (user.role === "COMPANY_ADMIN" && !user.companyId) throw new ParkingError("No company is assigned to this account.", 403);
   return user;
 }
 export function rfidApiError(error: unknown) {
@@ -32,6 +33,7 @@ export async function expireEnrollments(tx: Prisma.TransactionClient) {
 
 export async function processReaderScan(input: ParsedRfidReaderMessage) {
   const cardNo = normalizeCard(input.decodedResult);
+  const receivedAt = Date.now();
   return prisma.$transaction(async (tx) => {
     await lockRfid(tx);
     const now = new Date();
@@ -43,9 +45,9 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     async function record(code: string, message: string, action = "DENIED", vehicleId?: string, companyId?: string) {
       await tx.rfidEvent.create({ data: {
         readerId: reader.id, buildingId: reader.buildingId, deviceNumber: reader.deviceNumber,
-        cardNo, action, code, message, vehicleId, companyId,
+        cardNo, action, code: code === "0000" ? "0000" : "0001", message, vehicleId, companyId,
       } });
-      return code;
+      return { code: code === "0000" ? "0000" : "0001", message };
     }
     if (!reader.enabled || !reader.buildingId) return record("1004", "Reader must be assigned to a building and enabled.");
     await lockBuildingParking(tx, reader.buildingId);
@@ -56,7 +58,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       const company = await tx.company.findUnique({ where: { id: enrollment.companyId }, select: { buildingId: true } });
       if (company?.buildingId !== reader.buildingId) return record("1004", "Registration belongs to another building.");
       if (enrollment.status === "CAPTURED") {
-        return record(enrollment.cardNo === cardNo ? "0000" : "1007",
+        return record("0001",
           enrollment.cardNo === cardNo ? "Card already captured; waiting for registration to be saved." : "A card is already captured. Finish or cancel registration.",
           "IGNORED", enrollment.vehicleId || undefined, enrollment.companyId);
       }
@@ -66,26 +68,26 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       return record("0000", "Card captured. Save the vehicle to complete registration.", "CAPTURE", enrollment.vehicleId || undefined, enrollment.companyId);
     }
     const vehicle = await tx.vehicle.findUnique({ where: { rfidCardNo: cardNo }, include: { company: true } });
-    if (!vehicle) return record("1001", "Card is not registered.");
+    if (!vehicle) return record("0001", "RFID card is not registered");
     if (vehicle.company.buildingId !== reader.buildingId) return record("1004", "Card belongs to another building.");
     const context = [vehicle.id, vehicle.companyId] as const;
-    if (vehicle.lastAccessAt && now.getTime() - vehicle.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
-      return record("0000", "Repeated scan ignored.", "IGNORED", ...context);
+    if (vehicle.lastAccessAt && receivedAt - vehicle.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
+      return record("0001", "Duplicate scan ignored", "IGNORED", ...context);
     }
     const enter = reader.mode === "ENTRY" || (reader.mode === "ENTRY_EXIT" && !vehicle.isInside);
     if ((enter && vehicle.isInside) || (!enter && !vehicle.isInside)) {
-      return record("0000", enter ? "Vehicle is already inside." : "Vehicle is already outside.", "IGNORED", ...context);
+      return record("0001", enter ? "Vehicle is already inside" : "Vehicle is already outside", "IGNORED", ...context);
     }
     if (enter) {
       const companyInside = await tx.vehicle.count({ where: { companyId: vehicle.companyId, isInside: true } });
       const buildingInside = await tx.vehicle.count({ where: { isInside: true, company: { buildingId: reader.buildingId } } });
       const building = await tx.building.findUniqueOrThrow({ where: { id: reader.buildingId }, select: { companyParking: true, totalParking: true } });
       if (companyInside >= vehicle.company.parkingAllocation || buildingInside >= Math.min(building.companyParking, building.totalParking)) {
-        return record("1008", "Parking capacity is full.", "DENIED", ...context);
+        return record("0001", "Parking allocation is full", "DENIED", ...context);
       }
     }
-    await tx.vehicle.update({ where: { id: vehicle.id }, data: { isInside: enter, lastAccessAt: now, lastAccessDevice: reader.deviceNumber } });
-    return record("0000", enter ? "Entry recorded." : "Exit recorded.", enter ? "ENTRY" : "EXIT", ...context);
+    await tx.vehicle.update({ where: { id: vehicle.id }, data: { isInside: enter, lastAccessAt: new Date(), lastAccessDevice: reader.deviceNumber } });
+    return record("0000", enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
   }, RFID_TRANSACTION);
 }
 

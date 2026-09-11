@@ -2,6 +2,7 @@
 
 import Link from "@/components/AppLink";
 import { useState } from "react";
+import ReaderConsole from "./ReaderConsole";
 
 export default function Sidebar({
   roleLabel = "Super Admin",
@@ -55,19 +56,15 @@ export default function Sidebar({
             <span>Access Control</span><span className="menu-chevron" aria-hidden="true" />
           </button>
           <div id="access-menu" className="menu-items" hidden={!expanded.access}>
-            <div className="menu-button dark-menu">Device</div>
+            <Link className="menu-button dark-menu" href="/access-control">Device</Link>
             <div className="menu-button dark-menu">Slot Allocation</div>
             <div className="menu-button dark-menu">Manual In/Out</div>
-            <div className="menu-button dark-menu">Real Time Monitor</div>
+            <Link className="menu-button dark-menu" href="/access-control#activity">Real Time Monitor</Link>
           </div>
         </div>
         <div className="menu-section-title"><span>Report</span></div>
       </nav>
-      <div className="reader-panel">
-        <div className="reader-heading"><span className="reader-status-dot" />0 of 2 readers connected</div>
-        <div>● Reader 1 - 22110001</div>
-        <div>● Reader 2 - 22110002</div>
-      </div>
+      <ReaderConsole compact />
     </aside>
   );
 }
