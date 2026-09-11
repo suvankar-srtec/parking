@@ -9,7 +9,8 @@ import { canConfigureReaders, dashboardLabel, roleLabel } from "@/lib/roles";
 export default function Sidebar({
   role = "SUPER_ADMIN",
   dashboardHref = "/dashboard",
-}: { role?: UserRole; dashboardHref?: string }) {
+  canCreateSuperAdmins = false,
+}: { role?: UserRole; dashboardHref?: string; canCreateSuperAdmins?: boolean }) {
   const [expanded, setExpanded] = useState({ dashboard: true, personal: false, access: false });
   function toggle(section: keyof typeof expanded) { setExpanded((current) => ({ ...current, [section]: !current[section] })); }
 
@@ -25,6 +26,8 @@ export default function Sidebar({
         <button type="button" className="menu-button menu-button-main menu-toggle" aria-expanded={expanded.dashboard} aria-controls="dashboard-menu" onClick={() => toggle("dashboard")}><span>Dashboard</span><span className="menu-chevron" aria-hidden="true" /></button>
         <div id="dashboard-menu" className="menu-items" hidden={!expanded.dashboard}><Link className="menu-button menu-button-sub active-menu" href={dashboardHref}>{dashboardLabel(role)}</Link></div>
       </div>
+
+      {canCreateSuperAdmins ? <Link className="menu-section-title" href="/super-admins"><span>Create Super Admin</span></Link> : null}
 
       {showPersonal ? <div className="menu-group">
         <button type="button" className="menu-section-title menu-toggle" aria-expanded={expanded.personal} aria-controls="personal-menu" onClick={() => toggle("personal")}><span>Personal</span><span className="menu-chevron" aria-hidden="true" /></button>
