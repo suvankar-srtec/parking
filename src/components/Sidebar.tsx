@@ -16,6 +16,7 @@ export default function Sidebar({
 
   const showPersonal = role !== "EMPLOYEE";
   const showAccess = canConfigureReaders(role);
+  const showReaderStatus = showAccess || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER";
   const personalLabel = role === "SUPER_ADMIN" ? "Admin / Company / Supervisor" : role === "BUILDING_ADMIN" ? "Company / Supervisor" : "Employees / Company Owners";
 
   return <aside className="sidebar">
@@ -44,6 +45,6 @@ export default function Sidebar({
       </div> : null}
       <Link className="menu-section-title" href="/reports"><span>{role === "EMPLOYEE" ? "Live Reports / Create Report" : "Reports"}</span></Link>
     </nav>
-    {showAccess ? <ReaderConsole compact /> : null}
+    {showReaderStatus ? <ReaderConsole compact /> : null}
   </aside>;
 }
