@@ -24,9 +24,13 @@ model User {
 
   buildingId String?
   companyId  String?
+  createdBySuperAdminId String?
 
   building Building? @relation("BuildingUsers", fields: [buildingId], references: [id], onDelete: Cascade)
   company  Company?  @relation("CompanyUsers", fields: [companyId], references: [id], onDelete: Cascade)
+  createdBySuperAdmin User? @relation("SuperAdminCreatedUsers", fields: [createdBySuperAdminId], references: [id], onDelete: SetNull)
+  createdSuperAdmins User[] @relation("SuperAdminCreatedUsers")
+  ownedBuildings Building[] @relation("SuperAdminBuildings")
 
   employee Employee? @relation("EmployeeAccount")
   idReservations UserIdReservation[]
@@ -38,6 +42,7 @@ model User {
 
   @@index([buildingId])
   @@index([companyId])
+  @@index([createdBySuperAdminId])
   @@index([username])
   @@map("users")
 }
@@ -48,7 +53,9 @@ model Building {
   totalParking   Int
   ownerParking   Int
   companyParking Int
+  superAdminId   String?
 
+  superAdmin User? @relation("SuperAdminBuildings", fields: [superAdminId], references: [id], onDelete: SetNull)
   users     User[]    @relation("BuildingUsers")
   companies Company[]
   readers RfidReader[]
@@ -57,6 +64,7 @@ model Building {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([superAdminId])
   @@map("buildings")
 }
 
@@ -83,11 +91,13 @@ model Company {
 }
 
 model Employee {
-  id        String @id @default(cuid())
-  name      String
-  userId    String @unique
-  companyId String
-  accountId String? @unique
+  id           String @id @default(cuid())
+  name         String
+  userId       String @unique
+  companyId    String
+  accountId    String? @unique
+  category     String @default("EMPLOYEE")
+  parkingLimit Int    @default(1)
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   account User? @relation("EmployeeAccount", fields: [accountId], references: [id], onDelete: SetNull)

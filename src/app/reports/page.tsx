@@ -5,6 +5,7 @@ import ReportsDashboard from "@/components/ReportsDashboard";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { roleLabel } from "@/lib/roles";
+import { isPrimarySuperAdmin, isScopedSuperAdmin } from "@/lib/super-admin-scope";
 
 function parkedFor(from: Date, to: Date | null) {
   const milliseconds = Math.max((to ?? new Date()).getTime() - from.getTime(), 0);
@@ -21,19 +22,26 @@ export default async function ReportsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const eventWhere = user.role === "SUPER_ADMIN"
-    ? { action: { in: ["ENTRY", "EXIT"] } }
-    : user.role === "COMPANY_ADMIN" && user.companyId
-      ? { companyId: user.companyId, action: { in: ["ENTRY", "EXIT"] } }
-      : user.buildingId
-        ? { buildingId: user.buildingId, action: { in: ["ENTRY", "EXIT"] } }
-        : { id: "__no_scope__", action: { in: ["ENTRY", "EXIT"] } };
+  const primarySuperAdmin = isPrimarySuperAdmin(user);
+  const scopedSuperAdmin = isScopedSuperAdmin(user);
 
-  const buildingWhere = user.role === "SUPER_ADMIN"
+  const eventWhere = primarySuperAdmin
+    ? { action: { in: ["ENTRY", "EXIT"] } }
+    : scopedSuperAdmin
+      ? { building: { superAdminId: user.id }, action: { in: ["ENTRY", "EXIT"] } }
+      : user.role === "COMPANY_ADMIN" && user.companyId
+        ? { companyId: user.companyId, action: { in: ["ENTRY", "EXIT"] } }
+        : user.buildingId
+          ? { buildingId: user.buildingId, action: { in: ["ENTRY", "EXIT"] } }
+          : { id: "__no_scope__", action: { in: ["ENTRY", "EXIT"] } };
+
+  const buildingWhere = primarySuperAdmin
     ? undefined
-    : user.buildingId
-      ? { id: user.buildingId }
-      : { id: "__no_scope__" };
+    : scopedSuperAdmin
+      ? { superAdminId: user.id }
+      : user.buildingId
+        ? { id: user.buildingId }
+        : { id: "__no_scope__" };
 
   const [events, buildings] = await Promise.all([
     prisma.rfidEvent.findMany({
@@ -143,7 +151,7 @@ export default async function ReportsPage() {
   })));
 
   return <main className="dashboard-page">
-    <Sidebar role={user.role} />
+    <Sidebar role={user.role} canCreateSuperAdmins={primarySuperAdmin} />
     <section className="dashboard-main">
       <header className="topbar">
         <div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>Parking reports</h1></div>

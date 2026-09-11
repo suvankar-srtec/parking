@@ -1,12 +1,15 @@
 export async function requestJson<T extends { ok: boolean; message?: string }>(
-  url: string, method: "POST" | "PATCH", body?: unknown, signal?: AbortSignal,
+  url: string,
+  method: "GET" | "POST" | "PATCH" = "GET",
+  body?: unknown,
+  signal?: AbortSignal,
 ): Promise<T> {
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: method === "GET" || body === undefined ? undefined : JSON.stringify(body),
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000),
     });
   } catch {
