@@ -9,12 +9,11 @@ import BuildingAdminPanel from "@/components/BuildingAdminPanel";
 import CompanyList from "@/components/CompanyList";
 import CreateEntityModal from "@/components/CreateEntityModal";
 import EmployeeList from "@/components/EmployeeList";
+import SupervisorManager from "@/components/SupervisorManager";
 
 function AssignmentRequired({ title, message }: { title: string; message: string }) {
   return <section className="portfolio-card building-management">
-    <div className="portfolio-header">
-      <div><div className="section-kicker">ACCOUNT SETUP</div><h2>{title}</h2><p>{message}</p></div>
-    </div>
+    <div className="portfolio-header"><div><div className="section-kicker">ACCOUNT SETUP</div><h2>{title}</h2><p>{message}</p></div></div>
   </section>;
 }
 
@@ -27,141 +26,59 @@ export default async function DashboardPage() {
       orderBy: { createdAt: "asc" },
       include: {
         _count: { select: { companies: true } },
-        users: {
-          where: { role: "BUILDING_ADMIN" },
-          select: { userId: true, username: true },
-          take: 1,
-        },
+        users: { where: { role: "BUILDING_ADMIN" }, select: { userId: true, username: true }, take: 1 },
       },
     });
-
-    return <main className="dashboard-page">
-      <Sidebar role={user.role} />
-      <section className="dashboard-main">
-        <header className="topbar">
-          <div><div className="section-kicker">BUILDING PARKING</div><h1>Buildings</h1></div>
-          <div className="topbar-right">
-            <div className="summary-card"><span>{roleLabel(user.role)}</span><strong>{user.username}</strong></div>
-            <SignOutButton />
-          </div>
-        </header>
-        <BuildingPortfolio buildings={buildings} />
-      </section>
-    </main>;
+    return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
+      <header className="topbar"><div><div className="section-kicker">BUILDING PARKING</div><h1>Buildings</h1></div><div className="topbar-right"><div className="summary-card"><span>{roleLabel(user.role)}</span><strong>{user.username}</strong></div><SignOutButton /></div></header>
+      <BuildingPortfolio buildings={buildings} />
+    </section></main>;
   }
 
   if (user.role === "BUILDING_ADMIN") {
-    if (!user.buildingId) {
-      return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
-        <header className="topbar"><div><div className="section-kicker">ADMIN</div><h1>Dashboard</h1></div><SignOutButton /></header>
-        <AssignmentRequired title="Building not assigned" message="This Admin account must be assigned to a building by a Super Admin before company management is available." />
-      </section></main>;
-    }
+    if (!user.buildingId) return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main"><header className="topbar"><div><div className="section-kicker">ADMIN</div><h1>Dashboard</h1></div><SignOutButton /></header><AssignmentRequired title="Building not assigned" message="This Admin account must be assigned to a building by a Super Admin before company management is available." /></section></main>;
 
-    const building = await prisma.building.findUnique({
-      where: { id: user.buildingId },
-      include: {
-        companies: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true }, take: 1 },
-            vehicles: { select: { id: true } },
-          },
+    const [building, supervisor] = await Promise.all([
+      prisma.building.findUnique({
+        where: { id: user.buildingId },
+        include: {
+          companies: { orderBy: { createdAt: "asc" }, include: { users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true }, take: 1 }, vehicles: { select: { id: true } } } },
         },
-      },
-    });
+      }),
+      prisma.user.findFirst({ where: { role: "EMPLOYEE", buildingId: user.buildingId, companyId: null }, select: { userId: true } }),
+    ]);
     if (!building) redirect("/");
     const allocated = building.companies.reduce((total, company) => total + company.parkingAllocation, 0);
 
-    return <main className="dashboard-page">
-      <Sidebar role={user.role} />
-      <section className="dashboard-main">
-        <header className="topbar">
-          <div><div className="section-kicker">ADMIN</div><h1>{building.name}</h1></div>
-          <div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div>
-        </header>
-        <section className="portfolio-card building-management">
-          <div className="portfolio-header"><div><div className="section-kicker">ADMIN DASHBOARD</div><h2>Parking allocation</h2><p>Create companies, set company parking limits, register cards and review reports for this building.</p></div></div>
-          <div className="portfolio-divider" />
-          <div className="account-parking-grid account-company-parking-grid">
-            <div className="large-stat"><span>Company parking</span><strong>{building.companyParking}</strong></div>
-            <div className="large-stat"><span>Allocated</span><strong>{allocated}</strong></div>
-            <div className="large-stat"><span>Available</span><strong>{Math.max(building.companyParking - allocated, 0)}</strong></div>
-          </div>
-        </section>
-        <section className="portfolio-card building-management">
-          <div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div>
-          <div className="portfolio-divider" />
-          <CompanyList companies={building.companies} companyParking={building.companyParking} />
-        </section>
+    return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
+      <header className="topbar"><div><div className="section-kicker">ADMIN</div><h1>{building.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
+      <section className="portfolio-card building-management">
+        <div className="portfolio-header"><div><div className="section-kicker">ADMIN DASHBOARD</div><h2>Parking allocation</h2><p>Create companies, create the building Supervisor, set company parking limits, register cards and review reports.</p></div><SupervisorManager buildingId={building.id} currentUserId={supervisor?.userId} /></div>
+        <div className="portfolio-divider" /><div className="account-parking-grid account-company-parking-grid"><div className="large-stat"><span>Company parking</span><strong>{building.companyParking}</strong></div><div className="large-stat"><span>Allocated</span><strong>{allocated}</strong></div><div className="large-stat"><span>Available</span><strong>{Math.max(building.companyParking - allocated, 0)}</strong></div></div>
       </section>
-    </main>;
+      <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div><div className="portfolio-divider" /><CompanyList companies={building.companies} companyParking={building.companyParking} /></section>
+    </section></main>;
   }
 
   if (user.role === "COMPANY_ADMIN" || user.role === "BUILDING_OWNER") {
-    if (!user.companyId) {
-      return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
-        <header className="topbar"><div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>Dashboard</h1></div><SignOutButton /></header>
-        <AssignmentRequired title="Company not assigned" message="This account must be linked to a company before employee parking allocation is available." />
-      </section></main>;
-    }
+    if (!user.companyId) return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main"><header className="topbar"><div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>Dashboard</h1></div><SignOutButton /></header><AssignmentRequired title="Company not assigned" message="This account must be linked to a company before parking allocation is available." /></section></main>;
 
-    const company = await prisma.company.findUnique({
-      where: { id: user.companyId },
-      include: {
-        building: { select: { name: true } },
-        employees: { orderBy: { createdAt: "asc" }, include: { vehicles: true } },
-      },
-    });
+    const company = await prisma.company.findUnique({ where: { id: user.companyId }, include: { building: { select: { name: true } }, employees: { orderBy: { createdAt: "asc" }, include: { vehicles: true } } } });
     if (!company) redirect("/");
-    const allotted = company.employees.reduce((total, employee) => total + employee.vehicles.length, 0);
+    const allotted = company.employees.reduce((total, employee) => total + employee.parkingLimit, 0);
+    const used = company.employees.reduce((total, employee) => total + employee.vehicles.length, 0);
     const available = Math.max(company.parkingAllocation - allotted, 0);
 
-    return <main className="dashboard-page">
-      <Sidebar role={user.role} />
-      <section className="dashboard-main">
-        <header className="topbar">
-          <div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>{company.name}</h1></div>
-          <div className="topbar-right"><div className="summary-card"><span>Building</span><strong>{company.building.name}</strong></div><SignOutButton /></div>
-        </header>
-        <section className="portfolio-card building-management">
-          <div className="portfolio-header"><div><div className="section-kicker">COMPANY PARKING</div><h2>Parking allocation</h2><p>Assign the company parking allowance to employees and company owners, then review usage in Reports.</p></div></div>
-          <div className="portfolio-divider" />
-          <div className="account-parking-grid account-company-parking-grid">
-            <div className="large-stat"><span>Company limit</span><strong>{company.parkingAllocation}</strong></div>
-            <div className="large-stat"><span>Assigned</span><strong>{allotted}</strong></div>
-            <div className="large-stat"><span>Available</span><strong>{available}</strong></div>
-          </div>
-        </section>
-        <section className="portfolio-card building-management">
-          <div className="employee-section-header"><div><div className="section-kicker">TEAM</div><h2>Employees</h2></div><CreateEntityModal kind="employee" companyId={company.id} /></div>
-          <div className="portfolio-divider" />
-          <EmployeeList companyId={company.id} employees={company.employees} />
-        </section>
-      </section>
-    </main>;
+    return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
+      <header className="topbar"><div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>{company.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>Building</span><strong>{company.building.name}</strong></div><SignOutButton /></div></header>
+      <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANY PARKING</div><h2>Parking allocation</h2><p>Assign parking limits to employees and company owners. Total assignments cannot exceed the company limit.</p></div></div><div className="portfolio-divider" /><div className="account-parking-grid account-company-parking-grid"><div className="large-stat"><span>Company limit</span><strong>{company.parkingAllocation}</strong></div><div className="large-stat"><span>Assigned limits</span><strong>{allotted}</strong></div><div className="large-stat"><span>Registered vehicles</span><strong>{used}</strong></div><div className="large-stat"><span>Unassigned</span><strong>{available}</strong></div></div></section>
+      <section className="portfolio-card building-management"><div className="employee-section-header"><div><div className="section-kicker">PEOPLE</div><h2>Employees & Company Owners</h2></div><CreateEntityModal kind="employee" companyId={company.id} /></div><div className="portfolio-divider" /><EmployeeList companyId={company.id} employees={company.employees} /></section>
+    </section></main>;
   }
 
-  const events = await prisma.rfidEvent.findMany({
-    where: user.companyId ? { companyId: user.companyId } : user.buildingId ? { buildingId: user.buildingId } : undefined,
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
-
-  return <main className="dashboard-page">
-    <Sidebar role={user.role} />
-    <section className="dashboard-main">
-      <header className="topbar">
-        <div><div className="section-kicker">SUPERVISOR</div><h1>Live reports</h1></div>
-        <div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div>
-      </header>
-      <section className="portfolio-card building-management">
-        <div className="portfolio-header"><div><div className="section-kicker">READ ONLY</div><h2>Latest parking activity</h2><p>Supervisor access is limited to live reports and report history.</p></div></div>
-        <div className="portfolio-divider" />
-        <div className="table-wrap"><table><thead><tr><th>Time</th><th>Device</th><th>Card</th><th>Action</th><th>Result</th></tr></thead><tbody>
-          {events.length ? events.map((event) => <tr key={event.id}><td>{event.createdAt.toLocaleString()}</td><td>{event.deviceNumber}</td><td>{event.cardNo}</td><td>{event.action}</td><td>{event.message}</td></tr>) : <tr><td colSpan={5}>No parking activity yet.</td></tr>}
-        </tbody></table></div>
-      </section>
-    </section>
-  </main>;
+  const events = await prisma.rfidEvent.findMany({ where: user.companyId ? { companyId: user.companyId } : user.buildingId ? { buildingId: user.buildingId } : { id: "__no_scope__" }, orderBy: { createdAt: "desc" }, take: 20 });
+  return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
+    <header className="topbar"><div><div className="section-kicker">SUPERVISOR</div><h1>Live reports</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
+    <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">READ ONLY</div><h2>Latest parking activity</h2><p>Supervisor access is limited to live reports and report generation/history for the assigned building.</p></div></div><div className="portfolio-divider" /><div className="table-wrap"><table><thead><tr><th>Time</th><th>Device</th><th>Card</th><th>Action</th><th>Result</th></tr></thead><tbody>{events.length ? events.map((event) => <tr key={event.id}><td>{event.createdAt.toLocaleString()}</td><td>{event.deviceNumber}</td><td>{event.cardNo}</td><td>{event.action}</td><td>{event.message}</td></tr>) : <tr><td colSpan={5}>No parking activity yet.</td></tr>}</tbody></table></div></section>
+  </section></main>;
 }
