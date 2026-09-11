@@ -16,6 +16,7 @@
     "db:employees": "prisma db execute --file prisma/add-employee-role.sql --schema prisma/schema.prisma; prisma db execute --file prisma/migrate-generated-user-ids.sql --schema prisma/schema.prisma",
     "db:repair-building-ids": "prisma db execute --file prisma/repair-building-user-ids.sql --schema prisma/schema.prisma",
     "db:employee-vehicles": "prisma db execute --file prisma/migrate-employee-vehicles.sql --schema prisma/schema.prisma",
+    "db:role-parking": "prisma db execute --file prisma/add-role-parking-limits.sql --schema prisma/schema.prisma",
     "postinstall": "prisma generate",
     "rfid:tcp": "node scripts/rfid-tcp.mjs",
     "rfid:configure": "node scripts/configure-readers.cjs",
