@@ -37,7 +37,7 @@ export default function SuperAdminManager() {
       return;
     }
     void execute(async () => {
-      const result = await requestJson<{ message: string }>("/api/super-admins", "POST", { username, password });
+      const result = await requestJson<{ ok: true; message: string }>("/api/super-admins", "POST", { username, password });
       notify(result.message);
       setOpen(false);
       await load();
