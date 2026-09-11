@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Spinner } from "./LoadingIndicator";
+import "./SupervisorHeadcount.css";
 
 type Headcount = {
   ok: true;
