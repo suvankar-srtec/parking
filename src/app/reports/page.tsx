@@ -24,12 +24,13 @@ export default async function ReportsPage() {
 
   const primarySuperAdmin = isPrimarySuperAdmin(user);
   const scopedSuperAdmin = isScopedSuperAdmin(user);
+  const companyScoped = user.role === "COMPANY_ADMIN" || user.role === "BUILDING_OWNER";
 
   const eventWhere = primarySuperAdmin
     ? { action: { in: ["ENTRY", "EXIT"] } }
     : scopedSuperAdmin
       ? { building: { superAdminId: user.id }, action: { in: ["ENTRY", "EXIT"] } }
-      : user.role === "COMPANY_ADMIN" && user.companyId
+      : companyScoped && user.companyId
         ? { companyId: user.companyId, action: { in: ["ENTRY", "EXIT"] } }
         : user.buildingId
           ? { buildingId: user.buildingId, action: { in: ["ENTRY", "EXIT"] } }
@@ -67,7 +68,7 @@ export default async function ReportsPage() {
       orderBy: { name: "asc" },
       include: {
         companies: {
-          where: user.role === "COMPANY_ADMIN" && user.companyId ? { id: user.companyId } : undefined,
+          where: companyScoped && user.companyId ? { id: user.companyId } : undefined,
           orderBy: { name: "asc" },
           select: { id: true, name: true, buildingId: true },
         },
