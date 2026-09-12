@@ -25,29 +25,36 @@ export default function FeedbackProvider({ children }: { children: ReactNode }) 
     timers.current.delete(id);
     setNotices((current) => current.filter((item) => item.id !== id));
   }, []);
+
   const notify = useCallback((message: string, kind: Notice["kind"] = "success") => {
     const id = ++nextId.current;
     setNotices((current) => [...current.slice(-3), { id, message, kind }]);
     timers.current.set(id, setTimeout(() => dismiss(id), kind === "error" ? 9000 : 6000));
   }, [dismiss]);
+
   useEffect(() => {
     const activeTimers = timers.current;
     return () => { activeTimers.forEach(clearTimeout); activeTimers.clear(); };
   }, []);
+
   const beginTask = useCallback(() => {
     setTasks((count) => count + 1);
     let finished = false;
     return () => {
-      if (!finished) { finished = true; setTasks((count) => Math.max(0, count - 1)); }
+      if (!finished) {
+        finished = true;
+        setTasks((count) => Math.max(0, count - 1));
+      }
     };
   }, []);
+
   const navigate = useCallback((href: string, replace = false) => {
     startTransition(() => {
       if (replace) router.replace(href);
       else router.push(href);
-      router.refresh();
     });
   }, [router]);
+
   const refresh = useCallback(() => startTransition(() => router.refresh()), [router]);
 
   return (
@@ -77,14 +84,22 @@ export function useMutation() {
   const { notify, beginTask } = useFeedback();
   const [pending, setPending] = useState(false);
   const busy = useRef(false);
+
   async function execute(action: () => Promise<void>) {
     if (busy.current) return;
     busy.current = true;
     setPending(true);
     const finish = beginTask();
-    try { await action(); }
-    catch (error) { notify(error instanceof Error ? error.message : "The request could not be completed. Please try again.", "error"); }
-    finally { finish(); busy.current = false; setPending(false); }
+    try {
+      await action();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "The request could not be completed. Please try again.", "error");
+    } finally {
+      finish();
+      busy.current = false;
+      setPending(false);
+    }
   }
+
   return { pending, execute };
 }
