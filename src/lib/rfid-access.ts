@@ -6,6 +6,8 @@ import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
 import { normalizeCard, SCAN_DEBOUNCE_MS, type ParsedRfidReaderMessage } from "@/lib/rfid-reader";
 
 export const RFID_TRANSACTION = { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 20000 };
+const CAPTURED_SAVE_WINDOW_MS = 5 * 60 * 1000;
+
 export async function lockRfid(tx: Prisma.TransactionClient) {
   await tx.$queryRaw`SELECT pg_advisory_xact_lock(72015002)::text`;
 }
@@ -73,8 +75,21 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
           "IGNORED", enrollment.vehicleId || undefined, enrollment.companyId);
       }
       const assigned = await tx.vehicle.findUnique({ where: { rfidCardNo: cardNo }, select: { id: true } });
-      if (assigned && assigned.id !== enrollment.vehicleId) return record("1006", "This card is assigned to another vehicle.", "DENIED", undefined, enrollment.companyId);
-      await tx.rfidEnrollment.update({ where: { id: enrollment.id }, data: { cardNo, status: "CAPTURED" } });
+      if (assigned && assigned.id !== enrollment.vehicleId) {
+        await tx.rfidEnrollment.update({
+          where: { id: enrollment.id },
+          data: { cardNo, status: "CANCELLED" },
+        });
+        return record("1006", "This RFID card is already assigned to another vehicle.", "DENIED", assigned.id, enrollment.companyId);
+      }
+      await tx.rfidEnrollment.update({
+        where: { id: enrollment.id },
+        data: {
+          cardNo,
+          status: "CAPTURED",
+          expiresAt: new Date(Date.now() + CAPTURED_SAVE_WINDOW_MS),
+        },
+      });
       return record("0000", "Card captured. Save the vehicle to complete registration.", "CAPTURE", enrollment.vehicleId || undefined, enrollment.companyId);
     }
     const vehicle = await tx.vehicle.findUnique({ where: { rfidCardNo: cardNo }, include: { company: true } });
@@ -116,7 +131,7 @@ export async function consumeCardEnrollment(tx: Prisma.TransactionClient, input:
     throw new ParkingError("The registration reader is no longer available.", 409);
   }
   const assigned = await tx.vehicle.findUnique({ where: { rfidCardNo: enrollment.cardNo }, select: { id: true } });
-  if (assigned && assigned.id !== input.vehicleId) throw new ParkingError("This card is already assigned to another vehicle.", 409);
+  if (assigned && assigned.id !== input.vehicleId) throw new ParkingError("This RFID card is already assigned to another vehicle.", 409);
   await tx.rfidEnrollment.update({ where: { id: enrollment.id }, data: { status: "COMPLETED" } });
   return enrollment;
 }
