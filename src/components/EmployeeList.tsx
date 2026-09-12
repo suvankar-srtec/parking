@@ -1,4 +1,5 @@
 import VehicleModal from "./VehicleModal";
+import EditEmployeeModal from "./EditEmployeeModal";
 
 type VehicleSummary = { id: string; plateNumber: string; vehicleType: string; department: string; rfidCardNo: string | null };
 type EmployeeSummary = { id: string; name: string; userId: string; category: string; parkingLimit: number; vehicles: VehicleSummary[] };
@@ -18,7 +19,10 @@ export default function EmployeeList({ companyId, employees }: { companyId: stri
             <small>{vehicle.plateNumber} · {vehicle.vehicleType} · {vehicle.department}{vehicle.rfidCardNo ? ` · RFID ${vehicle.rfidCardNo}` : ""}</small>
           </div>)}
         </div>
-        {parkingFull ? <button type="button" className="secondary-button vehicle-add-button" disabled>Vehicle Added</button> : <VehicleModal companyId={companyId} employeeId={employee.id} ownerName={employee.name} />}
+        <div className="employee-row-actions">
+          <EditEmployeeModal companyId={companyId} employee={employee} />
+          {parkingFull ? <button type="button" className="secondary-button vehicle-add-button" disabled>Vehicle Added</button> : <VehicleModal companyId={companyId} employeeId={employee.id} ownerName={employee.name} />}
+        </div>
       </article>;
     })}
   </div>;
