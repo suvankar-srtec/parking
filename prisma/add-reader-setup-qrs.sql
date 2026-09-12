@@ -1,0 +1,4 @@
+BEGIN;
+ALTER TABLE rfid_readers ADD COLUMN IF NOT EXISTS "registrationQrData" TEXT;
+ALTER TABLE rfid_readers ADD COLUMN IF NOT EXISTS "entryExitQrData" TEXT;
+COMMIT;
