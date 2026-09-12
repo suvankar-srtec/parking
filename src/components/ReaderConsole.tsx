@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "@/components/AppLink";
 import { readerStatus, type ReaderConnection } from "@/lib/reader-status";
 import { requestJson } from "@/lib/client-request";
@@ -15,6 +15,8 @@ type Reader = ReaderConnection & {
   buildingId: string | null;
   readerIp: string | null;
   sourcePort: number | null;
+  hasRegistrationQr?: boolean;
+  hasEntryExitQr?: boolean;
 };
 
 type ReaderData = {
@@ -38,12 +40,35 @@ type Activity = {
   }[];
 };
 
+const MAX_QR_FILE_BYTES = 1_100_000;
+
+function readQrImage(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    if (!file.type.match(/^image\/(png|jpeg|jpg|webp)$/i)) {
+      reject(new Error("Please select a PNG, JPG, or WEBP QR image."));
+      return;
+    }
+    if (file.size > MAX_QR_FILE_BYTES) {
+      reject(new Error("QR image is too large. Please use an image smaller than 1 MB."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("The QR image could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ReaderConsole({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<ReaderData | null>(null);
   const [activity, setActivity] = useState<Activity>({ inside: 0, events: [] });
   const [error, setError] = useState(false);
   const [editing, setEditing] = useState<Reader | null>(null);
   const [showAvailable, setShowAvailable] = useState(false);
+  const [setupStep, setSetupStep] = useState<1 | 2 | 3>(1);
+  const [selectedReader, setSelectedReader] = useState<Reader | null>(null);
+  const [registrationQr, setRegistrationQr] = useState("");
+  const [entryExitQr, setEntryExitQr] = useState("");
   const [revision, setRevision] = useState(0);
   const { notify } = useFeedback();
   const { pending, execute } = useMutation();
@@ -81,9 +106,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       } catch (cause) {
         if (!stopped) {
           setError(true);
-          if (!compact && !failed) {
-            notify(cause instanceof Error ? cause.message : "Reader status unavailable.", "error");
-          }
+          if (!compact && !failed) notify(cause instanceof Error ? cause.message : "Reader status unavailable.", "error");
           failed = true;
         }
       }
@@ -96,6 +119,36 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       clearTimeout(timer);
     };
   }, [compact, revision, notify]);
+
+  function openAddReader() {
+    setSelectedReader(null);
+    setRegistrationQr("");
+    setEntryExitQr("");
+    setSetupStep(1);
+    setShowAvailable(true);
+  }
+
+  function closeAddReader() {
+    if (pending) return;
+    setShowAvailable(false);
+    setSelectedReader(null);
+    setRegistrationQr("");
+    setEntryExitQr("");
+    setSetupStep(1);
+  }
+
+  async function pickQr(event: ChangeEvent<HTMLInputElement>, kind: "registration" | "entryExit") {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await readQrImage(file);
+      if (kind === "registration") setRegistrationQr(dataUrl);
+      else setEntryExitQr(dataUrl);
+    } catch (cause) {
+      event.target.value = "";
+      notify(cause instanceof Error ? cause.message : "Unable to read the QR image.", "error");
+    }
+  }
 
   if (compact) {
     return <div className="reader-panel">
@@ -110,7 +163,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     </div>;
   }
 
-  function save(event: FormEvent<HTMLFormElement>) {
+  function saveExisting(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     void execute(async () => {
@@ -124,7 +177,42 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       });
       notify(result.message || "Reader saved.");
       setEditing(null);
-      setShowAvailable(false);
+      setRevision((n) => n + 1);
+    });
+  }
+
+  function allowReader(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    if (!selectedReader || !registrationQr || !entryExitQr) {
+      notify("Select a reader and upload both QR images before continuing.", "error");
+      return;
+    }
+    void execute(async () => {
+      const result = await requestJson("/api/rfid/readers", "POST", {
+        deviceNumber: selectedReader.deviceNumber,
+        name: form.get("name"),
+        buildingId: form.get("buildingId"),
+        mode: form.get("mode"),
+        enabled: true,
+        heartbeatSeconds: selectedReader.heartbeatSeconds,
+        registrationQrData: registrationQr,
+        entryExitQrData: entryExitQr,
+      });
+      notify(result.message || "Reader added successfully.");
+      closeAddReader();
+      setRevision((n) => n + 1);
+    });
+  }
+
+  function removeReader(reader: Reader) {
+    if (!window.confirm(`Remove ${reader.name} (${reader.deviceNumber})? It will return to the available reader list.`)) return;
+    void execute(async () => {
+      const result = await requestJson("/api/rfid/readers", "POST", {
+        action: "reset",
+        deviceNumber: reader.deviceNumber,
+      });
+      notify(result.message || "Reader removed.");
       setRevision((n) => n + 1);
     });
   }
@@ -138,7 +226,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
           <p>Readers communicate with Vercel through HTTPS. Assign a building and operating mode.</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {data?.canAddReaders && <button className="secondary-button" type="button" onClick={() => setShowAvailable(true)}>+ Add reader</button>}
+          {data?.canAddReaders && <button className="secondary-button" type="button" onClick={openAddReader}>+ Add reader</button>}
           <strong>{activity.inside} vehicles inside</strong>
         </div>
       </div>
@@ -148,15 +236,19 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
           const state = error ? { tone: "unknown", label: "Status unavailable" } : readerStatus(reader);
           return <article className="reader-card" key={reader.id}>
             <h3>{reader.name}</h3>
-            <p>{reader.deviceNumber} · {reader.readerIp || reader.connectionType}</p>
+            <p>{reader.deviceNumber} · {reader.readerIp || "IP not detected"}</p>
             <div className="reader-line"><i className={"reader-dot " + state.tone} />{state.label}</div>
             <p>{data.buildings.find((building) => building.id === reader.buildingId)?.name || "Building not assigned"} · {reader.mode.replaceAll("_", " / ")}</p>
             <p className="muted">{reader.enabled ? "Approved" : "Disabled"} · Last contact: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</p>
-            {data.canManage && <button className="secondary-button" onClick={() => setEditing(reader)}>Configure reader</button>}
+            <p className="muted">Setup QR: {reader.hasRegistrationQr ? "Registration ✓" : "Registration missing"} · {reader.hasEntryExitQr ? "Entry / Exit ✓" : "Entry / Exit missing"}</p>
+            {data.canManage && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="secondary-button" onClick={() => setEditing(reader)}>Configure reader</button>
+              {data.canAddReaders && <button className="secondary-button" disabled={pending} onClick={() => removeReader(reader)}>Remove reader</button>}
+            </div>}
           </article>;
         })}
       </div>}
-      <p className="muted">HTTPS readers are green after recent scan/heartbeat activity. If heartbeat is disabled, an idle reader is shown as idle rather than disconnected. The hardware red LED is separate and belongs to a successful scan response.</p>
+      <p className="muted">HTTPS readers are green after recent scan/heartbeat activity. The hardware red LED is separate and belongs to a successful scan response.</p>
     </section>
 
     <section className="portfolio-card" id="activity">
@@ -174,59 +266,91 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     </section>
 
     {showAvailable && <div className="modal-backdrop">
-      <section className="modal-card" role="dialog" aria-modal="true" aria-label="Add reader">
+      <section className="modal-card" role="dialog" aria-modal="true" aria-label="Add RFID reader">
         <div className="modal-head">
           <div>
-            <div className="section-kicker">AVAILABLE READERS</div>
-            <h2>Add RFID reader</h2>
-            <p>Select a reader that has contacted the server but has not yet been assigned to a building.</p>
+            <div className="section-kicker">ADD RFID READER · STEP {setupStep} OF 3</div>
+            <h2>{setupStep === 1 ? "Select reader" : setupStep === 2 ? "Upload reader QR codes" : "Assign reader"}</h2>
+            <p>{setupStep === 1 ? "Choose a detected reader by device number and IP address." : setupStep === 2 ? "Upload the Registration QR and the Entry / Exit QR for this reader." : "Assign the reader to a building and finish setup."}</p>
           </div>
-          <button className="modal-close" disabled={pending} aria-label="Close available readers" onClick={() => setShowAvailable(false)}>×</button>
+          <button className="modal-close" disabled={pending} aria-label="Close add reader" onClick={closeAddReader}>×</button>
         </div>
-        {!data?.availableReaders?.length ? <p className="muted">No unassigned readers are currently available. Power on a reader and make sure its HTTPS URL is pointing to this application.</p> : <div className="entity-list">
-          {data.availableReaders.map((reader) => {
-            const state = readerStatus(reader);
-            return <article className="entity-row" key={reader.id}>
-              <div>
-                <strong>{reader.name || `Reader ${reader.deviceNumber}`}</strong>
-                <span>Device {reader.deviceNumber} · {reader.readerIp || reader.connectionType} · {state.label}</span>
-                <span>Last contact: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</span>
-              </div>
-              <button type="button" className="primary-button" onClick={() => {
-                setEditing({
-                  ...reader,
-                  name: reader.name || `Reader ${reader.deviceNumber}`,
-                  mode: reader.mode || "ENTRY_EXIT",
-                  enabled: true,
-                });
-                setShowAvailable(false);
-              }}>Allow reader</button>
-            </article>;
-          })}
-        </div>}
+
+        {setupStep === 1 && <>
+          {!data?.availableReaders?.length ? <p className="muted">No unassigned readers are currently available. Power on a reader and make sure its HTTPS URL is pointing to this application.</p> : <div className="entity-list">
+            {data.availableReaders.map((reader) => {
+              const state = readerStatus(reader);
+              const selected = selectedReader?.id === reader.id;
+              return <button type="button" className="entity-row" key={reader.id} onClick={() => setSelectedReader(reader)} style={{ width: "100%", textAlign: "left", cursor: "pointer", outline: selected ? "2px solid currentColor" : undefined }}>
+                <div>
+                  <strong>Device {reader.deviceNumber}</strong>
+                  <span>IP address: {reader.readerIp || "Not detected"}</span>
+                  <span>Status: {state.label} · Last contact: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</span>
+                </div>
+                <span>{selected ? "Selected ✓" : "Select"}</span>
+              </button>;
+            })}
+          </div>}
+          <div className="modal-actions">
+            <button type="button" className="secondary-button" onClick={closeAddReader}>Cancel</button>
+            <button type="button" className="primary-button" disabled={!selectedReader} onClick={() => setSetupStep(2)}>Next</button>
+          </div>
+        </>}
+
+        {setupStep === 2 && selectedReader && <>
+          <div className="reader-card" style={{ marginBottom: 16 }}>
+            <strong>Device {selectedReader.deviceNumber}</strong>
+            <p>IP address: {selectedReader.readerIp || "Not detected"}</p>
+          </div>
+          <div className="entity-fields">
+            <label>Registration QR
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, "registration")} />
+              {registrationQr && <img src={registrationQr} alt="Registration QR preview" style={{ width: 150, height: 150, objectFit: "contain", marginTop: 8, border: "1px solid #ddd", borderRadius: 8 }} />}
+            </label>
+            <label>Entry / Exit QR
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, "entryExit")} />
+              {entryExitQr && <img src={entryExitQr} alt="Entry and Exit QR preview" style={{ width: 150, height: 150, objectFit: "contain", marginTop: 8, border: "1px solid #ddd", borderRadius: 8 }} />}
+            </label>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="secondary-button" onClick={() => setSetupStep(1)}>Back</button>
+            <button type="button" className="primary-button" disabled={!registrationQr || !entryExitQr} onClick={() => setSetupStep(3)}>Next</button>
+          </div>
+        </>}
+
+        {setupStep === 3 && selectedReader && <form className="modal-form entity-form" onSubmit={allowReader}>
+          <fieldset className="entity-fields" disabled={pending}>
+            <label>Device number<input value={selectedReader.deviceNumber} readOnly /></label>
+            <label>IP address<input value={selectedReader.readerIp || "Not detected"} readOnly /></label>
+            <label>Name<input name="name" defaultValue={selectedReader.name || `Reader ${selectedReader.deviceNumber}`} required /></label>
+            <label>Building<select name="buildingId" defaultValue="" required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
+            <label>Operating mode<select name="mode" defaultValue="ENTRY_EXIT"><option value="ENTRY_EXIT">Entry / Exit</option><option value="ENTRY">Entry only</option><option value="EXIT">Exit only</option><option value="REGISTER">Register card</option></select></label>
+          </fieldset>
+          <div className="modal-actions">
+            <button type="button" className="secondary-button" disabled={pending} onClick={() => setSetupStep(2)}>Back</button>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Adding…">Allow reader</ActionButton>
+          </div>
+        </form>}
       </section>
     </div>}
 
     {editing && <div className="modal-backdrop">
       <section className="modal-card small-modal" role="dialog" aria-modal="true" aria-label="Configure reader">
         <div className="modal-head">
-          <div>
-            <h2>{editing.buildingId ? "Configure" : "Allow"} {editing.deviceNumber}</h2>
-            {!editing.buildingId && <p>Assign this reader to a building and choose its operating mode.</p>}
-          </div>
+          <div><h2>Configure {editing.deviceNumber}</h2><p>{editing.readerIp || "IP not detected"}</p></div>
           <button className="modal-close" disabled={pending} aria-label="Close reader settings" onClick={() => setEditing(null)}>×</button>
         </div>
-        <form className="modal-form entity-form" onSubmit={save}>
+        <form className="modal-form entity-form" onSubmit={saveExisting}>
           <fieldset className="entity-fields" disabled={pending}>
             <label>Device number<input value={editing.deviceNumber} readOnly /></label>
             <label>Name<input name="name" defaultValue={editing.name} required /></label>
             <label>Building<select name="buildingId" defaultValue={editing.buildingId || ""} required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
             <label>Mode<select name="mode" defaultValue={editing.mode}><option value="ENTRY">Entry</option><option value="EXIT">Exit</option><option value="ENTRY_EXIT">Entry / Exit</option><option value="REGISTER">Register card</option></select></label>
-            <label className="reader-enabled"><input type="checkbox" name="enabled" defaultChecked={editing.buildingId ? editing.enabled : true} />Approved / enabled</label>
+            <label className="reader-enabled"><input type="checkbox" name="enabled" defaultChecked={editing.enabled} />Approved / enabled</label>
           </fieldset>
           <div className="modal-actions">
             <button type="button" className="secondary-button" disabled={pending} onClick={() => setEditing(null)}>Cancel</button>
-            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Saving…">{editing.buildingId ? "Save reader" : "Allow reader"}</ActionButton>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Saving…">Save reader</ActionButton>
           </div>
         </form>
       </section>
