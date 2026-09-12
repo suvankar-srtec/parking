@@ -6,8 +6,10 @@ import { useFeedback } from "./FeedbackProvider";
 import { Spinner } from "./LoadingIndicator";
 
 export type CapturedCard = { enrollmentId: string; cardNo: string };
-type Enrollment = { id: string; status: string; cardNo: string | null };
+type Enrollment = { id: string; status: string; cardNo: string | null; expiresAt?: string };
 type Reader = { id: string; name: string };
+
+const SCAN_WINDOW_SECONDS = 30;
 
 const cancel = (id: string) =>
   fetch("/api/rfid/enrollments/" + id, { method: "DELETE", keepalive: true }).catch(() => undefined);
@@ -27,7 +29,8 @@ export default function CardCapture({
   const [loading, setLoading] = useState(true);
   const [preparing, setPreparing] = useState(false);
   const [setupError, setSetupError] = useState("");
-  const [retryKey, setRetryKey] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [timedOut, setTimedOut] = useState(false);
   const session = useRef("");
   const alive = useRef(false);
   const callback = useRef(onCaptured);
@@ -48,7 +51,6 @@ export default function CardCapture({
           (reader: { enabled: boolean; mode: string }) => reader.enabled && reader.mode === "REGISTER",
         ) as Reader[];
         setReaders(available);
-        setReaderId(available[0]?.id || "");
       })
       .catch(() => {
         if (alive.current) notify("Unable to load registration readers.", "error");
@@ -64,14 +66,15 @@ export default function CardCapture({
   }, [notify]);
 
   useEffect(() => {
-    if (loading || !readerId) return;
+    if (!readerId || loading) return;
 
     let stopped = false;
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     async function prepareReader() {
       setPreparing(true);
       setSetupError("");
+      setTimedOut(false);
+      setSecondsLeft(0);
 
       const previous = session.current;
       session.current = "";
@@ -93,10 +96,11 @@ export default function CardCapture({
         }
         session.current = data.enrollment.id;
         setEnrollment(data.enrollment);
+        setSecondsLeft(SCAN_WINDOW_SECONDS);
       } catch (error) {
         if (!stopped && alive.current) {
           setSetupError(error instanceof Error ? error.message : "Unable to prepare the registration reader.");
-          retryTimer = setTimeout(() => setRetryKey((value) => value + 1), 3000);
+          setReaderId("");
         }
       } finally {
         if (!stopped && alive.current) setPreparing(false);
@@ -104,11 +108,27 @@ export default function CardCapture({
     }
 
     void prepareReader();
-    return () => {
-      stopped = true;
-      if (retryTimer) clearTimeout(retryTimer);
-    };
-  }, [employeeId, loading, readerId, retryKey, vehicleId]);
+    return () => { stopped = true; };
+  }, [employeeId, loading, readerId, vehicleId]);
+
+  useEffect(() => {
+    if (!enrollment || enrollment.status !== "WAITING" || secondsLeft <= 0) return;
+    const timer = setInterval(() => {
+      setSecondsLeft((current) => Math.max(0, current - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [enrollment, secondsLeft]);
+
+  useEffect(() => {
+    if (!enrollment || enrollment.status !== "WAITING" || secondsLeft !== 0) return;
+    const id = enrollment.id;
+    session.current = "";
+    void cancel(id);
+    callback.current(null);
+    setEnrollment(null);
+    setTimedOut(true);
+    setReaderId("");
+  }, [enrollment, secondsLeft]);
 
   useEffect(() => {
     if (!enrollment || enrollment.status !== "WAITING") return;
@@ -132,6 +152,7 @@ export default function CardCapture({
         if (next.status === "CAPTURED" && next.cardNo) {
           callback.current({ enrollmentId: next.id, cardNo: next.cardNo });
           setEnrollment(next);
+          setSecondsLeft(0);
           notify(`RFID card ${next.cardNo} captured automatically.`);
           return;
         }
@@ -140,20 +161,19 @@ export default function CardCapture({
           session.current = "";
           callback.current(null);
           setEnrollment(null);
-          setRetryKey((value) => value + 1);
+          setSecondsLeft(0);
+          setTimedOut(next.status === "EXPIRED");
+          setReaderId("");
           return;
         }
       } catch {
-        if (!stopped) {
-          timer = setTimeout(poll, 1200);
-          return;
-        }
+        // Keep polling during the active 30-second capture window.
       }
 
-      timer = setTimeout(poll, 900);
+      timer = setTimeout(poll, 700);
     }
 
-    timer = setTimeout(poll, 350);
+    timer = setTimeout(poll, 250);
     return () => {
       stopped = true;
       clearTimeout(timer);
@@ -161,6 +181,8 @@ export default function CardCapture({
   }, [enrollment, notify]);
 
   const readerName = readers.find((reader) => reader.id === readerId)?.name || "registration reader";
+  const progress = Math.max(0, Math.min(1, secondsLeft / SCAN_WINDOW_SECONDS));
+  const circumference = 2 * Math.PI * 18;
 
   return (
     <div className="card-capture">
@@ -172,8 +194,13 @@ export default function CardCapture({
           <select
             value={readerId}
             disabled={preparing || enrollment?.status === "CAPTURED"}
-            onChange={(event) => setReaderId(event.target.value)}
+            onChange={(event) => {
+              setSetupError("");
+              setTimedOut(false);
+              setReaderId(event.target.value);
+            }}
           >
+            <option value="">Select registration reader</option>
             {readers.map((reader) => <option key={reader.id} value={reader.id}>{reader.name}</option>)}
           </select>
         </label>
@@ -181,20 +208,43 @@ export default function CardCapture({
         <p className="muted">Ask the building administrator to switch a reader to Register card mode.</p>
       )}
 
-      <label>
-        RFID Card No.
-        <input
-          name="rfidCardNo"
-          readOnly
-          value={enrollment?.cardNo || ""}
-          placeholder="Scanned card number"
-        />
-      </label>
+      <div style={{ display: "grid", gridTemplateColumns: enrollment?.status === "WAITING" ? "1fr 54px" : "1fr", gap: 12, alignItems: "end" }}>
+        <label>
+          RFID Card No.
+          <input
+            name="rfidCardNo"
+            readOnly
+            value={enrollment?.cardNo || ""}
+            placeholder="Scanned card number"
+          />
+        </label>
+
+        {enrollment?.status === "WAITING" ? (
+          <div title={`${secondsLeft} seconds remaining`} style={{ width: 54, height: 54, position: "relative", display: "grid", placeItems: "center" }}>
+            <svg width="54" height="54" viewBox="0 0 44 44" aria-hidden="true" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="22" cy="22" r="18" fill="none" stroke="currentColor" strokeOpacity="0.15" strokeWidth="4" />
+              <circle
+                cx="22"
+                cy="22"
+                r="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={circumference * (1 - progress)}
+              />
+            </svg>
+            <strong style={{ position: "absolute", fontSize: 12 }}>{secondsLeft}</strong>
+          </div>
+        ) : null}
+      </div>
 
       {preparing && <p role="status"><Spinner /> Preparing {readerName}…</p>}
-      {!preparing && setupError && <p className="muted" role="status">{setupError} Retrying automatically…</p>}
+      {!preparing && setupError && <p className="muted" role="status">{setupError}</p>}
+      {timedOut && <p className="muted" role="status">Time up. Select the registration reader again and scan the card within 30 seconds.</p>}
       {enrollment?.status === "WAITING" && (
-        <p role="status"><Spinner /> Ready. Scan the RFID card on {readerName}. The code will be captured automatically.</p>
+        <p role="status"><Spinner /> Scan the RFID card on {readerName} within {secondsLeft} seconds.</p>
       )}
       {enrollment?.status === "CAPTURED" && enrollment.cardNo && (
         <p role="status">Card captured: <strong>{enrollment.cardNo}</strong></p>
