@@ -14,6 +14,8 @@
     padding-right: 2px;
     padding-bottom: 12px;
     scrollbar-width: thin;
+    align-content: start;
+    grid-auto-rows: max-content;
   }
 
   .sidebar .reader-panel {
@@ -22,5 +24,34 @@
     padding-top: 12px;
     padding-bottom: 6px;
     background: #302040;
+  }
+
+  .sidebar-employee nav {
+    gap: 10px;
+  }
+
+  .sidebar-employee .menu-group {
+    align-self: start;
+  }
+
+  .sidebar-employee .menu-button-main {
+    min-height: 44px;
+    padding: 11px 12px;
+  }
+
+  .sidebar-employee .menu-items .menu-button-sub {
+    margin-left: 10px;
+    padding: 10px 12px;
+    border-radius: 7px;
+  }
+
+  .sidebar-employee .menu-section-title {
+    padding: 12px 14px;
+    border-radius: 8px;
+  }
+
+  .sidebar-employee a.menu-section-title:hover {
+    background: rgba(255,255,255,.08);
+    color: #fff;
   }
 }
