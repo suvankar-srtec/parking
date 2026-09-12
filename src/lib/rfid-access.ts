@@ -78,7 +78,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       if (assigned && assigned.id !== enrollment.vehicleId) {
         await tx.rfidEnrollment.update({
           where: { id: enrollment.id },
-          data: { cardNo, status: "CANCELLED" },
+          data: { cardNo, status: "DUPLICATE" },
         });
         return record("1006", "This RFID card is already assigned to another vehicle.", "DENIED", assigned.id, enrollment.companyId);
       }
