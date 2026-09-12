@@ -21,11 +21,6 @@ type ReportRow = {
   status: "Inside" | "Exited";
 };
 
-function csvCell(value: unknown) {
-  const text = String(value ?? "");
-  return `"${text.replaceAll('"', '""')}"`;
-}
-
 function formatDateTime(value: string | null) {
   if (!value) return "-";
   return new Date(value).toLocaleString();
@@ -55,6 +50,8 @@ export default function ReportsDashboard({
   const [buildingId, setBuildingId] = useState(role === "SUPER_ADMIN" ? "" : buildings[0]?.id || "");
   const [companyId, setCompanyId] = useState(role === "COMPANY_ADMIN" ? companies[0]?.id || "" : "");
   const [reportType, setReportType] = useState("vehicle");
+  const [editingRows, setEditingRows] = useState(false);
+  const [hiddenRowIds, setHiddenRowIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     const refresh = () => {
@@ -73,13 +70,18 @@ export default function ReportsDashboard({
     return companies.filter((company) => company.buildingId === buildingId);
   }, [buildingId, companies]);
 
-  const filtered = useMemo(() => rows.filter((row) => {
+  const matchingRows = useMemo(() => rows.filter((row) => {
     if (buildingId && row.buildingId !== buildingId) return false;
     if (companyId === "__owner__") {
       if (row.companyId) return false;
     } else if (companyId && row.companyId !== companyId) return false;
     return withinDate(row.inTime, fromDate, toDate);
   }), [rows, buildingId, companyId, fromDate, toDate]);
+
+  const filtered = useMemo(
+    () => matchingRows.filter((row) => !hiddenRowIds.has(row.id)),
+    [matchingRows, hiddenRowIds],
+  );
 
   const inside = filtered.filter((row) => row.status === "Inside").length;
   const exited = filtered.filter((row) => row.status === "Exited").length;
@@ -89,6 +91,18 @@ export default function ReportsDashboard({
     setToDate("");
     if (role === "SUPER_ADMIN") setBuildingId("");
     if (role !== "COMPANY_ADMIN") setCompanyId("");
+  }
+
+  function removeRow(rowId: string) {
+    setHiddenRowIds((current) => {
+      const next = new Set(current);
+      next.add(rowId);
+      return next;
+    });
+  }
+
+  function restoreRows() {
+    setHiddenRowIds(new Set());
   }
 
   function downloadExcel() {
@@ -102,19 +116,6 @@ export default function ReportsDashboard({
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `parking-report-${new Date().toISOString().slice(0, 10)}.xls`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  }
-
-  function downloadCsv() {
-    const lines = [
-      ["Vehicle number", "RFID UID", "Driver", "Building", "Company", "Department", "IN time", "OUT time", "Parked for", "Status"].map(csvCell).join(","),
-      ...filtered.map((row) => [row.vehicleNumber, row.rfidUid, row.driver, row.buildingName, row.companyName, row.department, formatDateTime(row.inTime), formatDateTime(row.outTime), row.parkedFor, row.status].map(csvCell).join(",")),
-    ];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `parking-report-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
   }
@@ -158,11 +159,44 @@ export default function ReportsDashboard({
     </section>
 
     <section className={styles.reportTableCard}>
-      <div className={styles.tableHeader}><strong>Vehicle IN / OUT time</strong><div><button type="button" onClick={downloadCsv}>CSV</button></div></div>
+      <div className={styles.tableHeader}>
+        <strong>Vehicle IN / OUT time</strong>
+        <div className={styles.rowEditActions}>
+          {hiddenRowIds.size > 0 && <button type="button" onClick={restoreRows}>Restore rows ({hiddenRowIds.size})</button>}
+          <button
+            type="button"
+            className={editingRows ? styles.editingButton : ""}
+            onClick={() => setEditingRows((current) => !current)}
+            aria-pressed={editingRows}
+            title="Edit visible report rows"
+          >
+            <span aria-hidden="true">✎</span> {editingRows ? "Done" : "Edit rows"}
+          </button>
+        </div>
+      </div>
       <div className={styles.tableWrap}>
-        <table>
-          <thead><tr><th>Vehicle number</th><th>RFID UID</th><th>Driver</th><th>Building</th><th>Company</th><th>Department</th><th>IN time</th><th>OUT time</th><th>Parked for</th><th>Status</th></tr></thead>
-          <tbody>{filtered.length ? filtered.map((row) => <tr key={row.id}><td>{row.vehicleNumber}</td><td>{row.rfidUid}</td><td>{row.driver}</td><td>{row.buildingName}</td><td>{row.companyName}</td><td>{row.department}</td><td>{formatDateTime(row.inTime)}</td><td>{formatDateTime(row.outTime)}</td><td>{row.parkedFor}</td><td><span className={row.status === "Inside" ? styles.inside : styles.exited}>{row.status}</span></td></tr>) : <tr><td colSpan={10}>No parking records match the selected filters.</td></tr>}</tbody>
+        <table className={editingRows ? styles.editingTable : ""}>
+          <colgroup>
+            {editingRows && <col className={styles.selectCol} />}
+            <col className={styles.vehicleCol} />
+            <col className={styles.rfidCol} />
+            <col className={styles.driverCol} />
+            <col className={styles.buildingCol} />
+            <col className={styles.companyCol} />
+            <col className={styles.departmentCol} />
+            <col className={styles.timeCol} />
+            <col className={styles.timeCol} />
+            <col className={styles.parkedCol} />
+            <col className={styles.statusCol} />
+          </colgroup>
+          <thead><tr>
+            {editingRows && <th className={styles.selectCell}>Keep</th>}
+            <th>Vehicle</th><th>RFID UID</th><th>Driver</th><th>Building</th><th>Company</th><th>Department</th><th>IN time</th><th>OUT time</th><th>Parked</th><th>Status</th>
+          </tr></thead>
+          <tbody>{filtered.length ? filtered.map((row) => <tr key={row.id}>
+            {editingRows && <td className={styles.selectCell}><input type="checkbox" defaultChecked aria-label={`Keep ${row.vehicleNumber} report row`} onChange={(event) => { if (!event.target.checked) removeRow(row.id); }} /></td>}
+            <td>{row.vehicleNumber}</td><td>{row.rfidUid}</td><td>{row.driver}</td><td>{row.buildingName}</td><td>{row.companyName}</td><td>{row.department}</td><td>{formatDateTime(row.inTime)}</td><td>{formatDateTime(row.outTime)}</td><td>{row.parkedFor}</td><td><span className={row.status === "Inside" ? styles.inside : styles.exited}>{row.status}</span></td>
+          </tr>) : <tr><td colSpan={editingRows ? 11 : 10}>No parking records match the selected filters.</td></tr>}</tbody>
         </table>
       </div>
     </section>
