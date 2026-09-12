@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { parseRfidReaderMessage, readReaderBody, readerReply } from "@/lib/rfid-reader";
+import { parseRfidReaderMessage, readReaderBody } from "@/lib/rfid-reader";
 import { processReaderScan } from "@/lib/rfid-access";
 import { prisma } from "@/lib/prisma";
 
@@ -11,8 +11,10 @@ export function validReaderToken(value: string | null, secret = process.env.RFID
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-function reply(success: boolean, message: string) {
-  return new Response(readerReply(success, message), {
+function reply(success: boolean, _message: string) {
+  // The reader's HTTP protocol expects only `code=xxxx` in the response.
+  // 0000 triggers the configured success action; any other code is failure/no-success.
+  return new Response(`code=${success ? "0000" : "0001"}`, {
     status: 200,
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
   });
@@ -42,9 +44,6 @@ function parsePathBoundReaderMessage(raw: string, deviceNumber: string, formEnco
   const trimmed = raw.trim();
   if (!trimmed || trimmed.length > 4096) return null;
 
-  // Some HTTP/HTTPS firmware variants omit devicenumber from the body because
-  // it is already part of the configured URL. In that case the authenticated
-  // path device number is authoritative.
   try {
     const params = new URLSearchParams(trimmed.replace(/&&/g, "&"));
     const paramCard = cleanCard(
@@ -72,8 +71,6 @@ function parsePathBoundReaderMessage(raw: string, deviceNumber: string, formEnco
     // Not JSON.
   }
 
-  // Accept compact firmware packets such as:
-  // vgdecoderesultD9E07D0E, vgdecoderesult=D9E07D0E, or a bare UID.
   const compact = /vgdecoder(?:r?esult|result)\s*=?\s*([a-zA-Z0-9_-]{1,128})/i.exec(trimmed);
   if (compact) {
     const card = cleanCard(compact[1]);
