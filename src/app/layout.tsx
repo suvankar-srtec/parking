@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import FeedbackProvider from "@/components/FeedbackProvider";
 import "./globals.css";
+import "./sidebar-fixed.css";
 
 export const metadata: Metadata = {
   title: "ParkControl",
