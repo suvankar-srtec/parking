@@ -5,6 +5,18 @@ import { rfidUser, rfidApiError, lockRfid, RFID_TRANSACTION } from "@/lib/rfid-a
 import { ParkingError } from "@/lib/building-parking";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
+const MAX_QR_DATA_LENGTH = 1_600_000;
+
+function validateQrData(value: unknown, label: string) {
+  const data = String(value ?? "").trim();
+  if (!data) throw new ParkingError(`${label} QR is required.`);
+  if (data.length > MAX_QR_DATA_LENGTH) throw new ParkingError(`${label} QR image is too large. Please upload a smaller QR image.`);
+  if (!/^data:image\/(png|jpeg|jpg|webp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(data)) {
+    throw new ParkingError(`${label} QR must be a PNG, JPG, or WEBP image.`);
+  }
+  return data;
+}
+
 export async function GET() {
   try {
     const user = await rfidUser();
@@ -56,12 +68,50 @@ export async function POST(request: Request) {
     const user = await rfidUser();
     if (user.role === "COMPANY_ADMIN") throw new ParkingError("Only building or Super Admin accounts can configure readers.", 403);
     const body = await request.json().catch(() => null);
+
+    if (body?.action === "reset") {
+      if (user.role !== "SUPER_ADMIN") throw new ParkingError("Only Super Admin can remove a reader.", 403);
+      const deviceNumber = String(body?.deviceNumber ?? "").trim();
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(deviceNumber)) throw new ParkingError("Invalid reader device number.");
+
+      await prisma.$transaction(async (tx) => {
+        await lockRfid(tx);
+        const existing = await tx.rfidReader.findUnique({ where: { deviceNumber } });
+        if (!existing) throw new ParkingError("Reader not found.", 404);
+
+        if (!isPrimarySuperAdmin(user) && existing.buildingId) {
+          const building = await tx.building.findUnique({ where: { id: existing.buildingId }, select: { superAdminId: true } });
+          if (building?.superAdminId !== user.id) throw new ParkingError("This reader belongs to another Super Admin.", 403);
+        }
+
+        await tx.rfidEnrollment.updateMany({
+          where: { readerId: existing.id, status: { in: ["WAITING", "CAPTURED"] } },
+          data: { status: "CANCELLED" },
+        });
+        await tx.rfidReader.update({
+          where: { id: existing.id },
+          data: {
+            enabled: false,
+            buildingId: null,
+            mode: "ENTRY_EXIT",
+            registrationQrData: null,
+            entryExitQrData: null,
+          },
+        });
+      }, RFID_TRANSACTION);
+
+      return NextResponse.json({ ok: true, message: "Reader removed. It is now available to add again." });
+    }
+
     const deviceNumber = String(body?.deviceNumber ?? "").trim();
     const name = String(body?.name ?? "").trim();
     const mode = String(body?.mode ?? "");
     const buildingId = user.role === "SUPER_ADMIN" ? String(body?.buildingId ?? "") : user.buildingId!;
     const enabled = body?.enabled === true;
     const heartbeatSeconds = Number(body?.heartbeatSeconds ?? 0);
+    const registrationQrData = body?.registrationQrData === undefined ? undefined : validateQrData(body.registrationQrData, "Registration");
+    const entryExitQrData = body?.entryExitQrData === undefined ? undefined : validateQrData(body.entryExitQrData, "Entry / Exit");
+
     if (!Number.isInteger(heartbeatSeconds) || (heartbeatSeconds !== 0 && (heartbeatSeconds < 5 || heartbeatSeconds > 3600))) throw new ParkingError("Heartbeat interval must be 0 (off), or 5 to 3600 seconds.");
     if (!/^[a-zA-Z0-9_-]{1,64}$/.test(deviceNumber) || !name || name.length > 120 || !READER_MODES.includes(mode as typeof READER_MODES[number])) {
       throw new ParkingError("Enter a device number, reader name, and valid operating mode.");
@@ -96,8 +146,25 @@ export async function POST(request: Request) {
 
       const reader = await tx.rfidReader.upsert({
         where: { deviceNumber },
-        create: { deviceNumber, name, mode, enabled, heartbeatSeconds, buildingId: buildingId || null },
-        update: { name, mode, enabled, heartbeatSeconds, buildingId: buildingId || null },
+        create: {
+          deviceNumber,
+          name,
+          mode,
+          enabled,
+          heartbeatSeconds,
+          buildingId: buildingId || null,
+          registrationQrData: registrationQrData ?? null,
+          entryExitQrData: entryExitQrData ?? null,
+        },
+        update: {
+          name,
+          mode,
+          enabled,
+          heartbeatSeconds,
+          buildingId: buildingId || null,
+          ...(registrationQrData !== undefined ? { registrationQrData } : {}),
+          ...(entryExitQrData !== undefined ? { entryExitQrData } : {}),
+        },
       });
 
       if (existing && (existing.mode !== mode || existing.buildingId !== reader.buildingId || !enabled)) {
@@ -109,10 +176,6 @@ export async function POST(request: Request) {
       return reader;
     }, RFID_TRANSACTION);
 
-    return NextResponse.json({ ok: true, reader: result, message: existingReaderMessage(result.enabled) });
+    return NextResponse.json({ ok: true, reader: result, message: result.enabled ? "Reader allowed and assigned successfully." : "Reader settings saved." });
   } catch (error) { return rfidApiError(error); }
-}
-
-function existingReaderMessage(enabled: boolean) {
-  return enabled ? "Reader allowed and assigned successfully." : "Reader settings saved.";
 }
