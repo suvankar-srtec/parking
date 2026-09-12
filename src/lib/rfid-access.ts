@@ -90,7 +90,10 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
           expiresAt: new Date(Date.now() + CAPTURED_SAVE_WINDOW_MS),
         },
       });
-      return record("0000", "Card captured. Save the vehicle to complete registration.", "CAPTURE", enrollment.vehicleId || undefined, enrollment.companyId);
+      // Registration succeeded in the application, but deliberately return a non-success
+      // reader code so the hardware SuccessAction (relay/external red LED) is not fired.
+      // The web UI detects success from the CAPTURED enrollment state, not this reader code.
+      return record("0001", "Card captured. Save the vehicle to complete registration.", "CAPTURE", enrollment.vehicleId || undefined, enrollment.companyId);
     }
     const vehicle = await tx.vehicle.findUnique({ where: { rfidCardNo: cardNo }, include: { company: true } });
     if (!vehicle) return record("0001", "RFID card is not registered");
