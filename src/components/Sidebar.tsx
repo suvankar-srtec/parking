@@ -18,8 +18,9 @@ export default function Sidebar({
   const showAccess = canConfigureReaders(role);
   const showReaderStatus = showAccess || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER";
   const personalLabel = role === "SUPER_ADMIN" ? "Admin / Company / Supervisor" : role === "BUILDING_ADMIN" ? "Company / Supervisor" : "Employees / Company Owners";
+  const roleClass = `sidebar-${role.toLowerCase().replaceAll("_", "-")}`;
 
-  return <aside className="sidebar">
+  return <aside className={`sidebar ${roleClass}`}>
     <div className="sidebar-brand"><div className="logo-box">P</div><div><strong>ParkControl</strong><span>{roleLabel(role)}</span></div></div>
     <div className="sidebar-line" />
     <nav aria-label="Main navigation">
@@ -43,7 +44,7 @@ export default function Sidebar({
           <Link className="menu-button dark-menu" href="/access-control#activity">Real Time Monitor</Link>
         </div>
       </div> : null}
-      <Link className="menu-section-title" href="/reports"><span>{role === "EMPLOYEE" ? "Live Reports / Create Report" : "Reports"}</span></Link>
+      <Link className="menu-section-title" href="/reports"><span>{role === "EMPLOYEE" ? "Reports" : "Reports"}</span></Link>
     </nav>
     {showReaderStatus ? <ReaderConsole compact /> : null}
   </aside>;
