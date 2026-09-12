@@ -59,14 +59,36 @@ function readQrImage(file: File) {
   });
 }
 
+function modeLabel(mode: string) {
+  if (mode === "REGISTER") return "Registration";
+  if (mode === "ENTRY") return "Entry only";
+  if (mode === "EXIT") return "Exit only";
+  return "Entry / Exit";
+}
+
+function qrKindForMode(mode: string) {
+  return mode === "REGISTER" ? "registration" : "entryExit";
+}
+
+function hasQrForMode(reader: Reader, mode: string) {
+  return mode === "REGISTER" ? Boolean(reader.hasRegistrationQr) : Boolean(reader.hasEntryExitQr);
+}
+
+function storedQrUrl(reader: Reader, mode: string, revision: number) {
+  const kind = qrKindForMode(mode);
+  return `/api/rfid/readers/${encodeURIComponent(reader.deviceNumber)}/qr?kind=${kind}&v=${revision}`;
+}
+
 export default function ReaderConsole({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<ReaderData | null>(null);
   const [activity, setActivity] = useState<Activity>({ inside: 0, events: [] });
   const [error, setError] = useState(false);
   const [editing, setEditing] = useState<Reader | null>(null);
+  const [editingMode, setEditingMode] = useState("ENTRY_EXIT");
   const [showAvailable, setShowAvailable] = useState(false);
-  const [setupStep, setSetupStep] = useState<1 | 2 | 3>(1);
+  const [setupStep, setSetupStep] = useState<1 | 2>(1);
   const [selectedReader, setSelectedReader] = useState<Reader | null>(null);
+  const [setupMode, setSetupMode] = useState("ENTRY_EXIT");
   const [registrationQr, setRegistrationQr] = useState("");
   const [entryExitQr, setEntryExitQr] = useState("");
   const [revision, setRevision] = useState(0);
@@ -124,6 +146,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     setSelectedReader(null);
     setRegistrationQr("");
     setEntryExitQr("");
+    setSetupMode("ENTRY_EXIT");
     setSetupStep(1);
     setShowAvailable(true);
   }
@@ -134,7 +157,13 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     setSelectedReader(null);
     setRegistrationQr("");
     setEntryExitQr("");
+    setSetupMode("ENTRY_EXIT");
     setSetupStep(1);
+  }
+
+  function openConfigure(reader: Reader) {
+    setEditing(reader);
+    setEditingMode(reader.mode || "ENTRY_EXIT");
   }
 
   async function pickQr(event: ChangeEvent<HTMLInputElement>, kind: "registration" | "entryExit") {
@@ -171,7 +200,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
         deviceNumber: editing!.deviceNumber,
         name: form.get("name"),
         buildingId: form.get("buildingId"),
-        mode: form.get("mode"),
+        mode: editingMode,
         enabled: form.get("enabled") === "on",
         heartbeatSeconds: editing!.heartbeatSeconds,
       });
@@ -185,7 +214,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     if (!selectedReader || !registrationQr || !entryExitQr) {
-      notify("Select a reader and upload both QR images before continuing.", "error");
+      notify("Select a reader and upload both QR images before allowing the reader.", "error");
       return;
     }
     void execute(async () => {
@@ -193,14 +222,19 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
         deviceNumber: selectedReader.deviceNumber,
         name: form.get("name"),
         buildingId: form.get("buildingId"),
-        mode: form.get("mode"),
+        mode: setupMode,
         enabled: true,
         heartbeatSeconds: selectedReader.heartbeatSeconds,
         registrationQrData: registrationQr,
         entryExitQrData: entryExitQr,
       });
       notify(result.message || "Reader added successfully.");
-      closeAddReader();
+      setShowAvailable(false);
+      setSelectedReader(null);
+      setRegistrationQr("");
+      setEntryExitQr("");
+      setSetupMode("ENTRY_EXIT");
+      setSetupStep(1);
       setRevision((n) => n + 1);
     });
   }
@@ -216,6 +250,8 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       setRevision((n) => n + 1);
     });
   }
+
+  const setupQr = setupMode === "REGISTER" ? registrationQr : entryExitQr;
 
   return <>
     <section className="portfolio-card">
@@ -242,7 +278,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <p className="muted">{reader.enabled ? "Approved" : "Disabled"} · Last contact: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</p>
             <p className="muted">Setup QR: {reader.hasRegistrationQr ? "Registration ✓" : "Registration missing"} · {reader.hasEntryExitQr ? "Entry / Exit ✓" : "Entry / Exit missing"}</p>
             {data.canManage && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="secondary-button" onClick={() => setEditing(reader)}>Configure reader</button>
+              <button className="secondary-button" onClick={() => openConfigure(reader)}>Configure reader</button>
               {data.canAddReaders && <button className="secondary-button" disabled={pending} onClick={() => removeReader(reader)}>Remove reader</button>}
             </div>}
           </article>;
@@ -269,9 +305,9 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       <section className="modal-card" role="dialog" aria-modal="true" aria-label="Add RFID reader">
         <div className="modal-head">
           <div>
-            <div className="section-kicker">ADD RFID READER · STEP {setupStep} OF 3</div>
-            <h2>{setupStep === 1 ? "Select reader" : setupStep === 2 ? "Upload reader QR codes" : "Assign reader"}</h2>
-            <p>{setupStep === 1 ? "Choose a detected reader by device number and IP address." : setupStep === 2 ? "Upload the Registration QR and the Entry / Exit QR for this reader." : "Assign the reader to a building and finish setup."}</p>
+            <div className="section-kicker">ADD RFID READER · STEP {setupStep} OF 2</div>
+            <h2>{setupStep === 1 ? "Select reader" : "Set up reader"}</h2>
+            <p>{setupStep === 1 ? "Choose a detected reader by device number and IP address." : "Upload both setup QR codes, assign the reader, then scan the QR shown for the selected operating mode."}</p>
           </div>
           <button className="modal-close" disabled={pending} aria-label="Close add reader" onClick={closeAddReader}>×</button>
         </div>
@@ -297,38 +333,43 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
           </div>
         </>}
 
-        {setupStep === 2 && selectedReader && <>
-          <div className="reader-card" style={{ marginBottom: 16 }}>
+        {setupStep === 2 && selectedReader && <form className="modal-form entity-form" onSubmit={allowReader}>
+          <div className="reader-card" style={{ marginBottom: 14 }}>
             <strong>Device {selectedReader.deviceNumber}</strong>
             <p>IP address: {selectedReader.readerIp || "Not detected"}</p>
           </div>
-          <div className="entity-fields">
-            <label>Registration QR
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, "registration")} />
-              {registrationQr && <img src={registrationQr} alt="Registration QR preview" style={{ width: 150, height: 150, objectFit: "contain", marginTop: 8, border: "1px solid #ddd", borderRadius: 8 }} />}
-            </label>
-            <label>Entry / Exit QR
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, "entryExit")} />
-              {entryExitQr && <img src={entryExitQr} alt="Entry and Exit QR preview" style={{ width: 150, height: 150, objectFit: "contain", marginTop: 8, border: "1px solid #ddd", borderRadius: 8 }} />}
-            </label>
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="secondary-button" onClick={() => setSetupStep(1)}>Back</button>
-            <button type="button" className="primary-button" disabled={!registrationQr || !entryExitQr} onClick={() => setSetupStep(3)}>Next</button>
-          </div>
-        </>}
 
-        {setupStep === 3 && selectedReader && <form className="modal-form entity-form" onSubmit={allowReader}>
           <fieldset className="entity-fields" disabled={pending}>
-            <label>Device number<input value={selectedReader.deviceNumber} readOnly /></label>
-            <label>IP address<input value={selectedReader.readerIp || "Not detected"} readOnly /></label>
             <label>Name<input name="name" defaultValue={selectedReader.name || `Reader ${selectedReader.deviceNumber}`} required /></label>
             <label>Building<select name="buildingId" defaultValue="" required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-            <label>Operating mode<select name="mode" defaultValue="ENTRY_EXIT"><option value="ENTRY_EXIT">Entry / Exit</option><option value="ENTRY">Entry only</option><option value="EXIT">Exit only</option><option value="REGISTER">Register card</option></select></label>
+            <label>Operating mode<select name="mode" value={setupMode} onChange={(event) => setSetupMode(event.target.value)}><option value="ENTRY_EXIT">Entry / Exit</option><option value="ENTRY">Entry only</option><option value="EXIT">Exit only</option><option value="REGISTER">Register card</option></select></label>
           </fieldset>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 14 }}>
+            <label className="reader-card" style={{ display: "block" }}>
+              <strong>Registration QR</strong>
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, "registration")} style={{ display: "block", marginTop: 8, width: "100%" }} />
+              {registrationQr && <img src={registrationQr} alt="Registration QR preview" style={{ width: 130, height: 130, objectFit: "contain", marginTop: 10, border: "1px solid #ddd", borderRadius: 8 }} />}
+            </label>
+            <label className="reader-card" style={{ display: "block" }}>
+              <strong>Entry / Exit QR</strong>
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, "entryExit")} style={{ display: "block", marginTop: 8, width: "100%" }} />
+              {entryExitQr && <img src={entryExitQr} alt="Entry and Exit QR preview" style={{ width: 130, height: 130, objectFit: "contain", marginTop: 10, border: "1px solid #ddd", borderRadius: 8 }} />}
+            </label>
+          </div>
+
+          <div className="reader-card" style={{ marginTop: 14, textAlign: "center" }}>
+            <div className="section-kicker">QR FOR SELECTED MODE</div>
+            <h3>{modeLabel(setupMode)}</h3>
+            {setupQr ? <>
+              <img src={setupQr} alt={`${modeLabel(setupMode)} configuration QR`} style={{ width: 210, height: 210, objectFit: "contain", margin: "8px auto", display: "block", border: "1px solid #ddd", borderRadius: 10 }} />
+              <p className="muted">Scan this QR with the physical reader to configure it for {modeLabel(setupMode)}.</p>
+            </> : <p className="muted">Upload the {setupMode === "REGISTER" ? "Registration" : "Entry / Exit"} QR to preview the configuration QR for this mode.</p>}
+          </div>
+
           <div className="modal-actions">
-            <button type="button" className="secondary-button" disabled={pending} onClick={() => setSetupStep(2)}>Back</button>
-            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Adding…">Allow reader</ActionButton>
+            <button type="button" className="secondary-button" disabled={pending} onClick={() => setSetupStep(1)}>Back</button>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Adding…" disabled={!registrationQr || !entryExitQr}>Allow reader</ActionButton>
           </div>
         </form>}
       </section>
@@ -345,9 +386,19 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <label>Device number<input value={editing.deviceNumber} readOnly /></label>
             <label>Name<input name="name" defaultValue={editing.name} required /></label>
             <label>Building<select name="buildingId" defaultValue={editing.buildingId || ""} required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-            <label>Mode<select name="mode" defaultValue={editing.mode}><option value="ENTRY">Entry</option><option value="EXIT">Exit</option><option value="ENTRY_EXIT">Entry / Exit</option><option value="REGISTER">Register card</option></select></label>
+            <label>Operating mode<select name="mode" value={editingMode} onChange={(event) => setEditingMode(event.target.value)}><option value="ENTRY">Entry only</option><option value="EXIT">Exit only</option><option value="ENTRY_EXIT">Entry / Exit</option><option value="REGISTER">Register card</option></select></label>
             <label className="reader-enabled"><input type="checkbox" name="enabled" defaultChecked={editing.enabled} />Approved / enabled</label>
           </fieldset>
+
+          <div className="reader-card" style={{ marginTop: 14, textAlign: "center" }}>
+            <div className="section-kicker">READER CONFIGURATION QR</div>
+            <h3>{modeLabel(editingMode)}</h3>
+            {hasQrForMode(editing, editingMode) ? <>
+              <img src={storedQrUrl(editing, editingMode, revision)} alt={`${modeLabel(editingMode)} reader configuration QR`} style={{ width: 220, height: 220, objectFit: "contain", margin: "8px auto", display: "block", border: "1px solid #ddd", borderRadius: 10 }} />
+              <p className="muted">Scan this QR with the physical reader, then save the selected mode below.</p>
+            </> : <p className="muted">The {editingMode === "REGISTER" ? "Registration" : "Entry / Exit"} QR has not been uploaded for this reader.</p>}
+          </div>
+
           <div className="modal-actions">
             <button type="button" className="secondary-button" disabled={pending} onClick={() => setEditing(null)}>Cancel</button>
             <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Saving…">Save reader</ActionButton>
