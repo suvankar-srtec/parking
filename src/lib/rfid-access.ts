@@ -90,22 +90,35 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
           expiresAt: new Date(Date.now() + CAPTURED_SAVE_WINDOW_MS),
         },
       });
-      // Registration succeeded in the application, but deliberately return a non-success
-      // reader code so the hardware SuccessAction (relay/external red LED) is not fired.
-      // The web UI detects success from the CAPTURED enrollment state, not this reader code.
       return record("0001", "Card captured. Save the vehicle to complete registration.", "CAPTURE", enrollment.vehicleId || undefined, enrollment.companyId);
     }
+
     const vehicle = await tx.vehicle.findUnique({ where: { rfidCardNo: cardNo }, include: { company: true } });
     if (!vehicle) return record("0001", "RFID card is not registered");
     if (vehicle.company.buildingId !== reader.buildingId) return record("1004", "Card belongs to another building.");
     const context = [vehicle.id, vehicle.companyId] as const;
+
+    // An ENTRY-only reader must never allow the same card to enter again until a valid EXIT occurs.
+    // This check deliberately runs before the scan-debounce check so even an immediate second
+    // entry attempt returns the explicit EXIT-required response.
+    if (reader.mode === "ENTRY" && vehicle.isInside) {
+      return record("0001", "Exit required before another entry.", "DENIED", ...context);
+    }
+
+    // An EXIT-only reader should not create another exit when the vehicle is already outside.
+    if (reader.mode === "EXIT" && !vehicle.isInside) {
+      return record("0001", "Vehicle is already outside.", "IGNORED", ...context);
+    }
+
     if (vehicle.lastAccessAt && receivedAt - vehicle.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
       return record("0001", "Duplicate scan ignored", "IGNORED", ...context);
     }
+
     const enter = reader.mode === "ENTRY" || (reader.mode === "ENTRY_EXIT" && !vehicle.isInside);
     if ((enter && vehicle.isInside) || (!enter && !vehicle.isInside)) {
-      return record("0001", enter ? "Vehicle is already inside" : "Vehicle is already outside", "IGNORED", ...context);
+      return record("0001", enter ? "Exit required before another entry." : "Vehicle is already outside.", "DENIED", ...context);
     }
+
     if (enter) {
       const companyInside = await tx.vehicle.count({ where: { companyId: vehicle.companyId, isInside: true } });
       const buildingInside = await tx.vehicle.count({ where: { isInside: true, company: { buildingId: reader.buildingId } } });
@@ -114,8 +127,12 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
         return record("0001", "Parking allocation is full", "DENIED", ...context);
       }
     }
+
     await tx.vehicle.update({ where: { id: vehicle.id }, data: { isInside: enter, lastAccessAt: new Date(), lastAccessDevice: reader.deviceNumber } });
-    return record("0000", enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
+
+    // Only a successful ENTRY returns 0000. EXIT succeeds in the application/database but
+    // deliberately returns 0001 so the reader's success action / external red LED is not fired.
+    return record(enter ? "0000" : "0001", enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
   }, RFID_TRANSACTION);
 }
 
