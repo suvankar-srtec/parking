@@ -186,6 +186,8 @@ model RfidReader {
   tcpConnected Boolean @default(false)
   connectionId String?
   lastGatewaySeenAt DateTime?
+  registrationQrData String? @db.Text
+  entryExitQrData String? @db.Text
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
