@@ -1,0 +1,26 @@
+@media (min-width: 951px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+    padding-bottom: 12px;
+    scrollbar-width: thin;
+  }
+
+  .sidebar .reader-panel {
+    flex: 0 0 auto;
+    margin-top: 8px;
+    padding-top: 12px;
+    padding-bottom: 6px;
+    background: #302040;
+  }
+}
