@@ -21,16 +21,125 @@ type ReportRow = {
   status: "Inside" | "Exited";
 };
 
+type ColumnKey =
+  | "vehicleNumber"
+  | "rfidUid"
+  | "driver"
+  | "buildingName"
+  | "companyName"
+  | "department"
+  | "inTime"
+  | "outTime"
+  | "parkedFor"
+  | "status";
+
+type ColumnDefinition = {
+  key: ColumnKey;
+  label: string;
+  pdfWidth: number;
+  value: (row: ReportRow) => string;
+};
+
 function formatDateTime(value: string | null) {
   if (!value) return "-";
   return new Date(value).toLocaleString();
 }
+
+const COLUMN_DEFINITIONS: ColumnDefinition[] = [
+  { key: "vehicleNumber", label: "Vehicle number", pdfWidth: 13, value: (row) => row.vehicleNumber },
+  { key: "rfidUid", label: "RFID UID", pdfWidth: 12, value: (row) => row.rfidUid },
+  { key: "driver", label: "Driver", pdfWidth: 14, value: (row) => row.driver },
+  { key: "buildingName", label: "Building", pdfWidth: 16, value: (row) => row.buildingName },
+  { key: "companyName", label: "Company", pdfWidth: 16, value: (row) => row.companyName },
+  { key: "department", label: "Department", pdfWidth: 14, value: (row) => row.department },
+  { key: "inTime", label: "IN time", pdfWidth: 20, value: (row) => formatDateTime(row.inTime) },
+  { key: "outTime", label: "OUT time", pdfWidth: 20, value: (row) => formatDateTime(row.outTime) },
+  { key: "parkedFor", label: "Parked for", pdfWidth: 10, value: (row) => row.parkedFor },
+  { key: "status", label: "Status", pdfWidth: 10, value: (row) => row.status },
+];
+
+const ALL_COLUMN_KEYS = COLUMN_DEFINITIONS.map((column) => column.key);
 
 function withinDate(value: string, from: string, to: string) {
   const time = new Date(value).getTime();
   if (from && time < new Date(`${from}T00:00:00`).getTime()) return false;
   if (to && time > new Date(`${to}T23:59:59.999`).getTime()) return false;
   return true;
+}
+
+function htmlEscape(value: unknown) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function pdfEscape(value: string) {
+  return value
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replaceAll("\\", "\\\\")
+    .replaceAll("(", "\\(")
+    .replaceAll(")", "\\)");
+}
+
+function fitPdfCell(value: string, width: number) {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (text.length <= width) return text.padEnd(width, " ");
+  if (width <= 3) return text.slice(0, width);
+  return `${text.slice(0, width - 3)}...`;
+}
+
+function buildPdfBlob(pages: string[][]) {
+  const objects: string[] = [];
+  const pageIds = pages.map((_, index) => 4 + index * 2);
+  const contentIds = pages.map((_, index) => 5 + index * 2);
+
+  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objects[2] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages.length} >>`;
+  objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>";
+
+  pages.forEach((lines, index) => {
+    const pageId = pageIds[index];
+    const contentId = contentIds[index];
+    const streamLines = ["BT", "/F1 7 Tf", "1 0 0 1 24 565 Tm"];
+    lines.forEach((line, lineIndex) => {
+      if (lineIndex > 0) streamLines.push("0 -11 Td");
+      streamLines.push(`(${pdfEscape(line)}) Tj`);
+    });
+    streamLines.push("ET");
+    const stream = streamLines.join("\n");
+
+    objects[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`;
+    objects[contentId] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+  });
+
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [0];
+  for (let id = 1; id < objects.length; id += 1) {
+    offsets[id] = pdf.length;
+    pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
+  }
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+  for (let id = 1; id < objects.length; id += 1) {
+    pdf += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return new Blob([pdf], { type: "application/pdf" });
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export default function ReportsDashboard({
@@ -50,8 +159,7 @@ export default function ReportsDashboard({
   const [buildingId, setBuildingId] = useState(role === "SUPER_ADMIN" ? "" : buildings[0]?.id || "");
   const [companyId, setCompanyId] = useState(role === "COMPANY_ADMIN" ? companies[0]?.id || "" : "");
   const [reportType, setReportType] = useState("vehicle");
-  const [editingRows, setEditingRows] = useState(false);
-  const [hiddenRowIds, setHiddenRowIds] = useState<Set<string>>(() => new Set());
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<ColumnKey>>(() => new Set(ALL_COLUMN_KEYS));
 
   useEffect(() => {
     const refresh = () => {
@@ -70,7 +178,7 @@ export default function ReportsDashboard({
     return companies.filter((company) => company.buildingId === buildingId);
   }, [buildingId, companies]);
 
-  const matchingRows = useMemo(() => rows.filter((row) => {
+  const filtered = useMemo(() => rows.filter((row) => {
     if (buildingId && row.buildingId !== buildingId) return false;
     if (companyId === "__owner__") {
       if (row.companyId) return false;
@@ -78,9 +186,9 @@ export default function ReportsDashboard({
     return withinDate(row.inTime, fromDate, toDate);
   }), [rows, buildingId, companyId, fromDate, toDate]);
 
-  const filtered = useMemo(
-    () => matchingRows.filter((row) => !hiddenRowIds.has(row.id)),
-    [matchingRows, hiddenRowIds],
+  const visibleColumns = useMemo(
+    () => COLUMN_DEFINITIONS.filter((column) => visibleColumnKeys.has(column.key)),
+    [visibleColumnKeys],
   );
 
   const inside = filtered.filter((row) => row.status === "Inside").length;
@@ -93,39 +201,65 @@ export default function ReportsDashboard({
     if (role !== "COMPANY_ADMIN") setCompanyId("");
   }
 
-  function removeRow(rowId: string) {
-    setHiddenRowIds((current) => {
+  function toggleColumn(key: ColumnKey) {
+    setVisibleColumnKeys((current) => {
       const next = new Set(current);
-      next.add(rowId);
+      if (next.has(key)) {
+        if (next.size === 1) return current;
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
       return next;
     });
   }
 
-  function restoreRows() {
-    setHiddenRowIds(new Set());
-  }
-
   function downloadExcel() {
-    const headers = ["Vehicle number", "RFID UID", "Driver", "Building", "Company", "Department", "IN time", "OUT time", "Parked for", "Status"];
-    const body = filtered.map((row) => [
-      row.vehicleNumber, row.rfidUid, row.driver, row.buildingName, row.companyName,
-      row.department, formatDateTime(row.inTime), formatDateTime(row.outTime), row.parkedFor, row.status,
-    ]);
-    const html = `<!doctype html><html><head><meta charset="utf-8"></head><body><table><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>${body.map((values) => `<tr>${values.map((value) => `<td>${String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;")}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
-    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `parking-report-${new Date().toISOString().slice(0, 10)}.xls`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    const headers = visibleColumns.map((column) => column.label);
+    const body = filtered.map((row) => visibleColumns.map((column) => column.value(row)));
+    const html = `<!doctype html><html><head><meta charset="utf-8"></head><body><table><tr>${headers.map((header) => `<th>${htmlEscape(header)}</th>`).join("")}</tr>${body.map((values) => `<tr>${values.map((value) => `<td>${htmlEscape(value)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
+    downloadBlob(new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" }), `parking-report-${new Date().toISOString().slice(0, 10)}.xls`);
   }
 
-  function printPdf() {
-    const popup = window.open("", "_blank", "noopener,noreferrer,width=1100,height=800");
-    if (!popup) return;
-    const rowsHtml = filtered.map((row) => `<tr><td>${row.vehicleNumber}</td><td>${row.rfidUid}</td><td>${row.driver}</td><td>${row.buildingName}</td><td>${row.companyName}</td><td>${row.department}</td><td>${formatDateTime(row.inTime)}</td><td>${formatDateTime(row.outTime)}</td><td>${row.parkedFor}</td><td>${row.status}</td></tr>`).join("");
-    popup.document.write(`<!doctype html><html><head><title>Parking report</title><style>body{font-family:Arial;padding:24px;color:#17221d}h1{margin:0 0 4px}p{color:#65726b}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccd7d1;padding:7px;text-align:left}th{background:#edf4f0}@media print{button{display:none}}</style></head><body><h1>Parking report</h1><p>Generated ${new Date().toLocaleString()} · ${filtered.length} records</p><table><thead><tr><th>Vehicle</th><th>RFID UID</th><th>Driver</th><th>Building</th><th>Company</th><th>Department</th><th>IN</th><th>OUT</th><th>Parked for</th><th>Status</th></tr></thead><tbody>${rowsHtml || '<tr><td colspan="10">No records</td></tr>'}</tbody></table><script>window.onload=()=>window.print();<\/script></body></html>`);
-    popup.document.close();
+  function downloadPdf() {
+    const headerLine = visibleColumns
+      .map((column) => fitPdfCell(column.label.toUpperCase(), column.pdfWidth))
+      .join(" | ");
+    const separatorLine = visibleColumns
+      .map((column) => "-".repeat(column.pdfWidth))
+      .join("-+-");
+    const dataLines = filtered.map((row) => visibleColumns
+      .map((column) => fitPdfCell(column.value(row), column.pdfWidth))
+      .join(" | "));
+
+    const buildingName = buildingId ? buildings.find((building) => building.id === buildingId)?.name || "Selected building" : "All buildings";
+    const companyName = companyId === "__owner__"
+      ? "Building owner"
+      : companyId
+        ? companies.find((company) => company.id === companyId)?.name || "Selected company"
+        : "All companies";
+    const dateRange = `${fromDate || "Any date"} to ${toDate || "Any date"}`;
+    const pageRows = 38;
+    const chunks: string[][] = [];
+    if (dataLines.length === 0) {
+      chunks.push([]);
+    } else {
+      for (let index = 0; index < dataLines.length; index += pageRows) {
+        chunks.push(dataLines.slice(index, index + pageRows));
+      }
+    }
+
+    const pages = chunks.map((chunk, index) => [
+      "Parking report - Vehicle IN / OUT time",
+      `Generated ${new Date().toLocaleString()} | Records ${filtered.length} | Page ${index + 1}/${chunks.length}`,
+      `Date: ${dateRange} | Building: ${buildingName} | Company/Owner: ${companyName}`,
+      "",
+      headerLine,
+      separatorLine,
+      ...(chunk.length ? chunk : ["No parking records match the selected filters."]),
+    ]);
+
+    downloadBlob(buildPdfBlob(pages), `parking-report-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   return <>
@@ -139,7 +273,7 @@ export default function ReportsDashboard({
           <option value="vehicle">Vehicle IN / OUT time</option>
         </select>
         <button type="button" onClick={downloadExcel}>Excel</button>
-        <button type="button" onClick={printPdf}>PDF</button>
+        <button type="button" onClick={downloadPdf}>PDF</button>
       </div>
     </section>
 
@@ -149,6 +283,26 @@ export default function ReportsDashboard({
       {role === "SUPER_ADMIN" && <label>Building<select value={buildingId} onChange={(event) => { setBuildingId(event.target.value); setCompanyId(""); }}><option value="">All buildings</option>{buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>}
       {role !== "COMPANY_ADMIN" && <label>Company / owner<select value={companyId} onChange={(event) => setCompanyId(event.target.value)}><option value="">All companies</option><option value="__owner__">Building owner</option>{allowedCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>}
       {role === "COMPANY_ADMIN" && <label>Company<select value={companyId} disabled>{companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>}
+      <div className={styles.columnFilter}>
+        <span>Columns</span>
+        <details className={styles.columnPicker}>
+          <summary>{visibleColumns.length} of {COLUMN_DEFINITIONS.length} shown</summary>
+          <div className={styles.columnMenu}>
+            {COLUMN_DEFINITIONS.map((column) => {
+              const checked = visibleColumnKeys.has(column.key);
+              return <label key={column.key}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={checked && visibleColumnKeys.size === 1}
+                  onChange={() => toggleColumn(column.key)}
+                />
+                <span>{column.label}</span>
+              </label>;
+            })}
+          </div>
+        </details>
+      </div>
       <button className={styles.clearButton} type="button" onClick={clearFilters}>Clear filter</button>
     </section>
 
@@ -159,44 +313,13 @@ export default function ReportsDashboard({
     </section>
 
     <section className={styles.reportTableCard}>
-      <div className={styles.tableHeader}>
-        <strong>Vehicle IN / OUT time</strong>
-        <div className={styles.rowEditActions}>
-          {hiddenRowIds.size > 0 && <button type="button" onClick={restoreRows}>Restore rows ({hiddenRowIds.size})</button>}
-          <button
-            type="button"
-            className={editingRows ? styles.editingButton : ""}
-            onClick={() => setEditingRows((current) => !current)}
-            aria-pressed={editingRows}
-            title="Edit visible report rows"
-          >
-            <span aria-hidden="true">✎</span> {editingRows ? "Done" : "Edit rows"}
-          </button>
-        </div>
-      </div>
+      <div className={styles.tableHeader}><strong>Vehicle IN / OUT time</strong></div>
       <div className={styles.tableWrap}>
-        <table className={editingRows ? styles.editingTable : ""}>
-          <colgroup>
-            {editingRows && <col className={styles.selectCol} />}
-            <col className={styles.vehicleCol} />
-            <col className={styles.rfidCol} />
-            <col className={styles.driverCol} />
-            <col className={styles.buildingCol} />
-            <col className={styles.companyCol} />
-            <col className={styles.departmentCol} />
-            <col className={styles.timeCol} />
-            <col className={styles.timeCol} />
-            <col className={styles.parkedCol} />
-            <col className={styles.statusCol} />
-          </colgroup>
-          <thead><tr>
-            {editingRows && <th className={styles.selectCell}>Keep</th>}
-            <th>Vehicle</th><th>RFID UID</th><th>Driver</th><th>Building</th><th>Company</th><th>Department</th><th>IN time</th><th>OUT time</th><th>Parked</th><th>Status</th>
-          </tr></thead>
+        <table>
+          <thead><tr>{visibleColumns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
           <tbody>{filtered.length ? filtered.map((row) => <tr key={row.id}>
-            {editingRows && <td className={styles.selectCell}><input type="checkbox" defaultChecked aria-label={`Keep ${row.vehicleNumber} report row`} onChange={(event) => { if (!event.target.checked) removeRow(row.id); }} /></td>}
-            <td>{row.vehicleNumber}</td><td>{row.rfidUid}</td><td>{row.driver}</td><td>{row.buildingName}</td><td>{row.companyName}</td><td>{row.department}</td><td>{formatDateTime(row.inTime)}</td><td>{formatDateTime(row.outTime)}</td><td>{row.parkedFor}</td><td><span className={row.status === "Inside" ? styles.inside : styles.exited}>{row.status}</span></td>
-          </tr>) : <tr><td colSpan={editingRows ? 11 : 10}>No parking records match the selected filters.</td></tr>}</tbody>
+            {visibleColumns.map((column) => <td key={column.key}>{column.key === "status" ? <span className={row.status === "Inside" ? styles.inside : styles.exited}>{row.status}</span> : column.value(row)}</td>)}
+          </tr>) : <tr><td colSpan={visibleColumns.length}>No parking records match the selected filters.</td></tr>}</tbody>
         </table>
       </div>
     </section>
