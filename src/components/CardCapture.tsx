@@ -157,6 +157,16 @@ export default function CardCapture({
           return;
         }
 
+        if (next.status === "DUPLICATE") {
+          session.current = "";
+          callback.current(null);
+          setEnrollment(null);
+          setSecondsLeft(0);
+          setReaderId("");
+          notify("This RFID card is already assigned to another vehicle.", "error");
+          return;
+        }
+
         if (["CANCELLED", "EXPIRED"].includes(next.status)) {
           session.current = "";
           callback.current(null);
