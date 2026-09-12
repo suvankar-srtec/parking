@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./ReportsDashboard.module.css";
 
 type ScopeOption = { id: string; name: string; buildingId?: string };
@@ -48,11 +49,24 @@ export default function ReportsDashboard({
   buildings: ScopeOption[];
   companies: ScopeOption[];
 }) {
+  const router = useRouter();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [buildingId, setBuildingId] = useState(role === "SUPER_ADMIN" ? "" : buildings[0]?.id || "");
   const [companyId, setCompanyId] = useState(role === "COMPANY_ADMIN" ? companies[0]?.id || "" : "");
   const [reportType, setReportType] = useState("vehicle");
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    const interval = window.setInterval(refresh, 3000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [router]);
 
   const allowedCompanies = useMemo(() => {
     if (!buildingId) return companies;
@@ -117,7 +131,7 @@ export default function ReportsDashboard({
     <section className={styles.reportToolbar}>
       <div>
         <strong>Vehicle IN / OUT time</strong>
-        <span>Generated {new Date().toLocaleString()}</span>
+        <span>Generated {new Date().toLocaleString()} · Auto-updating every 3 seconds</span>
       </div>
       <div className={styles.toolbarActions}>
         <select value={reportType} onChange={(event) => setReportType(event.target.value)} aria-label="Report type">
