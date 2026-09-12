@@ -47,7 +47,14 @@ export default async function DashboardPage() {
       prisma.building.findUnique({
         where: { id: user.buildingId },
         include: {
-          companies: { orderBy: { createdAt: "asc" }, include: { users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true }, take: 1 }, vehicles: { select: { id: true } } } },
+          companies: {
+            orderBy: { createdAt: "asc" },
+            include: {
+              users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true }, take: 1 },
+              vehicles: { select: { id: true } },
+              employees: { select: { id: true, category: true } },
+            },
+          },
         },
       }),
       prisma.user.findFirst({ where: { role: "EMPLOYEE", buildingId: user.buildingId, companyId: null }, select: { userId: true } }),
