@@ -8,21 +8,30 @@ import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 export async function GET() {
   try {
     const user = await rfidUser();
+    const primarySuperAdmin = user.role === "SUPER_ADMIN" && isPrimarySuperAdmin(user);
 
     const readerWhere = user.role === "SUPER_ADMIN"
-      ? (isPrimarySuperAdmin(user) ? {} : { building: { superAdminId: user.id } })
+      ? (primarySuperAdmin
+          ? { buildingId: { not: null } }
+          : { building: { superAdminId: user.id } })
       : { buildingId: user.buildingId! };
 
     const buildingWhere = user.role === "SUPER_ADMIN"
-      ? (isPrimarySuperAdmin(user) ? undefined : { superAdminId: user.id })
+      ? (primarySuperAdmin ? undefined : { superAdminId: user.id })
       : { id: user.buildingId! };
 
-    const [readers, buildings] = await Promise.all([
+    const [readers, availableReaders, buildings] = await Promise.all([
       prisma.rfidReader.findMany({
         where: readerWhere,
         include: { building: { select: { name: true } } },
         orderBy: { deviceNumber: "asc" },
       }),
+      user.role === "SUPER_ADMIN"
+        ? prisma.rfidReader.findMany({
+            where: { buildingId: null, lastSeenAt: { not: null } },
+            orderBy: [{ lastSeenAt: "desc" }, { deviceNumber: "asc" }],
+          })
+        : Promise.resolve([]),
       prisma.building.findMany({
         where: buildingWhere,
         select: { id: true, name: true },
@@ -33,8 +42,10 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       readers,
+      availableReaders,
       buildings,
       canManage: user.role !== "COMPANY_ADMIN",
+      canAddReaders: user.role === "SUPER_ADMIN",
       serverTime: new Date().toISOString(),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return rfidApiError(error); }
@@ -65,6 +76,16 @@ export async function POST(request: Request) {
         throw new ParkingError("This reader belongs to another building or needs Super Admin assignment.", 403);
       }
 
+      if (user.role === "SUPER_ADMIN" && !isPrimarySuperAdmin(user) && existing?.buildingId) {
+        const existingBuilding = await tx.building.findUnique({
+          where: { id: existing.buildingId },
+          select: { superAdminId: true },
+        });
+        if (existingBuilding?.superAdminId !== user.id) {
+          throw new ParkingError("This reader has already been assigned to another Super Admin.", 403);
+        }
+      }
+
       if (buildingId) {
         const building = await tx.building.findUnique({ where: { id: buildingId }, select: { id: true, superAdminId: true } });
         if (!building) throw new ParkingError("Building not found.", 404);
@@ -88,6 +109,10 @@ export async function POST(request: Request) {
       return reader;
     }, RFID_TRANSACTION);
 
-    return NextResponse.json({ ok: true, reader: result, message: "Reader settings saved." });
+    return NextResponse.json({ ok: true, reader: result, message: existingReaderMessage(result.enabled) });
   } catch (error) { return rfidApiError(error); }
+}
+
+function existingReaderMessage(enabled: boolean) {
+  return enabled ? "Reader allowed and assigned successfully." : "Reader settings saved.";
 }
