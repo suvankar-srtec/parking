@@ -17,6 +17,15 @@ function validateQrData(value: unknown, label: string) {
   return data;
 }
 
+function readerSummary<T extends { registrationQrData?: string | null; entryExitQrData?: string | null }>(reader: T) {
+  const { registrationQrData, entryExitQrData, ...rest } = reader;
+  return {
+    ...rest,
+    hasRegistrationQr: Boolean(registrationQrData),
+    hasEntryExitQr: Boolean(entryExitQrData),
+  };
+}
+
 export async function GET() {
   try {
     const user = await rfidUser();
@@ -53,8 +62,8 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
-      readers,
-      availableReaders,
+      readers: readers.map(readerSummary),
+      availableReaders: availableReaders.map(readerSummary),
       buildings,
       canManage: user.role !== "COMPANY_ADMIN",
       canAddReaders: user.role === "SUPER_ADMIN",
@@ -176,6 +185,6 @@ export async function POST(request: Request) {
       return reader;
     }, RFID_TRANSACTION);
 
-    return NextResponse.json({ ok: true, reader: result, message: result.enabled ? "Reader allowed and assigned successfully." : "Reader settings saved." });
+    return NextResponse.json({ ok: true, reader: readerSummary(result), message: result.enabled ? "Reader allowed and assigned successfully." : "Reader settings saved." });
   } catch (error) { return rfidApiError(error); }
 }
