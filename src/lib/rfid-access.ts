@@ -109,11 +109,17 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       orderBy: { gateNumber: "asc" },
     });
     const allottedGate = buildingGates.find((gate) => parseGateConfig(gate.direction).readerId === reader.id);
-    const allottedDirection = allottedGate ? parseGateConfig(allottedGate.direction).direction : null;
-    const effectiveMode = allottedDirection && allottedDirection !== "SELECT" ? allottedDirection : reader.mode;
 
+    // Reader Configuration decides whether the device is an access reader (ENTRY_EXIT)
+    // or a registration reader. Gate Details is the source of truth for whether an
+    // access reader performs ENTRY, EXIT, or ENTRY_EXIT at a specific gate.
+    if (!allottedGate) {
+      return record(READER_NO_SUCCESS_CODE, "Reader is not allotted to a gate.", "DENIED", ...context);
+    }
+
+    const effectiveMode = parseGateConfig(allottedGate.direction).direction;
     if (!["ENTRY_EXIT", "ENTRY", "EXIT"].includes(effectiveMode)) {
-      return record(READER_NO_SUCCESS_CODE, "Reader must be allotted to a gate direction or configured as Entry/Exit.", "DENIED", ...context);
+      return record(READER_NO_SUCCESS_CODE, "Gate direction must be configured before scanning.", "DENIED", ...context);
     }
 
     if (vehicle.lastAccessAt && receivedAt - vehicle.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
@@ -124,6 +130,8 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     if (effectiveMode === "ENTRY_EXIT") {
       enter = !vehicle.isInside;
     } else if (effectiveMode === "ENTRY") {
+      // Re-entry is always a failure response (0001), so the reader must not run
+      // its success action / red LED until the vehicle has exited first.
       if (vehicle.isInside) return record(READER_NO_SUCCESS_CODE, "Exit before Entry.", "DENIED", ...context);
       enter = true;
     } else {
