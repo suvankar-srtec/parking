@@ -66,7 +66,7 @@ export async function PATCH(
   if (readerId) {
     const reader = await prisma.rfidReader.findUnique({
       where: { id: readerId },
-      select: { id: true, buildingId: true, enabled: true, mode: true, name: true, deviceNumber: true },
+      select: { id: true, buildingId: true, enabled: true, mode: true },
     });
     if (!reader || reader.buildingId !== buildingId) {
       return NextResponse.json({ ok: false, message: "Select a reader assigned to this building." }, { status: 400 });
@@ -78,11 +78,11 @@ export async function PATCH(
       return NextResponse.json({ ok: false, message: "A Registration reader cannot be allotted to an Entry/Exit gate." }, { status: 409 });
     }
 
-    const otherGates = await prisma.gate.findMany({
-      where: { NOT: { buildingId_gateNumber: { buildingId, gateNumber } } },
-      select: { buildingId: true, gateNumber: true, direction: true },
-    });
-    const usedElsewhere = otherGates.find((gate) => parseGateConfig(gate.direction).readerId === readerId);
+    const allGates = await prisma.gate.findMany({ select: { buildingId: true, gateNumber: true, direction: true } });
+    const usedElsewhere = allGates.find((gate) =>
+      !(gate.buildingId === buildingId && gate.gateNumber === gateNumber) &&
+      parseGateConfig(gate.direction).readerId === readerId,
+    );
     if (usedElsewhere) {
       return NextResponse.json({ ok: false, message: "This reader is already allotted to another gate. Remove that allocation first." }, { status: 409 });
     }
