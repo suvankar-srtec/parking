@@ -3,7 +3,7 @@ import type { ParkingValues } from "@/lib/parking";
 import { claimUserId } from "@/lib/user-id-reservations";
 
 export async function createBuildingWithAccount(
-  input: ParkingValues & { name: string; username: string; password: string; ownerId: string; reservationId: string },
+  input: ParkingValues & { name: string; username: string; password: string; maximumGate: number; ownerId: string; reservationId: string },
 ) {
   const { username, password, ownerId, reservationId, ...buildingValues } = input;
   return prisma.$transaction(async (tx) => {
