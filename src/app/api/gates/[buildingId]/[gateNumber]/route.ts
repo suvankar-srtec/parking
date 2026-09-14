@@ -81,6 +81,11 @@ export async function DELETE(
   const auth = await getAuthorizedBuilding(user, buildingId);
   if (auth.error) return auth.error;
 
+  const gateCount = await prisma.gate.count({ where: { buildingId } });
+  if (gateCount <= 1) {
+    return NextResponse.json({ ok: false, message: "At least one gate must remain. The Maximum Gate setting is not changed." }, { status: 409 });
+  }
+
   await prisma.gate.deleteMany({ where: { buildingId, gateNumber } });
   revalidatePath("/access-control/gate-details");
   return NextResponse.json({ ok: true, message: `Gate ${gateNumber} removed. Maximum Gate remains unchanged.` });
