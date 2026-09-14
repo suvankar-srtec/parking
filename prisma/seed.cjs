@@ -2,7 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const accounts = [
-  { userId: "0909", username: "sp0909", password: "admin123", role: "SUPER_ADMIN" },
+  { userId: "sa03", username: "sp0909", password: "admin123", role: "SUPER_ADMIN" },
   { userId: "sa01", username: "sa01", password: "sa01", role: "SUPER_ADMIN" },
   { userId: "sa02", username: "sa02", password: "sa02", role: "SUPER_ADMIN" },
   { userId: "admin1", username: "admin1", password: "admin1", role: "BUILDING_ADMIN" },
@@ -27,7 +27,7 @@ async function main() {
   }
 
   console.log("Role login accounts are ready.");
-  console.log("Super Admin: sa01/sa01, sa02/sa02");
+  console.log("Super Admin: sa01/sa01, sa02/sa02, sa03/sp0909");
   console.log("Admin: admin1/admin1, admin2/admin2");
   console.log("Company/User: user1/user1, user2/user2");
   console.log("Supervisor: sup1/sup1, sup2/sup2");
