@@ -37,6 +37,8 @@ type Activity = {
     code: string;
     action: string;
     message: string;
+    building?: { name: string } | null;
+    company?: { name: string } | null;
   }[];
 };
 
@@ -295,9 +297,15 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       <h2>Card and parking events</h2>
       <div className="reader-table-wrap">
         <table className="reader-table">
-          <thead><tr><th>Time</th><th>Device</th><th>Card</th><th>Action</th><th>Result</th></tr></thead>
+          <thead><tr><th>Time</th><th>Device</th><th>Building</th><th>Company</th><th>Card</th><th>Action</th><th>Result</th></tr></thead>
           <tbody>{activity.events.map((event) => <tr key={event.id}>
-            <td>{new Date(event.createdAt).toLocaleString()}</td><td>{event.deviceNumber}</td><td>{event.cardNo}</td><td>{event.action}</td><td className={event.code === "0000" ? "reader-success" : "reader-failure"}>{event.message}</td>
+            <td>{new Date(event.createdAt).toLocaleString()}</td>
+            <td>{event.deviceNumber}</td>
+            <td>{event.building?.name || "-"}</td>
+            <td>{event.company?.name || "-"}</td>
+            <td>{event.cardNo}</td>
+            <td>{event.action}</td>
+            <td className={event.code === "0000" ? "reader-success" : "reader-failure"}>{event.message}</td>
           </tr>)}</tbody>
         </table>
         {!activity.events.length && <p>No scans received yet.</p>}
