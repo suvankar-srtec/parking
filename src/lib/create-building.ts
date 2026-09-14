@@ -9,6 +9,7 @@ export async function createBuildingWithAccount(
   return prisma.$transaction(async (tx) => {
     const userId = await claimUserId(tx, { ownerId, reservationId, kind: "building", scopeId: "", name: input.name });
     const building = await tx.building.create({ data: { ...buildingValues, superAdminId: ownerId } });
+    await tx.gate.create({ data: { buildingId: building.id, gateNumber: 1, direction: "SELECT" } });
     const account = await tx.user.create({
       data: { userId, username, password, role: "BUILDING_ADMIN", buildingId: building.id },
       select: { userId: true, username: true },
