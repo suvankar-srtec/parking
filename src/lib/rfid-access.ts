@@ -138,7 +138,9 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
 
     await tx.vehicle.update({ where: { id: vehicle.id }, data: { isInside: enter, lastAccessAt: new Date(), lastAccessDevice: reader.deviceNumber } });
 
-    return record(enter ? READER_SUCCESS_CODE : READER_NO_SUCCESS_CODE, enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
+    // Valid ENTRY and valid EXIT both return 0000 so the configured red LED can blink.
+    // Duplicate ENTRY, invalid EXIT, registration, and all denied scans return 0001.
+    return record(READER_SUCCESS_CODE, enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
   }, RFID_TRANSACTION);
 }
 
