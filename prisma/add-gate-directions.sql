@@ -28,3 +28,18 @@ BEGIN
     ON DELETE CASCADE ON UPDATE CASCADE;
   END IF;
 END $$;
+
+INSERT INTO "gates" ("id", "buildingId", "gateNumber", "direction", "createdAt", "updatedAt")
+SELECT
+  'gate_' || md5(b."id" || ':1'),
+  b."id",
+  1,
+  'SELECT',
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM "buildings" b
+WHERE b."maximumGate" >= 1
+  AND NOT EXISTS (
+    SELECT 1 FROM "gates" g WHERE g."buildingId" = b."id"
+  )
+ON CONFLICT ("buildingId", "gateNumber") DO NOTHING;
