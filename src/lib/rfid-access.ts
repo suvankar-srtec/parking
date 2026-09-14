@@ -98,23 +98,26 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     if (vehicle.company.buildingId !== reader.buildingId) return record("1004", "Card belongs to another building.");
     const context = [vehicle.id, vehicle.companyId] as const;
 
-    // An ENTRY-only reader must never allow the same card to enter again until a valid EXIT occurs.
-    // This check deliberately runs before the scan-debounce check so even an immediate second
-    // entry attempt returns the explicit EXIT-required response.
-    if (reader.mode === "ENTRY" && vehicle.isInside) {
+    // ENTRY_EXIT is retained only as a legacy database value. It behaves as ENTRY and is no longer configurable.
+    const effectiveMode = reader.mode === "ENTRY_EXIT" ? "ENTRY" : reader.mode;
+
+    if (effectiveMode === "ENTRY" && vehicle.isInside) {
       return record("0001", "Exit required before another entry.", "DENIED", ...context);
     }
 
-    // An EXIT-only reader should not create another exit when the vehicle is already outside.
-    if (reader.mode === "EXIT" && !vehicle.isInside) {
+    if (effectiveMode === "EXIT" && !vehicle.isInside) {
       return record("0001", "Vehicle is already outside.", "IGNORED", ...context);
+    }
+
+    if (effectiveMode !== "ENTRY" && effectiveMode !== "EXIT") {
+      return record("0001", "Reader must be configured as Entry, Exit, or Registration.", "DENIED", ...context);
     }
 
     if (vehicle.lastAccessAt && receivedAt - vehicle.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
       return record("0001", "Duplicate scan ignored", "IGNORED", ...context);
     }
 
-    const enter = reader.mode === "ENTRY" || (reader.mode === "ENTRY_EXIT" && !vehicle.isInside);
+    const enter = effectiveMode === "ENTRY";
     if ((enter && vehicle.isInside) || (!enter && !vehicle.isInside)) {
       return record("0001", enter ? "Exit required before another entry." : "Vehicle is already outside.", "DENIED", ...context);
     }
@@ -130,8 +133,6 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
 
     await tx.vehicle.update({ where: { id: vehicle.id }, data: { isInside: enter, lastAccessAt: new Date(), lastAccessDevice: reader.deviceNumber } });
 
-    // Only a successful ENTRY returns 0000. EXIT succeeds in the application/database but
-    // deliberately returns 0001 so the reader's success action / external red LED is not fired.
     return record(enter ? "0000" : "0001", enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
   }, RFID_TRANSACTION);
 }
