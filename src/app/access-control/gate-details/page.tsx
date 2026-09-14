@@ -57,14 +57,6 @@ export default async function GateDetailsPage() {
       </header>
 
       <section className="portfolio-card building-management" style={{ marginTop: 19 }}>
-        <div className="portfolio-header">
-          <div>
-            <div className="section-kicker">BUILDING GATES</div>
-            <h2>Gate direction management</h2>
-            <p>Add gates up to the Maximum Gate limit, then configure each gate as Entry, Exit, or Entry / Exit.</p>
-          </div>
-        </div>
-        <div className="portfolio-divider" />
         <GateDetailsManager buildings={gateRows} />
       </section>
     </section>
