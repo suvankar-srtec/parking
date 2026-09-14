@@ -28,10 +28,22 @@ export async function updateBuildingParking(buildingId: string, values: ParkingV
     if (values.companyParking < assigned) {
       throw new ParkingError(`${assigned} spaces are already allocated to companies. Company parking cannot be lower than ${assigned}.`);
     }
-    return tx.building.update({
+
+    const building = await tx.building.update({
       where: { id: buildingId },
       data: { ...values, maximumGate },
       select: { id: true, totalParking: true, ownerParking: true, companyParking: true, maximumGate: true },
     });
+
+    // If Super Admin lowers Maximum Gate, remove obsolete gate-direction rows.
+    // Gate Details creates the visible rows from maximumGate, so increases appear automatically.
+    await tx.gate.deleteMany({
+      where: {
+        buildingId,
+        gateNumber: { gt: maximumGate },
+      },
+    });
+
+    return building;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 15000 });
 }
