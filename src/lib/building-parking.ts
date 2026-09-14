@@ -17,7 +17,7 @@ export async function lockBuildingParking(tx: Prisma.TransactionClient, building
   return rows[0];
 }
 
-export async function updateBuildingParking(buildingId: string, values: ParkingValues) {
+export async function updateBuildingParking(buildingId: string, values: ParkingValues, maximumGate: number) {
   return prisma.$transaction(async (tx) => {
     await lockBuildingParking(tx, buildingId);
     const allocation = await tx.company.aggregate({
@@ -30,8 +30,8 @@ export async function updateBuildingParking(buildingId: string, values: ParkingV
     }
     return tx.building.update({
       where: { id: buildingId },
-      data: values,
-      select: { id: true, totalParking: true, ownerParking: true, companyParking: true },
+      data: { ...values, maximumGate },
+      select: { id: true, totalParking: true, ownerParking: true, companyParking: true, maximumGate: true },
     });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 15000 });
 }
