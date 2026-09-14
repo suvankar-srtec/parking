@@ -77,7 +77,6 @@ export default function Sidebar({
           <Link className={`menu-button dark-menu${isAccessPage("/access-control/register-cards") ? " active-menu" : ""}`} href="/access-control/register-cards">Register cards</Link>
           <Link className={`menu-button dark-menu${isAccessPage("/access-control/activity") ? " active-menu" : ""}`} href="/access-control/activity">Real Time Monitor</Link>
           <Link className={`menu-button dark-menu${isAccessPage("/access-control/gate-details") ? " active-menu" : ""}`} href="/access-control/gate-details">Gate Details</Link>
-          <Link className={`menu-button dark-menu${isAccessPage("/access-control/reader-details") ? " active-menu" : ""}`} href="/access-control/reader-details">Reader Details</Link>
         </div>
       </div> : null}
       <Link className={`menu-section-title${reportsActive ? " sidebar-section-active" : ""}`} href="/reports"><span>Reports</span></Link>
