@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
-type GateDirection = "ENTRY" | "EXIT" | "ENTRY_EXIT";
+type GateDirection = "SELECT" | "ENTRY" | "EXIT" | "ENTRY_EXIT";
 
 export default async function GateDetailsPage() {
   const user = await getCurrentUser();
@@ -31,20 +31,19 @@ export default async function GateDetailsPage() {
     },
   });
 
-  const gateRows = buildings.map((building) => {
-    const configured = new Map(building.gates.map((gate) => [gate.gateNumber, gate.direction]));
-    return {
-      id: building.id,
-      name: building.name,
-      maximumGate: building.maximumGate,
-      gates: Array.from({ length: building.maximumGate }, (_, index) => {
-        const gateNumber = index + 1;
-        const stored = configured.get(gateNumber);
-        const direction: GateDirection = stored === "EXIT" || stored === "ENTRY_EXIT" ? stored : "ENTRY";
-        return { gateNumber, direction };
-      }),
-    };
-  });
+  const gateRows = buildings.map((building) => ({
+    id: building.id,
+    name: building.name,
+    maximumGate: building.maximumGate,
+    gates: building.gates.length
+      ? building.gates.map((gate) => ({
+          gateNumber: gate.gateNumber,
+          direction: (["ENTRY", "EXIT", "ENTRY_EXIT"] as const).includes(gate.direction as "ENTRY" | "EXIT" | "ENTRY_EXIT")
+            ? gate.direction as GateDirection
+            : "SELECT" as GateDirection,
+        }))
+      : [{ gateNumber: 1, direction: "SELECT" as GateDirection }],
+  }));
 
   return <main className="dashboard-page">
     <Sidebar role={user.role} canCreateSuperAdmins={primary} />
@@ -62,7 +61,7 @@ export default async function GateDetailsPage() {
           <div>
             <div className="section-kicker">BUILDING GATES</div>
             <h2>Gate direction management</h2>
-            <p>Configure each gate as Entry, Exit, or Entry / Exit. The direction indicators update automatically when you change the dropdown.</p>
+            <p>Add gates up to the Maximum Gate limit, then configure each gate as Entry, Exit, or Entry / Exit.</p>
           </div>
         </div>
         <div className="portfolio-divider" />
