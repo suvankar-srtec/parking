@@ -11,13 +11,11 @@ export default function Sidebar({
   dashboardHref = "/dashboard",
   canCreateSuperAdmins = false,
 }: { role?: UserRole; dashboardHref?: string; canCreateSuperAdmins?: boolean }) {
-  const [expanded, setExpanded] = useState({ dashboard: true, personal: false, access: false });
+  const [expanded, setExpanded] = useState({ dashboard: true, access: false });
   function toggle(section: keyof typeof expanded) { setExpanded((current) => ({ ...current, [section]: !current[section] })); }
 
-  const showPersonal = role !== "EMPLOYEE";
   const showAccess = canConfigureReaders(role);
   const showReaderStatus = showAccess || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER";
-  const personalLabel = role === "SUPER_ADMIN" ? "Admin / Company / Supervisor" : role === "BUILDING_ADMIN" ? "Company / Supervisor" : "Employees / Company Owners";
   const roleClass = `sidebar-${role.toLowerCase().replaceAll("_", "-")}`;
 
   return <aside className={`sidebar ${roleClass}`}>
@@ -31,11 +29,6 @@ export default function Sidebar({
           {canCreateSuperAdmins ? <Link className="menu-button menu-button-sub dark-menu" href="/super-admins">Create Super Admin</Link> : null}
         </div>
       </div>
-
-      {showPersonal ? <div className="menu-group">
-        <button type="button" className="menu-section-title menu-toggle" aria-expanded={expanded.personal} aria-controls="personal-menu" onClick={() => toggle("personal")}><span>Personal</span><span className="menu-chevron" aria-hidden="true" /></button>
-        <div id="personal-menu" className="menu-items" hidden={!expanded.personal}><Link className="menu-button dark-menu" href="/dashboard">{personalLabel}</Link></div>
-      </div> : null}
 
       {showAccess ? <div className="menu-group">
         <button type="button" className="menu-section-title menu-toggle" aria-expanded={expanded.access} aria-controls="access-menu" onClick={() => toggle("access")}><span>Access Control</span><span className="menu-chevron" aria-hidden="true" /></button>
