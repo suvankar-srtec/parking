@@ -41,10 +41,10 @@ export default function Sidebar({
         <div id="access-menu" className="menu-items" hidden={!expanded.access}>
           <Link className="menu-button dark-menu" href="/access-control">RFID devices</Link>
           <Link className="menu-button dark-menu" href="/access-control/register-cards">Register cards</Link>
-          <Link className="menu-button dark-menu" href="/access-control#activity">Real Time Monitor</Link>
+          <Link className="menu-button dark-menu" href="/access-control/activity">Real Time Monitor</Link>
         </div>
       </div> : null}
-      <Link className="menu-section-title" href="/reports"><span>{role === "EMPLOYEE" ? "Reports" : "Reports"}</span></Link>
+      <Link className="menu-section-title" href="/reports"><span>Reports</span></Link>
     </nav>
     {showReaderStatus ? <ReaderConsole compact /> : null}
   </aside>;
