@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma db execute --file prisma/add-reader-setup-qrs.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-building-maximum-gate.sql --schema prisma/schema.prisma && prisma generate && next build",
+    "build": "prisma db execute --file prisma/add-reader-setup-qrs.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-building-maximum-gate.sql --schema prisma/schema.prisma && prisma db execute --file prisma/rename-super-admin-0909-to-sa03.sql --schema prisma/schema.prisma && prisma generate && next build",
     "start": "next start",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -18,6 +18,7 @@
     "db:employee-vehicles": "prisma db execute --file prisma/migrate-employee-vehicles.sql --schema prisma/schema.prisma",
     "db:role-parking": "prisma db execute --file prisma/add-role-parking-limits.sql --schema prisma/schema.prisma",
     "db:maximum-gate": "prisma db execute --file prisma/add-building-maximum-gate.sql --schema prisma/schema.prisma",
+    "db:rename-super-admin": "prisma db execute --file prisma/rename-super-admin-0909-to-sa03.sql --schema prisma/schema.prisma",
     "postinstall": "prisma generate",
     "rfid:tcp": "node scripts/rfid-tcp.mjs",
     "rfid:configure": "node scripts/configure-readers.cjs",
