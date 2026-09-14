@@ -11,11 +11,22 @@ type GateRow = {
   direction: GateDirection;
 };
 
+type GateReader = {
+  id: string;
+  name: string;
+  deviceNumber: string;
+  mode: string;
+  enabled: boolean;
+  readerIp: string | null;
+};
+
 type BuildingGateRow = {
   id: string;
   name: string;
   maximumGate: number;
   gates: GateRow[];
+  readers: GateReader[];
+  availableReaders: GateReader[];
 };
 
 function directionLabel(direction: GateDirection) {
@@ -23,6 +34,26 @@ function directionLabel(direction: GateDirection) {
   if (direction === "EXIT") return "Exit";
   if (direction === "ENTRY_EXIT") return "Entry / Exit";
   return "Not configured";
+}
+
+function readerModeLabel(mode: string) {
+  if (mode === "REGISTER") return "Registration";
+  if (mode === "ENTRY_EXIT") return "Entry / Exit";
+  if (mode === "EXIT") return "Exit";
+  if (mode === "ENTRY") return "Entry";
+  return mode || "Not set";
+}
+
+function ReaderList({ readers, emptyText, tone }: { readers: GateReader[]; emptyText: string; tone: "allotted" | "available" }) {
+  if (!readers.length) return <span className="reader-empty">{emptyText}</span>;
+  return <div className="gate-reader-list">
+    {readers.map((reader) => <span className={`gate-reader-pill ${tone}`} key={reader.id} title={`${reader.name} · ${reader.deviceNumber}${reader.readerIp ? ` · ${reader.readerIp}` : ""}`}>
+      <i className={reader.enabled ? "online" : "offline"} />
+      <span className="reader-pill-name">{reader.name}</span>
+      <span className="reader-pill-device">{reader.deviceNumber}</span>
+      <span className="reader-pill-mode">{readerModeLabel(reader.mode)}</span>
+    </span>)}
+  </div>;
 }
 
 export default function GateDetailsManager({ buildings }: { buildings: BuildingGateRow[] }) {
@@ -135,7 +166,11 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
               <div className="section-kicker">BUILDING</div>
               <h3>{building.name}</h3>
             </div>
-            <div className="gate-limit-badge"><span>Max Gates</span><strong>{building.maximumGate}</strong></div>
+            <div className="gate-head-summary">
+              <div className="gate-reader-summary allotted"><span>Allotted Readers</span><strong>{building.readers.length}</strong></div>
+              <div className="gate-reader-summary available"><span>Available Readers</span><strong>{building.availableReaders.length}</strong></div>
+              <div className="gate-limit-badge"><span>Max Gates</span><strong>{building.maximumGate}</strong></div>
+            </div>
           </div>
 
           <div className="gate-table-wrap">
@@ -144,8 +179,8 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
                 <tr>
                   <th>Gate</th>
                   <th>Direction</th>
-                  <th>Entry</th>
-                  <th>Exit</th>
+                  <th>Allotted Readers</th>
+                  <th>Available Readers</th>
                   <th>Status</th>
                   <th className="manage-heading">Manage</th>
                 </tr>
@@ -154,8 +189,6 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
                 {building.gates.map((gate, index) => {
                   const key = `${building.id}:${gate.gateNumber}`;
                   const saving = savingKey === key || savingKey === `${key}:remove`;
-                  const entryActive = gate.direction === "ENTRY" || gate.direction === "ENTRY_EXIT";
-                  const exitActive = gate.direction === "EXIT" || gate.direction === "ENTRY_EXIT";
                   const isLast = index === building.gates.length - 1;
                   const canAdd = isLast && building.gates.length < building.maximumGate;
                   const canRemove = building.gates.length > 1;
@@ -177,18 +210,8 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
                         <span aria-hidden="true">⌄</span>
                       </div>
                     </td>
-                    <td>
-                      <label className={`gate-radio-state ${entryActive ? "active" : "faded"}`}>
-                        <input type="radio" checked={entryActive} readOnly tabIndex={-1} aria-label="Entry enabled" />
-                        <span>Entry</span>
-                      </label>
-                    </td>
-                    <td>
-                      <label className={`gate-radio-state ${exitActive ? "active" : "faded"}`}>
-                        <input type="radio" checked={exitActive} readOnly tabIndex={-1} aria-label="Exit enabled" />
-                        <span>Exit</span>
-                      </label>
-                    </td>
+                    <td><ReaderList readers={building.readers} emptyText="No reader allotted" tone="allotted" /></td>
+                    <td><ReaderList readers={building.availableReaders} emptyText="No reader available" tone="available" /></td>
                     <td><span className={`gate-status-pill ${saving ? "saving" : gate.direction === "SELECT" ? "unconfigured" : "ready"}`}>{saving ? "Saving…" : directionLabel(gate.direction)}</span></td>
                     <td>
                       <div className="gate-row-actions">
@@ -213,7 +236,6 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
       .gate-search svg{width:16px;height:16px;fill:none;stroke:#77837c;stroke-width:1.8;stroke-linecap:round;flex:0 0 auto}
       .gate-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#24362c;font:inherit;font-size:12px;font-weight:600}
       .gate-search input::placeholder{color:#8a958f;font-weight:500}
-      .gate-search input::-webkit-search-cancel-button{cursor:pointer}
       .gate-manager-divider{height:1px;background:#dce4df;margin:0 0 10px}
       .gate-empty{margin:14px 0;color:#738078}
       .gate-empty-search{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:130px;border:1px dashed #d5ded9;border-radius:9px;background:#fafcfb;color:#6f7c75;text-align:center}
@@ -221,36 +243,46 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
       .gate-empty-search span{font-size:11px}
       .gate-building-list{display:grid;gap:10px}
       .gate-building-card{border:1px solid #d9e3dd;border-radius:9px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(31,51,40,.025)}
-      .gate-building-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 14px;background:#fff}
+      .gate-building-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 13px;background:#fff}
       .gate-building-title{display:flex;align-items:center;gap:10px;min-width:0}
       .gate-building-title .section-kicker{margin:0;font-size:8px;letter-spacing:.5px;white-space:nowrap}
-      .gate-building-head h3{margin:0;font-size:16px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .gate-limit-badge{display:flex;align-items:center;gap:8px;padding:5px 9px;border:1px solid #d8e2dc;border-radius:7px;background:#f7faf8;white-space:nowrap}
-      .gate-limit-badge span{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#69766e}
-      .gate-limit-badge strong{font-size:15px;line-height:1;color:#7c46ac}
+      .gate-building-head h3{margin:0;font-size:15px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .gate-head-summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+      .gate-reader-summary,.gate-limit-badge{display:flex;align-items:center;gap:7px;padding:4px 8px;border:1px solid #d8e2dc;border-radius:7px;background:#f7faf8;white-space:nowrap}
+      .gate-reader-summary span,.gate-limit-badge span{font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.35px;color:#69766e}
+      .gate-reader-summary strong,.gate-limit-badge strong{font-size:13px;line-height:1;color:#7c46ac}
+      .gate-reader-summary.allotted strong{color:#176b4d}
+      .gate-reader-summary.available strong{color:#356a9a}
       .gate-table-wrap{overflow-x:auto;border-top:1px solid #e1e8e4}
-      .gate-table{width:100%;border-collapse:collapse;min-width:700px;table-layout:fixed}
-      .gate-table th{padding:7px 10px;background:#f3f7f5;color:#5c6962;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.38px;text-align:left;white-space:nowrap}
-      .gate-table th:nth-child(1){width:12%}
-      .gate-table th:nth-child(2){width:25%}
-      .gate-table th:nth-child(3),.gate-table th:nth-child(4){width:14%}
-      .gate-table th:nth-child(5){width:20%}
-      .gate-table th:nth-child(6){width:15%}
-      .gate-table td{padding:8px 10px;border-top:1px solid #e9eeeb;vertical-align:middle;font-size:12px}
+      .gate-table{width:100%;border-collapse:collapse;min-width:920px;table-layout:fixed}
+      .gate-table th{padding:7px 10px;background:#f3f7f5;color:#5c6962;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.35px;text-align:left;white-space:nowrap}
+      .gate-table th:nth-child(1){width:10%}
+      .gate-table th:nth-child(2){width:18%}
+      .gate-table th:nth-child(3){width:24%}
+      .gate-table th:nth-child(4){width:24%}
+      .gate-table th:nth-child(5){width:13%}
+      .gate-table th:nth-child(6){width:11%}
+      .gate-table td{padding:8px 10px;border-top:1px solid #e9eeeb;vertical-align:middle;font-size:11.5px}
       .gate-table tbody tr:first-child td{border-top:0}
       .gate-table tbody tr:hover td{background:#fbfdfc}
-      .gate-number{font-weight:800;color:#17261e;white-space:nowrap;font-size:12.5px}
-      .gate-select-shell{position:relative;width:100%;max-width:190px}
-      .gate-select-shell select{width:100%;height:32px;appearance:none;border:1px solid #cbd8d0;border-radius:7px;background:#fff;padding:5px 28px 5px 10px;font:inherit;font-size:12px;font-weight:700;color:#25372d;outline:none;cursor:pointer}
-      .gate-select-shell select:hover{border-color:#aebfb5}
+      .gate-number{font-weight:800;color:#17261e;white-space:nowrap;font-size:12px}
+      .gate-select-shell{position:relative;width:100%;max-width:180px}
+      .gate-select-shell select{width:100%;height:31px;appearance:none;border:1px solid #cbd8d0;border-radius:7px;background:#fff;padding:5px 28px 5px 10px;font:inherit;font-size:11.5px;font-weight:700;color:#25372d;outline:none;cursor:pointer}
       .gate-select-shell select:focus{border-color:#8249b4;box-shadow:0 0 0 2px rgba(130,73,180,.1)}
       .gate-select-shell select:disabled{cursor:wait;background:#f4f5f4;color:#8a918d}
       .gate-select-shell>span{position:absolute;right:9px;top:50%;transform:translateY(-53%);pointer-events:none;color:#68766e;font-size:11px;font-weight:900}
-      .gate-radio-state{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;transition:opacity .2s ease;white-space:nowrap}
-      .gate-radio-state input{width:14px;height:14px;margin:0;accent-color:#7c46ac;pointer-events:none}
-      .gate-radio-state.active{opacity:1;color:#273a30}
-      .gate-radio-state.faded{opacity:.22;color:#9aa39e}
-      .gate-status-pill{display:inline-flex;align-items:center;justify-content:center;min-width:76px;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800;white-space:nowrap}
+      .gate-reader-list{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+      .gate-reader-pill{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:3px 6px;border-radius:999px;border:1px solid #d7e2dc;background:#f8fbf9;font-size:8.5px;white-space:nowrap}
+      .gate-reader-pill.allotted{border-color:#c9e4d6;background:#f0f8f4}
+      .gate-reader-pill.available{border-color:#d5e2ee;background:#f4f8fb}
+      .gate-reader-pill i{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+      .gate-reader-pill i.online{background:#1fa66e}
+      .gate-reader-pill i.offline{background:#d9a21f}
+      .reader-pill-name{font-weight:800;color:#25372d}
+      .reader-pill-device{color:#6d3998;font-weight:800}
+      .reader-pill-mode{color:#728078}
+      .reader-empty{font-size:9.5px;color:#89948e;font-style:italic}
+      .gate-status-pill{display:inline-flex;align-items:center;justify-content:center;min-width:74px;padding:4px 7px;border-radius:999px;font-size:8.5px;font-weight:800;white-space:nowrap}
       .gate-status-pill.ready{background:#edf8f2;color:#186b4e;border:1px solid #cce8d9}
       .gate-status-pill.saving{background:#f5effa;color:#71439b;border:1px solid #e2d5ed}
       .gate-status-pill.unconfigured{background:#f4f5f4;color:#7c8781;border:1px solid #e1e5e3}
@@ -265,9 +297,9 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
       @media(max-width:760px){
         .gate-manager-toolbar{align-items:stretch;flex-direction:column;gap:9px}
         .gate-search{width:100%}
-        .gate-building-head{padding:9px 11px}
-        .gate-building-title{gap:7px}
-        .gate-limit-badge span{display:none}
+        .gate-building-head{padding:9px 11px;align-items:flex-start;flex-direction:column}
+        .gate-head-summary{justify-content:flex-start}
+        .gate-reader-summary span,.gate-limit-badge span{display:none}
         .gate-table th,.gate-table td{padding-left:8px;padding-right:8px}
       }
     `}</style>
