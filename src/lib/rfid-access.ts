@@ -7,6 +7,8 @@ import { normalizeCard, SCAN_DEBOUNCE_MS, type ParsedRfidReaderMessage } from "@
 
 export const RFID_TRANSACTION = { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 20000 };
 const CAPTURED_SAVE_WINDOW_MS = 5 * 60 * 1000;
+const READER_SUCCESS_CODE = "0000";
+const READER_NO_SUCCESS_CODE = "0001";
 
 export async function lockRfid(tx: Prisma.TransactionClient) {
   await tx.$queryRaw`SELECT pg_advisory_xact_lock(72015002)::text`;
@@ -55,11 +57,12 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       },
     });
     async function record(code: string, message: string, action = "DENIED", vehicleId?: string, companyId?: string) {
+      const readerCode = code === READER_SUCCESS_CODE ? READER_SUCCESS_CODE : READER_NO_SUCCESS_CODE;
       await tx.rfidEvent.create({ data: {
         readerId: reader.id, buildingId: reader.buildingId, deviceNumber: reader.deviceNumber,
-        cardNo, action, code: code === "0000" ? "0000" : "0001", message, vehicleId, companyId,
+        cardNo, action, code: readerCode, message, vehicleId, companyId,
       } });
-      return { code: code === "0000" ? "0000" : "0001", message };
+      return { code: readerCode, message };
     }
     if (!reader.enabled || !reader.buildingId) return record("1004", "Reader must be assigned to a building and enabled.");
     await lockBuildingParking(tx, reader.buildingId);
@@ -70,7 +73,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       const company = await tx.company.findUnique({ where: { id: enrollment.companyId }, select: { buildingId: true } });
       if (company?.buildingId !== reader.buildingId) return record("1004", "Registration belongs to another building.");
       if (enrollment.status === "CAPTURED") {
-        return record("0001",
+        return record(READER_NO_SUCCESS_CODE,
           enrollment.cardNo === cardNo ? "Card already captured; waiting for registration to be saved." : "A card is already captured. Finish or cancel registration.",
           "IGNORED", enrollment.vehicleId || undefined, enrollment.companyId);
       }
@@ -90,36 +93,38 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
           expiresAt: new Date(Date.now() + CAPTURED_SAVE_WINDOW_MS),
         },
       });
-      return record("0001", "Card captured. Save the vehicle to complete registration.", "CAPTURE", enrollment.vehicleId || undefined, enrollment.companyId);
+      return record(READER_NO_SUCCESS_CODE, "Card captured. Save the vehicle to complete registration.", "CAPTURE", enrollment.vehicleId || undefined, enrollment.companyId);
     }
 
     const vehicle = await tx.vehicle.findUnique({ where: { rfidCardNo: cardNo }, include: { company: true } });
-    if (!vehicle) return record("0001", "RFID card is not registered");
+    if (!vehicle) return record(READER_NO_SUCCESS_CODE, "RFID card is not registered");
     if (vehicle.company.buildingId !== reader.buildingId) return record("1004", "Card belongs to another building.");
     const context = [vehicle.id, vehicle.companyId] as const;
 
     // ENTRY_EXIT is retained only as a legacy database value. It behaves as ENTRY and is no longer configurable.
     const effectiveMode = reader.mode === "ENTRY_EXIT" ? "ENTRY" : reader.mode;
 
+    // A card that is already inside must never receive a success reply on the Entry reader.
+    // This branch runs before debounce so even an immediate second scan is always code=0001.
     if (effectiveMode === "ENTRY" && vehicle.isInside) {
-      return record("0001", "Exit before Entry.", "DENIED", ...context);
+      return record(READER_NO_SUCCESS_CODE, "Exit before Entry.", "DENIED", ...context);
     }
 
     if (effectiveMode === "EXIT" && !vehicle.isInside) {
-      return record("0001", "Vehicle is already outside.", "IGNORED", ...context);
+      return record(READER_NO_SUCCESS_CODE, "Vehicle is already outside.", "IGNORED", ...context);
     }
 
     if (effectiveMode !== "ENTRY" && effectiveMode !== "EXIT") {
-      return record("0001", "Reader must be configured as Entry, Exit, or Registration.", "DENIED", ...context);
+      return record(READER_NO_SUCCESS_CODE, "Reader must be configured as Entry, Exit, or Registration.", "DENIED", ...context);
     }
 
     if (vehicle.lastAccessAt && receivedAt - vehicle.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
-      return record("0001", "Duplicate scan ignored", "IGNORED", ...context);
+      return record(READER_NO_SUCCESS_CODE, "Duplicate scan ignored", "IGNORED", ...context);
     }
 
     const enter = effectiveMode === "ENTRY";
     if ((enter && vehicle.isInside) || (!enter && !vehicle.isInside)) {
-      return record("0001", enter ? "Exit before Entry." : "Vehicle is already outside.", "DENIED", ...context);
+      return record(READER_NO_SUCCESS_CODE, enter ? "Exit before Entry." : "Vehicle is already outside.", "DENIED", ...context);
     }
 
     if (enter) {
@@ -127,13 +132,13 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       const buildingInside = await tx.vehicle.count({ where: { isInside: true, company: { buildingId: reader.buildingId } } });
       const building = await tx.building.findUniqueOrThrow({ where: { id: reader.buildingId }, select: { companyParking: true, totalParking: true } });
       if (companyInside >= vehicle.company.parkingAllocation || buildingInside >= Math.min(building.companyParking, building.totalParking)) {
-        return record("0001", "Parking allocation is full", "DENIED", ...context);
+        return record(READER_NO_SUCCESS_CODE, "Parking allocation is full", "DENIED", ...context);
       }
     }
 
     await tx.vehicle.update({ where: { id: vehicle.id }, data: { isInside: enter, lastAccessAt: new Date(), lastAccessDevice: reader.deviceNumber } });
 
-    return record(enter ? "0000" : "0001", enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
+    return record(enter ? READER_SUCCESS_CODE : READER_NO_SUCCESS_CODE, enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
   }, RFID_TRANSACTION);
 }
 
