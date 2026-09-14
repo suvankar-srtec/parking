@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
+type GateDirection = "ENTRY" | "EXIT" | "ENTRY_EXIT";
+
 export default async function GateDetailsPage() {
   const user = await getCurrentUser();
   if (!user || !["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) redirect("/dashboard");
@@ -37,11 +39,9 @@ export default async function GateDetailsPage() {
       maximumGate: building.maximumGate,
       gates: Array.from({ length: building.maximumGate }, (_, index) => {
         const gateNumber = index + 1;
-        const direction = configured.get(gateNumber);
-        return {
-          gateNumber,
-          direction: direction === "EXIT" || direction === "ENTRY_EXIT" ? direction : "ENTRY" as const,
-        };
+        const stored = configured.get(gateNumber);
+        const direction: GateDirection = stored === "EXIT" || stored === "ENTRY_EXIT" ? stored : "ENTRY";
+        return { gateNumber, direction };
       }),
     };
   });
