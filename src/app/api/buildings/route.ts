@@ -29,6 +29,10 @@ export async function POST(request: Request) {
     if (!name || !username || !password.trim() || !reservationId) {
       return NextResponse.json({ ok: false, message: "Building name, username, and password are required." }, { status: 400 });
     }
+    const maximumGate = Number(body.maximumGate);
+    if (!Number.isInteger(maximumGate) || maximumGate < 1 || maximumGate > 2147483647) {
+      return NextResponse.json({ ok: false, message: "Maximum Gate must be a whole number of at least 1." }, { status: 400 });
+    }
     const totalParking = body.totalParking;
     const ownerParking = body.ownerParking;
     const companyParking = body.companyParking ?? (totalParking - ownerParking);
@@ -39,11 +43,11 @@ export async function POST(request: Request) {
     if (await prisma.building.findUnique({ where: { name }, select: { id: true } })) {
       return NextResponse.json({ ok: false, message: "A building with this name already exists." }, { status: 409 });
     }
-    const result = await createBuildingWithAccount({ name, username, password, ownerId: admin.id, reservationId, ...parking.values });
+    const result = await createBuildingWithAccount({ name, username, password, maximumGate, ownerId: admin.id, reservationId, ...parking.values });
     revalidatePath("/dashboard");
     return NextResponse.json({
       ok: true, message: `Building created successfully. User ID: ${result.account.userId}.`,
-      building: { id: result.building.id, name: result.building.name, ...result.account, ...parking.values },
+      building: { id: result.building.id, name: result.building.name, maximumGate: result.building.maximumGate, ...result.account, ...parking.values },
     }, { status: 201 });
   } catch (error) {
     if (error instanceof UserIdError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
