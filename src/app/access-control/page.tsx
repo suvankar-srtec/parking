@@ -8,6 +8,7 @@ import SignOutButton from "@/components/SignOutButton";
 
 function readerMode(mode: string) {
   if (mode === "REGISTER") return "Registration";
+  if (mode === "ENTRY_EXIT") return "Entry / Exit";
   if (mode === "EXIT") return "Exit";
   return "Entry";
 }
@@ -80,7 +81,6 @@ export default async function AccessControlPage() {
       </section>
 
       <style>{`
-        .rfid-reader-console #activity{display:none!important}
         .rfid-reader-details-card{margin-top:18px;border:1px solid #d4ded8;border-radius:9px;background:#fff;overflow:hidden;box-shadow:0 8px 22px rgba(28,47,36,.045)}
         .rfid-reader-details-head{min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 14px;border-bottom:1px solid #dde5e0}
         .rfid-reader-details-head .section-kicker{margin:0;font-size:10px}
