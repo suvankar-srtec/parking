@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "@/components/AppLink";
 import { readerStatus, type ReaderConnection } from "@/lib/reader-status";
@@ -27,20 +28,7 @@ type ReaderData = {
   canAddReaders: boolean;
 };
 
-type Activity = {
-  inside: number;
-  events: {
-    id: string;
-    createdAt: string;
-    deviceNumber: string;
-    cardNo: string;
-    code: string;
-    action: string;
-    message: string;
-    building?: { name: string } | null;
-    company?: { name: string } | null;
-  }[];
-};
+type Activity = { inside: number };
 
 const MAX_QR_FILE_BYTES = 1_100_000;
 
@@ -62,13 +50,11 @@ function readQrImage(file: File) {
 }
 
 function normalizedMode(mode: string) {
-  return mode === "REGISTER" || mode === "EXIT" ? mode : "ENTRY";
+  return mode === "REGISTER" ? "REGISTER" : "ENTRY_EXIT";
 }
 
 function modeLabel(mode: string) {
-  if (mode === "REGISTER") return "Registration";
-  if (mode === "EXIT") return "Exit";
-  return "Entry";
+  return mode === "REGISTER" ? "Registration" : "Entry / Exit";
 }
 
 function qrKindForMode(mode: string) {
@@ -86,14 +72,14 @@ function storedQrUrl(reader: Reader, mode: string, revision: number) {
 
 export default function ReaderConsole({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<ReaderData | null>(null);
-  const [activity, setActivity] = useState<Activity>({ inside: 0, events: [] });
+  const [activity, setActivity] = useState<Activity>({ inside: 0 });
   const [error, setError] = useState(false);
   const [editing, setEditing] = useState<Reader | null>(null);
-  const [editingMode, setEditingMode] = useState("ENTRY");
+  const [editingMode, setEditingMode] = useState("ENTRY_EXIT");
   const [showAvailable, setShowAvailable] = useState(false);
   const [setupStep, setSetupStep] = useState<1 | 2>(1);
   const [selectedReader, setSelectedReader] = useState<Reader | null>(null);
-  const [setupMode, setSetupMode] = useState("ENTRY");
+  const [setupMode, setSetupMode] = useState("ENTRY_EXIT");
   const [registrationQr, setRegistrationQr] = useState("");
   const [entryExitQr, setEntryExitQr] = useState("");
   const [revision, setRevision] = useState(0);
@@ -114,19 +100,19 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
         const devices = await response.json();
         if (!response.ok) throw new Error(devices.message || "Reader status unavailable.");
 
-        let events;
+        let inside = 0;
         if (!compact) {
-          const result = await fetch("/api/rfid/events", {
+          const activityResponse = await fetch("/api/rfid/events", {
             cache: "no-store",
             signal: AbortSignal.timeout(10000),
           });
-          events = await result.json();
-          if (!result.ok) throw new Error(events.message || "Reader events unavailable.");
+          const activityData = await activityResponse.json();
+          if (activityResponse.ok) inside = Number(activityData.inside || 0);
         }
 
         if (!stopped) {
           setData(devices);
-          if (events) setActivity(events);
+          setActivity({ inside });
           setError(false);
           failed = false;
         }
@@ -151,7 +137,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     setSelectedReader(null);
     setRegistrationQr("");
     setEntryExitQr("");
-    setSetupMode("ENTRY");
+    setSetupMode("ENTRY_EXIT");
     setSetupStep(1);
     setShowAvailable(true);
   }
@@ -162,7 +148,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     setSelectedReader(null);
     setRegistrationQr("");
     setEntryExitQr("");
-    setSetupMode("ENTRY");
+    setSetupMode("ENTRY_EXIT");
     setSetupStep(1);
   }
 
@@ -238,7 +224,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       setSelectedReader(null);
       setRegistrationQr("");
       setEntryExitQr("");
-      setSetupMode("ENTRY");
+      setSetupMode("ENTRY_EXIT");
       setSetupStep(1);
       setRevision((n) => n + 1);
     });
@@ -292,26 +278,6 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       <p className="muted">HTTPS readers are green after recent scan/heartbeat activity. The hardware red LED is separate and belongs to a successful scan response.</p>
     </section>
 
-    <section className="portfolio-card" id="activity">
-      <div className="section-kicker">LIVE ACTIVITY</div>
-      <h2>Card and parking events</h2>
-      <div className="reader-table-wrap">
-        <table className="reader-table">
-          <thead><tr><th>Time</th><th>Device</th><th>Building</th><th>Company</th><th>Card</th><th>Action</th><th>Result</th></tr></thead>
-          <tbody>{activity.events.map((event) => <tr key={event.id}>
-            <td>{new Date(event.createdAt).toLocaleString()}</td>
-            <td>{event.deviceNumber}</td>
-            <td>{event.building?.name || "-"}</td>
-            <td>{event.company?.name || "-"}</td>
-            <td>{event.cardNo}</td>
-            <td>{event.action}</td>
-            <td className={event.code === "0000" ? "reader-success" : "reader-failure"}>{event.message}</td>
-          </tr>)}</tbody>
-        </table>
-        {!activity.events.length && <p>No scans received yet.</p>}
-      </div>
-    </section>
-
     {showAvailable && <div className="modal-backdrop">
       <section className="modal-card reader-selector-modal" role="dialog" aria-modal="true" aria-label="Add RFID reader">
         <div className="modal-head reader-selector-head">
@@ -359,7 +325,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
           <fieldset className="entity-fields" disabled={pending}>
             <label>Name<input name="name" defaultValue={selectedReader.name || `Reader ${selectedReader.deviceNumber}`} required /></label>
             <label>Building<select name="buildingId" defaultValue="" required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-            <label>Operating mode<select name="mode" value={setupMode} onChange={(event) => setSetupMode(event.target.value)}><option value="ENTRY">Entry</option><option value="EXIT">Exit</option><option value="REGISTER">Registration</option></select></label>
+            <label>Operating mode<select name="mode" value={setupMode} onChange={(event) => setSetupMode(event.target.value)}><option value="ENTRY_EXIT">Entry / Exit</option><option value="REGISTER">Registration</option></select></label>
           </fieldset>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 14 }}>
@@ -403,7 +369,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <label>Device number<input value={editing.deviceNumber} readOnly /></label>
             <label>Name<input name="name" defaultValue={editing.name} required /></label>
             <label>Building<select name="buildingId" defaultValue={editing.buildingId || ""} required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-            <label>Operating mode<select name="mode" value={editingMode} onChange={(event) => setEditingMode(event.target.value)}><option value="ENTRY">Entry</option><option value="EXIT">Exit</option><option value="REGISTER">Registration</option></select></label>
+            <label>Operating mode<select name="mode" value={editingMode} onChange={(event) => setEditingMode(event.target.value)}><option value="ENTRY_EXIT">Entry / Exit</option><option value="REGISTER">Registration</option></select></label>
             <label className="reader-enabled"><input type="checkbox" name="enabled" defaultChecked={editing.enabled} />Approved / enabled</label>
           </fieldset>
 
