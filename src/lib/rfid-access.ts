@@ -66,6 +66,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     }
     if (!reader.enabled || !reader.buildingId) return record("1004", "Reader must be assigned to a building and enabled.");
     await lockBuildingParking(tx, reader.buildingId);
+
     if (reader.mode === "REGISTER") {
       await expireEnrollments(tx);
       const enrollment = await tx.rfidEnrollment.findFirst({ where: { readerId: reader.id, status: { in: ["WAITING", "CAPTURED"] } } });
@@ -101,30 +102,25 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     if (vehicle.company.buildingId !== reader.buildingId) return record("1004", "Card belongs to another building.");
     const context = [vehicle.id, vehicle.companyId] as const;
 
-    // ENTRY_EXIT is retained only as a legacy database value. It behaves as ENTRY and is no longer configurable.
-    const effectiveMode = reader.mode === "ENTRY_EXIT" ? "ENTRY" : reader.mode;
-
-    // A card that is already inside must never receive a success reply on the Entry reader.
-    // This branch runs before debounce so even an immediate second scan is always code=0001.
-    if (effectiveMode === "ENTRY" && vehicle.isInside) {
-      return record(READER_NO_SUCCESS_CODE, "Exit before Entry.", "DENIED", ...context);
-    }
-
-    if (effectiveMode === "EXIT" && !vehicle.isInside) {
-      return record(READER_NO_SUCCESS_CODE, "Vehicle is already outside.", "IGNORED", ...context);
-    }
-
-    if (effectiveMode !== "ENTRY" && effectiveMode !== "EXIT") {
-      return record(READER_NO_SUCCESS_CODE, "Reader must be configured as Entry, Exit, or Registration.", "DENIED", ...context);
+    if (!["ENTRY_EXIT", "ENTRY", "EXIT"].includes(reader.mode)) {
+      return record(READER_NO_SUCCESS_CODE, "Reader must be configured as Entry/Exit or Registration.", "DENIED", ...context);
     }
 
     if (vehicle.lastAccessAt && receivedAt - vehicle.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
       return record(READER_NO_SUCCESS_CODE, "Duplicate scan ignored", "IGNORED", ...context);
     }
 
-    const enter = effectiveMode === "ENTRY";
-    if ((enter && vehicle.isInside) || (!enter && !vehicle.isInside)) {
-      return record(READER_NO_SUCCESS_CODE, enter ? "Exit before Entry." : "Vehicle is already outside.", "DENIED", ...context);
+    let enter: boolean;
+    if (reader.mode === "ENTRY_EXIT") {
+      // Combined reader automatically treats the next valid scan as ENTRY when outside
+      // and EXIT when already inside.
+      enter = !vehicle.isInside;
+    } else if (reader.mode === "ENTRY") {
+      if (vehicle.isInside) return record(READER_NO_SUCCESS_CODE, "Exit before Entry.", "DENIED", ...context);
+      enter = true;
+    } else {
+      if (!vehicle.isInside) return record(READER_NO_SUCCESS_CODE, "Vehicle is already outside.", "IGNORED", ...context);
+      enter = false;
     }
 
     if (enter) {
@@ -139,7 +135,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     await tx.vehicle.update({ where: { id: vehicle.id }, data: { isInside: enter, lastAccessAt: new Date(), lastAccessDevice: reader.deviceNumber } });
 
     // Valid ENTRY and valid EXIT both return 0000 so the configured red LED can blink.
-    // Duplicate ENTRY, invalid EXIT, registration, and all denied scans return 0001.
+    // Registration and all denied/duplicate scans return 0001.
     return record(READER_SUCCESS_CODE, enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
   }, RFID_TRANSACTION);
 }
