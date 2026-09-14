@@ -18,6 +18,8 @@ export default function SuperAdminManager() {
   const { notify } = useFeedback();
   const { pending, execute } = useMutation();
   const [open, setOpen] = useState(false);
+  const [editAdmin, setEditAdmin] = useState<SuperAdminRow | null>(null);
+  const [editName, setEditName] = useState("");
   const [admins, setAdmins] = useState<SuperAdminRow[]>([]);
 
   async function load() {
@@ -44,6 +46,31 @@ export default function SuperAdminManager() {
     });
   }
 
+  function openEdit(admin: SuperAdminRow) {
+    setEditAdmin(admin);
+    setEditName(admin.username);
+  }
+
+  function saveEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editAdmin) return;
+    const username = editName.trim();
+    if (!username) {
+      notify("Enter the Super Admin name.", "error");
+      return;
+    }
+    void execute(async () => {
+      const result = await requestJson<{ ok: true; message: string }>("/api/super-admins", "PATCH", {
+        id: editAdmin.id,
+        username,
+      });
+      notify(result.message);
+      setEditAdmin(null);
+      setEditName("");
+      await load();
+    });
+  }
+
   function removeAdmin(admin: SuperAdminRow) {
     if (admin._count.ownedBuildings > 0) {
       notify(`Reassign or remove this Super Admin's ${admin._count.ownedBuildings} building${admin._count.ownedBuildings === 1 ? "" : "s"} before deleting the account.`, "error");
@@ -56,6 +83,11 @@ export default function SuperAdminManager() {
       notify(result.message);
       await load();
     });
+  }
+
+  function handleAction(admin: SuperAdminRow, action: string) {
+    if (action === "edit") openEdit(admin);
+    if (action === "remove") removeAdmin(admin);
   }
 
   return <>
@@ -101,13 +133,21 @@ export default function SuperAdminManager() {
               <td><span className="super-admin-building-count">{admin._count.ownedBuildings}</span></td>
               <td><span className="super-admin-created">{new Date(admin.createdAt).toLocaleString()}</span></td>
               <td>
-                <button
-                  type="button"
-                  className="super-admin-remove-button"
+                <select
+                  className="super-admin-action-select"
+                  value=""
                   disabled={pending}
-                  title={admin._count.ownedBuildings > 0 ? "Reassign or remove this Super Admin's buildings before deleting the account." : "Remove Super Admin"}
-                  onClick={() => removeAdmin(admin)}
-                >Remove</button>
+                  aria-label={`Actions for ${admin.username}`}
+                  onChange={(event) => {
+                    const action = event.target.value;
+                    event.target.value = "";
+                    handleAction(admin, action);
+                  }}
+                >
+                  <option value="">Select action</option>
+                  <option value="edit">Edit name</option>
+                  <option value="remove">Remove</option>
+                </select>
               </td>
             </tr>) : <tr>
               <td colSpan={5} className="super-admin-empty">No additional Super Admin accounts yet.</td>
@@ -125,6 +165,28 @@ export default function SuperAdminManager() {
           <label>Super Admin name<input name="username" required placeholder="e.g. Regional Admin" /></label>
           <PasswordInput label="Password" name="password" required autoComplete="new-password" placeholder="Password" disabled={pending} />
           <div className="modal-actions"><button type="button" className="secondary-button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button><ActionButton type="submit" className="primary-button" pending={pending} pendingText="Creating…">Create Super Admin</ActionButton></div>
+        </form>
+      </section>
+    </div> : null}
+
+    {editAdmin ? <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget && !pending) setEditAdmin(null); }}>
+      <section className="modal-card small-modal" role="dialog" aria-modal="true" aria-label="Edit Super Admin name">
+        <div className="modal-head">
+          <div>
+            <div className="section-kicker">EDIT SUPER ADMIN</div>
+            <h2>Edit name</h2>
+            <p>User ID {editAdmin.userId}. Only the name can be changed.</p>
+          </div>
+          <button type="button" className="modal-close" disabled={pending} onClick={() => setEditAdmin(null)}>×</button>
+        </div>
+        <div className="modal-divider" />
+        <form className="modal-form" onSubmit={saveEdit}>
+          <label>User ID<input value={editAdmin.userId} readOnly disabled /></label>
+          <label>Super Admin name<input value={editName} onChange={(event) => setEditName(event.target.value)} required maxLength={120} /></label>
+          <div className="modal-actions">
+            <button type="button" className="secondary-button" disabled={pending} onClick={() => setEditAdmin(null)}>Cancel</button>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Saving…">Save changes</ActionButton>
+          </div>
         </form>
       </section>
     </div> : null}
@@ -149,9 +211,10 @@ export default function SuperAdminManager() {
       .super-admin-name-cell small{display:block;margin-top:3px;color:#7b8780;font-size:10px}
       .super-admin-building-count{display:inline-grid;place-items:center;min-width:32px;height:28px;padding:0 8px;border-radius:6px;background:#f7f3fb;color:#7c46ac;font-weight:900}
       .super-admin-created{color:#66746c;white-space:nowrap}
-      .super-admin-remove-button{min-width:82px;padding:8px 12px;border:1px solid #e5b8b8;border-radius:7px;background:#fff6f6;color:#a52a2a;font-weight:800;cursor:pointer;transition:.15s ease}
-      .super-admin-remove-button:hover:not(:disabled){background:#fdeaea;border-color:#d99494}
-      .super-admin-remove-button:disabled{opacity:.55;cursor:not-allowed}
+      .super-admin-action-select{min-width:140px;padding:8px 34px 8px 11px;border:1px solid #cbd8d1;border-radius:7px;background:#fff;color:#263a30;font-weight:700;cursor:pointer;outline:none}
+      .super-admin-action-select:hover:not(:disabled){border-color:#8a5bb4}
+      .super-admin-action-select:focus{border-color:#7c46ac;box-shadow:0 0 0 3px rgba(124,70,172,.12)}
+      .super-admin-action-select:disabled{opacity:.55;cursor:not-allowed}
       .super-admin-empty{text-align:center;padding:30px 16px!important;color:#738078!important}
       @media(max-width:760px){.super-admin-management-header{align-items:flex-start}.super-admin-summary-row{grid-template-columns:1fr 1fr}.super-admin-table thead th,.super-admin-table tbody td{padding-left:12px;padding-right:12px}}
       @media(max-width:520px){.super-admin-summary-row{grid-template-columns:1fr}}
