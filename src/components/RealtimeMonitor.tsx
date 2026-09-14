@@ -92,20 +92,26 @@ export default function RealtimeMonitor({
         </div>
       </div>
       <div className="portfolio-divider" />
-      <div className="account-parking-grid account-company-parking-grid">
-        <label>
+      <div className={styles.filterGrid}>
+        <label className={styles.filterField}>
           <span>Building</span>
-          <select value={buildingId} disabled={Boolean(fixedBuildingId)} onChange={(event) => setBuildingId(event.target.value)}>
-            <option value="">Select building</option>
-            {buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}
-          </select>
+          <div className={styles.selectShell}>
+            <select className={styles.modernSelect} value={buildingId} disabled={Boolean(fixedBuildingId)} onChange={(event) => setBuildingId(event.target.value)}>
+              <option value="">Select building</option>
+              {buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}
+            </select>
+            <span className={styles.selectChevron} aria-hidden="true">⌄</span>
+          </div>
         </label>
-        <label>
+        <label className={styles.filterField}>
           <span>Company</span>
-          <select value={companyId} disabled={Boolean(fixedCompanyId)} onChange={(event) => setCompanyId(event.target.value)}>
-            <option value="">All companies</option>
-            {visibleCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-          </select>
+          <div className={styles.selectShell}>
+            <select className={styles.modernSelect} value={companyId} disabled={Boolean(fixedCompanyId)} onChange={(event) => setCompanyId(event.target.value)}>
+              <option value="">All companies</option>
+              {visibleCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </select>
+            <span className={styles.selectChevron} aria-hidden="true">⌄</span>
+          </div>
         </label>
       </div>
     </section>
