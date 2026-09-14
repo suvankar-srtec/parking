@@ -313,32 +313,38 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     </section>
 
     {showAvailable && <div className="modal-backdrop">
-      <section className="modal-card" role="dialog" aria-modal="true" aria-label="Add RFID reader">
-        <div className="modal-head">
+      <section className="modal-card reader-selector-modal" role="dialog" aria-modal="true" aria-label="Add RFID reader">
+        <div className="modal-head reader-selector-head">
           <div>
             <div className="section-kicker">ADD RFID READER · STEP {setupStep} OF 2</div>
             <h2>{setupStep === 1 ? "Select reader" : "Set up reader"}</h2>
-            <p>{setupStep === 1 ? "Choose a detected reader by device number and IP address." : "Upload both setup QR codes, assign the reader, then scan the QR shown for the selected operating mode."}</p>
+            <p>{setupStep === 1 ? "Choose an available reader to continue." : "Upload both setup QR codes, assign the reader, then scan the QR shown for the selected operating mode."}</p>
           </div>
           <button className="modal-close" disabled={pending} aria-label="Close add reader" onClick={closeAddReader}>×</button>
         </div>
 
         {setupStep === 1 && <>
-          {!data?.availableReaders?.length ? <p className="muted">No unassigned readers are currently available. Power on a reader and make sure its HTTPS URL is pointing to this application.</p> : <div className="entity-list">
+          {!data?.availableReaders?.length ? <p className="muted reader-selector-empty">No unassigned readers are currently available. Power on a reader and make sure its HTTPS URL is pointing to this application.</p> : <div className="reader-selector-list">
             {data.availableReaders.map((reader) => {
               const state = readerStatus(reader);
               const selected = selectedReader?.id === reader.id;
-              return <button type="button" className="entity-row" key={reader.id} onClick={() => setSelectedReader(reader)} style={{ width: "100%", textAlign: "left", cursor: "pointer", outline: selected ? "2px solid currentColor" : undefined }}>
-                <div>
-                  <strong>Device {reader.deviceNumber}</strong>
-                  <span>IP address: {reader.readerIp || "Not detected"}</span>
-                  <span>Status: {state.label} · Last contact: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</span>
+              return <button type="button" className={`reader-selector-row${selected ? " selected" : ""}`} key={reader.id} onClick={() => setSelectedReader(reader)}>
+                <div className="reader-selector-main">
+                  <div className="reader-selector-title">
+                    <i className={"reader-dot " + state.tone} />
+                    <strong>Device {reader.deviceNumber}</strong>
+                  </div>
+                  <div className="reader-selector-meta">
+                    <span><b>IP</b>{reader.readerIp || "Not detected"}</span>
+                    <span><b>Status</b>{state.label}</span>
+                    <span><b>Last contact</b>{reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</span>
+                  </div>
                 </div>
-                <span>{selected ? "Selected ✓" : "Select"}</span>
+                <span className="reader-selector-action">{selected ? "Selected ✓" : "Select"}</span>
               </button>;
             })}
           </div>}
-          <div className="modal-actions">
+          <div className="modal-actions reader-selector-actions">
             <button type="button" className="secondary-button" onClick={closeAddReader}>Cancel</button>
             <button type="button" className="primary-button" disabled={!selectedReader} onClick={() => setSetupStep(2)}>Next</button>
           </div>
@@ -417,5 +423,34 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
         </form>
       </section>
     </div>}
+
+    <style>{`
+      .reader-selector-modal{width:min(620px,94vw);padding:17px 18px 16px;border-radius:11px;box-shadow:0 24px 70px rgba(20,34,27,.22)}
+      .reader-selector-head{align-items:flex-start;padding-bottom:12px;border-bottom:1px solid #e0e7e3}
+      .reader-selector-head h2{font-size:17px;margin:3px 0 3px}
+      .reader-selector-head p{font-size:11px;line-height:1.45}
+      .reader-selector-list{display:grid;gap:7px;margin-top:12px;max-height:315px;overflow:auto;padding:1px}
+      .reader-selector-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 11px;border:1px solid #d7e1db;border-radius:8px;background:#fbfdfc;color:#25372e;text-align:left;cursor:pointer;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease,transform .15s ease}
+      .reader-selector-row:hover{border-color:#b9c9c0;background:#fff;box-shadow:0 5px 15px rgba(31,52,40,.06);transform:translateY(-1px)}
+      .reader-selector-row.selected{border-color:#8b50b9;background:#faf7fc;box-shadow:0 0 0 2px rgba(139,80,185,.10)}
+      .reader-selector-main{min-width:0;flex:1}
+      .reader-selector-title{display:flex;align-items:center;gap:7px}
+      .reader-selector-title strong{font-size:12.5px;line-height:1.2}
+      .reader-selector-title .reader-dot{width:7px;height:7px;flex:0 0 auto}
+      .reader-selector-meta{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-top:6px;color:#738078;font-size:9.5px;line-height:1.25}
+      .reader-selector-meta span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+      .reader-selector-meta b{color:#536159;font-size:8px;text-transform:uppercase;letter-spacing:.35px}
+      .reader-selector-action{flex:0 0 auto;min-width:70px;padding:6px 8px;border:1px solid #d7dfda;border-radius:6px;background:#fff;color:#53645b;font-size:10px;font-weight:800;text-align:center}
+      .reader-selector-row.selected .reader-selector-action{border-color:#d4bee5;background:#eee5f5;color:#6d3998}
+      .reader-selector-empty{margin:14px 0 2px;padding:14px;border:1px dashed #d7dfda;border-radius:8px;background:#fafcfb;font-size:11px;text-align:center}
+      .reader-selector-actions{margin-top:12px;padding-top:12px}
+      .reader-selector-actions .secondary-button,.reader-selector-actions .primary-button{min-width:70px;padding:8px 12px;font-size:11px}
+      @media(max-width:600px){
+        .reader-selector-modal{padding:15px}
+        .reader-selector-row{align-items:flex-start}
+        .reader-selector-meta{display:grid;gap:4px}
+        .reader-selector-action{min-width:62px}
+      }
+    `}</style>
   </>;
 }
