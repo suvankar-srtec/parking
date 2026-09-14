@@ -53,6 +53,7 @@ model Building {
   totalParking   Int
   ownerParking   Int
   companyParking Int
+  maximumGate    Int    @default(1)
   superAdminId   String?
 
   superAdmin User? @relation("SuperAdminBuildings", fields: [superAdminId], references: [id], onDelete: SetNull)
