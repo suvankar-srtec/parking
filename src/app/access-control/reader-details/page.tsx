@@ -5,6 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
+function readerMode(mode: string) {
+  if (mode === "REGISTER") return "Registration";
+  if (mode === "EXIT") return "Exit";
+  return "Entry";
+}
+
 export default async function ReaderDetailsPage() {
   const user = await getCurrentUser();
   if (!user || !["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) redirect("/dashboard");
@@ -24,27 +30,85 @@ export default async function ReaderDetailsPage() {
     <Sidebar role={user.role} canCreateSuperAdmins={primary} />
     <section className="dashboard-main">
       <header className="topbar"><div><div className="section-kicker">ACCESS CONTROL</div><h1>Reader Details</h1></div><SignOutButton /></header>
-      <section className="portfolio-card building-management" style={{ marginTop: 19 }}>
-        <div className="portfolio-header"><div><div className="section-kicker">RFID READERS</div><h2>Reader inventory</h2><p>Configured reader details for the buildings available to this account.</p></div></div>
-        <div className="portfolio-divider" />
-        <div className="rfid-register-table-wrap">
-          <table className="rfid-register-table">
-            <thead><tr><th>Reader</th><th>Device Number</th><th>IP Address</th><th>Building</th><th>Mode</th><th>Status</th><th>Last Contact</th></tr></thead>
+
+      <section className="reader-details-card">
+        <div className="reader-details-head">
+          <div className="section-kicker">RFID READERS</div>
+          <div className="reader-count"><span>Configured</span><strong>{readers.length}</strong></div>
+        </div>
+
+        <div className="reader-details-table-wrap">
+          <table className="reader-details-table">
+            <thead>
+              <tr>
+                <th>Reader</th>
+                <th>Device Number</th>
+                <th>IP Address</th>
+                <th>Building</th>
+                <th>Mode</th>
+                <th>Status</th>
+                <th>Last Contact</th>
+              </tr>
+            </thead>
             <tbody>
               {readers.map((reader) => <tr key={reader.id}>
-                <td><strong>{reader.name}</strong></td>
-                <td>{reader.deviceNumber}</td>
-                <td>{reader.readerIp || "Not detected"}</td>
-                <td>{reader.building?.name || "Not assigned"}</td>
-                <td>{reader.mode === "REGISTER" ? "Registration" : reader.mode === "EXIT" ? "Exit" : "Entry"}</td>
-                <td>{reader.enabled ? "Approved" : "Disabled"}</td>
-                <td>{reader.lastSeenAt ? reader.lastSeenAt.toLocaleString() : "No contact yet"}</td>
+                <td>
+                  <div className="reader-name-cell">
+                    <span className={`reader-dot ${reader.enabled ? "enabled" : "disabled"}`} />
+                    <strong>{reader.name}</strong>
+                  </div>
+                </td>
+                <td><span className="reader-code">{reader.deviceNumber}</span></td>
+                <td>{reader.readerIp || <span className="reader-muted">Not detected</span>}</td>
+                <td>{reader.building?.name || <span className="reader-muted">Not assigned</span>}</td>
+                <td><span className="reader-mode-pill">{readerMode(reader.mode)}</span></td>
+                <td><span className={`reader-status-pill ${reader.enabled ? "approved" : "disabled"}`}>{reader.enabled ? "Approved" : "Disabled"}</span></td>
+                <td>{reader.lastSeenAt ? reader.lastSeenAt.toLocaleString() : <span className="reader-muted">No contact yet</span>}</td>
               </tr>)}
-              {!readers.length ? <tr><td colSpan={7} className="rfid-empty-row">No configured readers are available.</td></tr> : null}
+              {!readers.length ? <tr><td colSpan={7} className="reader-empty-row">No configured readers are available.</td></tr> : null}
             </tbody>
           </table>
         </div>
       </section>
+
+      <style>{`
+        .reader-details-card{margin-top:18px;border:1px solid #d4ded8;border-radius:9px;background:#fff;overflow:hidden;box-shadow:0 8px 22px rgba(28,47,36,.045)}
+        .reader-details-head{min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 14px;border-bottom:1px solid #dde5e0}
+        .reader-details-head .section-kicker{margin:0;font-size:10px}
+        .reader-count{display:flex;align-items:center;gap:7px;padding:4px 8px;border:1px solid #d6e0da;border-radius:7px;background:#f7faf8;white-space:nowrap}
+        .reader-count span{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;color:#6e7a73}
+        .reader-count strong{font-size:14px;line-height:1;color:#7c46ac}
+        .reader-details-table-wrap{width:100%;overflow-x:auto}
+        .reader-details-table{width:100%;min-width:790px;border-collapse:collapse;table-layout:fixed}
+        .reader-details-table th{padding:8px 11px;background:#f2f6f4;color:#5d6b63;font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;text-align:left;white-space:nowrap}
+        .reader-details-table td{padding:9px 11px;border-top:1px solid #e6ece8;color:#27372f;font-size:11.5px;vertical-align:middle}
+        .reader-details-table tbody tr:first-child td{border-top:0}
+        .reader-details-table tbody tr:hover td{background:#fbfdfc}
+        .reader-details-table th:nth-child(1){width:14%}
+        .reader-details-table th:nth-child(2){width:15%}
+        .reader-details-table th:nth-child(3){width:14%}
+        .reader-details-table th:nth-child(4){width:16%}
+        .reader-details-table th:nth-child(5){width:11%}
+        .reader-details-table th:nth-child(6){width:12%}
+        .reader-details-table th:nth-child(7){width:18%}
+        .reader-name-cell{display:flex;align-items:center;gap:7px;min-width:0}
+        .reader-name-cell strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .reader-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+        .reader-dot.enabled{background:#19a66e;box-shadow:0 0 0 3px rgba(25,166,110,.10)}
+        .reader-dot.disabled{background:#d79d1f;box-shadow:0 0 0 3px rgba(215,157,31,.10)}
+        .reader-code{display:inline-flex;padding:3px 7px;border-radius:5px;background:#f3eef8;color:#6d3998;font-size:10px;font-weight:800;letter-spacing:.15px}
+        .reader-mode-pill,.reader-status-pill{display:inline-flex;align-items:center;justify-content:center;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800;white-space:nowrap}
+        .reader-mode-pill{background:#eef4fb;color:#315f8b;border:1px solid #d7e4f2}
+        .reader-status-pill.approved{background:#edf8f2;color:#176b4d;border:1px solid #cbe8d8}
+        .reader-status-pill.disabled{background:#fff6e7;color:#8a5a00;border:1px solid #f1ddb7}
+        .reader-muted{color:#87928c}
+        .reader-empty-row{text-align:center!important;padding:26px!important;color:#7a8780!important}
+        @media(max-width:760px){
+          .reader-details-head{padding:8px 11px}
+          .reader-count span{display:none}
+          .reader-details-table th,.reader-details-table td{padding-left:8px;padding-right:8px}
+        }
+      `}</style>
     </section>
   </main>;
 }
