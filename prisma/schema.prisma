@@ -61,12 +61,28 @@ model Building {
   companies Company[]
   readers RfidReader[]
   rfidEvents RfidEvent[]
+  gates Gate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([superAdminId])
   @@map("buildings")
+}
+
+model Gate {
+  id         String   @id @default(cuid())
+  buildingId String
+  gateNumber Int
+  direction  String   @default("ENTRY")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@unique([buildingId, gateNumber])
+  @@index([buildingId])
+  @@map("gates")
 }
 
 model Company {
