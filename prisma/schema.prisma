@@ -74,7 +74,7 @@ model Gate {
   id         String   @id @default(cuid())
   buildingId String
   gateNumber Int
-  direction  String   @default("ENTRY")
+  direction  String   @default("SELECT")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
