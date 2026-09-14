@@ -90,6 +90,8 @@ export default function SuperAdminManager() {
     if (action === "remove") removeAdmin(admin);
   }
 
+  const totalBuildings = admins.reduce((sum, admin) => sum + admin._count.ownedBuildings, 0);
+
   return <>
     <section className="portfolio-card building-management super-admin-management-card">
       <div className="portfolio-header super-admin-management-header">
@@ -107,7 +109,7 @@ export default function SuperAdminManager() {
 
       <div className="super-admin-summary-row">
         <div className="super-admin-summary-box"><span>Total Super Admins</span><strong>{admins.length}</strong></div>
-        <div className="super-admin-summary-box"><span>Total Buildings</span><strong>{admins.reduce((sum, admin) => sum + admin._count.ownedBuildings, 0)}</strong></div>
+        <div className="super-admin-summary-box"><span>Total Buildings</span><strong>{totalBuildings === 0 ? "NA" : totalBuildings}</strong></div>
       </div>
 
       <div className="super-admin-table-wrap">
@@ -130,7 +132,7 @@ export default function SuperAdminManager() {
                   <div><strong>{admin.username}</strong><small>Super Admin</small></div>
                 </div>
               </td>
-              <td><span className="super-admin-building-count">{admin._count.ownedBuildings}</span></td>
+              <td><span className="super-admin-building-count">{admin._count.ownedBuildings === 0 ? "NA" : admin._count.ownedBuildings}</span></td>
               <td><span className="super-admin-created">{new Date(admin.createdAt).toLocaleString()}</span></td>
               <td>
                 <select
