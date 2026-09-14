@@ -59,3 +59,47 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, message: `Super Admin created successfully. User ID: ${result.userId}.`, admin: result }, { status: 201 });
 }
+
+export async function DELETE(request: Request) {
+  const currentUser = await requireRootSuperAdmin();
+  if (!currentUser) {
+    return NextResponse.json({ ok: false, message: "Only the primary Super Admin can remove another Super Admin." }, { status: 403 });
+  }
+
+  const body = await request.json().catch(() => null);
+  const adminId = String(body?.id ?? "").trim();
+  if (!adminId) {
+    return NextResponse.json({ ok: false, message: "Super Admin ID is required." }, { status: 400 });
+  }
+  if (adminId === currentUser.id) {
+    return NextResponse.json({ ok: false, message: "You cannot remove your own primary Super Admin account." }, { status: 400 });
+  }
+
+  const target = await prisma.user.findFirst({
+    where: { id: adminId, role: "SUPER_ADMIN" },
+    select: {
+      id: true,
+      userId: true,
+      username: true,
+      _count: { select: { ownedBuildings: true } },
+    },
+  });
+
+  if (!target) {
+    return NextResponse.json({ ok: false, message: "Super Admin account not found." }, { status: 404 });
+  }
+
+  if (target._count.ownedBuildings > 0) {
+    return NextResponse.json({
+      ok: false,
+      message: `Cannot remove ${target.username}. Reassign or remove the ${target._count.ownedBuildings} building${target._count.ownedBuildings === 1 ? "" : "s"} assigned to this Super Admin first.`,
+    }, { status: 409 });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(72015002)::text`;
+    await tx.user.delete({ where: { id: target.id } });
+  }, { maxWait: 10000, timeout: 15000 });
+
+  return NextResponse.json({ ok: true, message: `Super Admin ${target.userId} removed successfully.` });
+}
