@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireSuperAdmin } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
 import { validateParking } from "@/lib/parking";
 import { ParkingError, updateBuildingParking } from "@/lib/building-parking";
+import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    if (!(await requireSuperAdmin())) {
-      return NextResponse.json({ ok: false, message: "Super Admin access required." }, { status: 403 });
+    const user = await getCurrentUser();
+    if (!user || !["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) {
+      return NextResponse.json({ ok: false, message: "Super Admin or Building Admin access required." }, { status: 403 });
     }
+
     let body: unknown;
     try { body = await request.json(); }
     catch { return NextResponse.json({ ok: false, message: "Invalid request body." }, { status: 400 }); }
@@ -19,22 +23,44 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ ok: false, message: "Building User IDs cannot be changed." }, { status: 400 });
     }
 
+    const { id } = await context.params;
+    const building = await prisma.building.findUnique({
+      where: { id },
+      select: { id: true, maximumGate: true, superAdminId: true },
+    });
+    if (!building) {
+      return NextResponse.json({ ok: false, message: "Building not found." }, { status: 404 });
+    }
+
+    const allowed = user.role === "BUILDING_ADMIN"
+      ? user.buildingId === id
+      : isPrimarySuperAdmin(user) || building.superAdminId === user.id;
+    if (!allowed) {
+      return NextResponse.json({ ok: false, message: "You do not have permission to update this building." }, { status: 403 });
+    }
+
     const parsed = validateParking(body);
     if (!parsed.ok) {
       return NextResponse.json({ ok: false, message: parsed.message }, { status: 400 });
     }
 
-    const maximumGate = Number((body as Record<string, unknown>).maximumGate);
-    if (!Number.isInteger(maximumGate) || maximumGate < 1 || maximumGate > 2147483647) {
-      return NextResponse.json({ ok: false, message: "Maximum Gate must be a whole number of at least 1." }, { status: 400 });
+    const requestedMaximumGate = Number((body as Record<string, unknown>).maximumGate);
+    const maximumGate = user.role === "SUPER_ADMIN" ? requestedMaximumGate : building.maximumGate;
+
+    if (user.role === "SUPER_ADMIN") {
+      if (!Number.isInteger(maximumGate) || maximumGate < 1 || maximumGate > 2147483647) {
+        return NextResponse.json({ ok: false, message: "Maximum Gate must be a whole number of at least 1." }, { status: 400 });
+      }
+    } else if ("maximumGate" in body && requestedMaximumGate !== building.maximumGate) {
+      return NextResponse.json({ ok: false, message: "Only a Super Admin can change Maximum Gate." }, { status: 403 });
     }
 
-    const { id } = await context.params;
-    const building = await updateBuildingParking(id, parsed.values, maximumGate);
+    const updated = await updateBuildingParking(id, parsed.values, maximumGate);
     revalidatePath("/account");
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/buildings/${id}`);
-    return NextResponse.json({ ok: true, message: "Building settings saved.", building });
+    revalidatePath("/access-control/gate-details");
+    return NextResponse.json({ ok: true, message: "Building settings saved.", building: updated });
   } catch (error) {
     if (error instanceof ParkingError) {
       return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
