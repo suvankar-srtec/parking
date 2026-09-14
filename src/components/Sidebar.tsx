@@ -26,10 +26,11 @@ export default function Sidebar({
     <nav aria-label="Main navigation">
       <div className="menu-group">
         <button type="button" className="menu-button menu-button-main menu-toggle" aria-expanded={expanded.dashboard} aria-controls="dashboard-menu" onClick={() => toggle("dashboard")}><span>Dashboard</span><span className="menu-chevron" aria-hidden="true" /></button>
-        <div id="dashboard-menu" className="menu-items" hidden={!expanded.dashboard}><Link className="menu-button menu-button-sub active-menu" href={dashboardHref}>{dashboardLabel(role)}</Link></div>
+        <div id="dashboard-menu" className="menu-items" hidden={!expanded.dashboard}>
+          <Link className="menu-button menu-button-sub active-menu" href={dashboardHref}>{dashboardLabel(role)}</Link>
+          {canCreateSuperAdmins ? <Link className="menu-button menu-button-sub dark-menu" href="/super-admins">Create Super Admin</Link> : null}
+        </div>
       </div>
-
-      {canCreateSuperAdmins ? <Link className="menu-section-title" href="/super-admins"><span>Create Super Admin</span></Link> : null}
 
       {showPersonal ? <div className="menu-group">
         <button type="button" className="menu-section-title menu-toggle" aria-expanded={expanded.personal} aria-controls="personal-menu" onClick={() => toggle("personal")}><span>Personal</span><span className="menu-chevron" aria-hidden="true" /></button>
