@@ -59,11 +59,14 @@ function readQrImage(file: File) {
   });
 }
 
+function normalizedMode(mode: string) {
+  return mode === "REGISTER" || mode === "EXIT" ? mode : "ENTRY";
+}
+
 function modeLabel(mode: string) {
   if (mode === "REGISTER") return "Registration";
-  if (mode === "ENTRY") return "Entry only";
-  if (mode === "EXIT") return "Exit only";
-  return "Entry / Exit";
+  if (mode === "EXIT") return "Exit";
+  return "Entry";
 }
 
 function qrKindForMode(mode: string) {
@@ -84,11 +87,11 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
   const [activity, setActivity] = useState<Activity>({ inside: 0, events: [] });
   const [error, setError] = useState(false);
   const [editing, setEditing] = useState<Reader | null>(null);
-  const [editingMode, setEditingMode] = useState("ENTRY_EXIT");
+  const [editingMode, setEditingMode] = useState("ENTRY");
   const [showAvailable, setShowAvailable] = useState(false);
   const [setupStep, setSetupStep] = useState<1 | 2>(1);
   const [selectedReader, setSelectedReader] = useState<Reader | null>(null);
-  const [setupMode, setSetupMode] = useState("ENTRY_EXIT");
+  const [setupMode, setSetupMode] = useState("ENTRY");
   const [registrationQr, setRegistrationQr] = useState("");
   const [entryExitQr, setEntryExitQr] = useState("");
   const [revision, setRevision] = useState(0);
@@ -146,7 +149,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     setSelectedReader(null);
     setRegistrationQr("");
     setEntryExitQr("");
-    setSetupMode("ENTRY_EXIT");
+    setSetupMode("ENTRY");
     setSetupStep(1);
     setShowAvailable(true);
   }
@@ -157,13 +160,13 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     setSelectedReader(null);
     setRegistrationQr("");
     setEntryExitQr("");
-    setSetupMode("ENTRY_EXIT");
+    setSetupMode("ENTRY");
     setSetupStep(1);
   }
 
   function openConfigure(reader: Reader) {
     setEditing(reader);
-    setEditingMode(reader.mode || "ENTRY_EXIT");
+    setEditingMode(normalizedMode(reader.mode));
   }
 
   async function pickQr(event: ChangeEvent<HTMLInputElement>, kind: "registration" | "entryExit") {
@@ -233,7 +236,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       setSelectedReader(null);
       setRegistrationQr("");
       setEntryExitQr("");
-      setSetupMode("ENTRY_EXIT");
+      setSetupMode("ENTRY");
       setSetupStep(1);
       setRevision((n) => n + 1);
     });
@@ -274,7 +277,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <h3>{reader.name}</h3>
             <p>{reader.deviceNumber} · {reader.readerIp || "IP not detected"}</p>
             <div className="reader-line"><i className={"reader-dot " + state.tone} />{state.label}</div>
-            <p>{data.buildings.find((building) => building.id === reader.buildingId)?.name || "Building not assigned"} · {reader.mode.replaceAll("_", " / ")}</p>
+            <p>{data.buildings.find((building) => building.id === reader.buildingId)?.name || "Building not assigned"} · {modeLabel(normalizedMode(reader.mode))}</p>
             <p className="muted">{reader.enabled ? "Approved" : "Disabled"} · Last contact: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</p>
             <p className="muted">Setup QR: {reader.hasRegistrationQr ? "Registration ✓" : "Registration missing"} · {reader.hasEntryExitQr ? "Entry / Exit ✓" : "Entry / Exit missing"}</p>
             {data.canManage && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -342,7 +345,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
           <fieldset className="entity-fields" disabled={pending}>
             <label>Name<input name="name" defaultValue={selectedReader.name || `Reader ${selectedReader.deviceNumber}`} required /></label>
             <label>Building<select name="buildingId" defaultValue="" required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-            <label>Operating mode<select name="mode" value={setupMode} onChange={(event) => setSetupMode(event.target.value)}><option value="ENTRY_EXIT">Entry / Exit</option><option value="ENTRY">Entry only</option><option value="EXIT">Exit only</option><option value="REGISTER">Register card</option></select></label>
+            <label>Operating mode<select name="mode" value={setupMode} onChange={(event) => setSetupMode(event.target.value)}><option value="ENTRY">Entry</option><option value="EXIT">Exit</option><option value="REGISTER">Registration</option></select></label>
           </fieldset>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 14 }}>
@@ -386,7 +389,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <label>Device number<input value={editing.deviceNumber} readOnly /></label>
             <label>Name<input name="name" defaultValue={editing.name} required /></label>
             <label>Building<select name="buildingId" defaultValue={editing.buildingId || ""} required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-            <label>Operating mode<select name="mode" value={editingMode} onChange={(event) => setEditingMode(event.target.value)}><option value="ENTRY">Entry only</option><option value="EXIT">Exit only</option><option value="ENTRY_EXIT">Entry / Exit</option><option value="REGISTER">Register card</option></select></label>
+            <label>Operating mode<select name="mode" value={editingMode} onChange={(event) => setEditingMode(event.target.value)}><option value="ENTRY">Entry</option><option value="EXIT">Exit</option><option value="REGISTER">Registration</option></select></label>
             <label className="reader-enabled"><input type="checkbox" name="enabled" defaultChecked={editing.enabled} />Approved / enabled</label>
           </fieldset>
 
