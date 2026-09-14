@@ -102,7 +102,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     const effectiveMode = reader.mode === "ENTRY_EXIT" ? "ENTRY" : reader.mode;
 
     if (effectiveMode === "ENTRY" && vehicle.isInside) {
-      return record("0001", "Exit required before another entry.", "DENIED", ...context);
+      return record("0001", "Exit before Entry.", "DENIED", ...context);
     }
 
     if (effectiveMode === "EXIT" && !vehicle.isInside) {
@@ -119,7 +119,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
 
     const enter = effectiveMode === "ENTRY";
     if ((enter && vehicle.isInside) || (!enter && !vehicle.isInside)) {
-      return record("0001", enter ? "Exit required before another entry." : "Vehicle is already outside.", "DENIED", ...context);
+      return record("0001", enter ? "Exit before Entry." : "Vehicle is already outside.", "DENIED", ...context);
     }
 
     if (enter) {
