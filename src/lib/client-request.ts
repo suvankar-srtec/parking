@@ -1,6 +1,6 @@
 export async function requestJson<T extends { ok: boolean; message?: string }>(
   url: string,
-  method: "GET" | "POST" | "PATCH" = "GET",
+  method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
   body?: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
