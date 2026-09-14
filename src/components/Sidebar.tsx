@@ -73,7 +73,7 @@ export default function Sidebar({
           <span>Access Control</span><span className="menu-chevron" aria-hidden="true" />
         </button>
         <div id="access-menu" className="menu-items" hidden={!expanded.access}>
-          <Link className={`menu-button dark-menu${isAccessPage("/access-control") ? " active-menu" : ""}`} href="/access-control">RFID devices</Link>
+          <Link className={`menu-button dark-menu${isAccessPage("/access-control") ? " active-menu" : ""}`} href="/access-control">Device / Reader</Link>
           <Link className={`menu-button dark-menu${isAccessPage("/access-control/register-cards") ? " active-menu" : ""}`} href="/access-control/register-cards">Register cards</Link>
           <Link className={`menu-button dark-menu${isAccessPage("/access-control/activity") ? " active-menu" : ""}`} href="/access-control/activity">Real Time Monitor</Link>
           <Link className={`menu-button dark-menu${isAccessPage("/access-control/gate-details") ? " active-menu" : ""}`} href="/access-control/gate-details">Gate Details</Link>
