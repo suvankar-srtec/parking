@@ -35,7 +35,6 @@ export default async function GateDetailsPage() {
           deviceNumber: true,
           mode: true,
           enabled: true,
-          readerIp: true,
         },
       },
     },
