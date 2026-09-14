@@ -44,6 +44,20 @@ export default function SuperAdminManager() {
     });
   }
 
+  function removeAdmin(admin: SuperAdminRow) {
+    if (admin._count.ownedBuildings > 0) {
+      notify(`Reassign or remove this Super Admin's ${admin._count.ownedBuildings} building${admin._count.ownedBuildings === 1 ? "" : "s"} before deleting the account.`, "error");
+      return;
+    }
+    if (!window.confirm(`Remove Super Admin ${admin.userId} (${admin.username})? This action cannot be undone.`)) return;
+
+    void execute(async () => {
+      const result = await requestJson<{ ok: true; message: string }>("/api/super-admins", "DELETE", { id: admin.id });
+      notify(result.message);
+      await load();
+    });
+  }
+
   return <>
     <section className="portfolio-card building-management super-admin-management-card">
       <div className="portfolio-header super-admin-management-header">
@@ -72,6 +86,7 @@ export default function SuperAdminManager() {
               <th>Name</th>
               <th>Buildings</th>
               <th>Created</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -85,8 +100,17 @@ export default function SuperAdminManager() {
               </td>
               <td><span className="super-admin-building-count">{admin._count.ownedBuildings}</span></td>
               <td><span className="super-admin-created">{new Date(admin.createdAt).toLocaleString()}</span></td>
+              <td>
+                <button
+                  type="button"
+                  className="super-admin-remove-button"
+                  disabled={pending}
+                  title={admin._count.ownedBuildings > 0 ? "Reassign or remove this Super Admin's buildings before deleting the account." : "Remove Super Admin"}
+                  onClick={() => removeAdmin(admin)}
+                >Remove</button>
+              </td>
             </tr>) : <tr>
-              <td colSpan={4} className="super-admin-empty">No additional Super Admin accounts yet.</td>
+              <td colSpan={5} className="super-admin-empty">No additional Super Admin accounts yet.</td>
             </tr>}
           </tbody>
         </table>
@@ -113,7 +137,7 @@ export default function SuperAdminManager() {
       .super-admin-summary-box span{display:block;color:#6c7971;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
       .super-admin-summary-box strong{display:block;margin-top:5px;color:#7c46ac;font-size:22px}
       .super-admin-table-wrap{width:100%;overflow-x:auto;border:1px solid #d7e1db;border-radius:9px;background:#fff}
-      .super-admin-table{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
+      .super-admin-table{width:100%;border-collapse:separate;border-spacing:0;min-width:820px}
       .super-admin-table thead th{padding:12px 16px;border-bottom:1px solid #d7e1db;background:#f1f6f3;color:#526158;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;text-align:left;white-space:nowrap}
       .super-admin-table tbody td{padding:14px 16px;border-bottom:1px solid #e5ece8;vertical-align:middle;color:#203128;font-size:13px}
       .super-admin-table tbody tr:last-child td{border-bottom:0}
@@ -125,6 +149,9 @@ export default function SuperAdminManager() {
       .super-admin-name-cell small{display:block;margin-top:3px;color:#7b8780;font-size:10px}
       .super-admin-building-count{display:inline-grid;place-items:center;min-width:32px;height:28px;padding:0 8px;border-radius:6px;background:#f7f3fb;color:#7c46ac;font-weight:900}
       .super-admin-created{color:#66746c;white-space:nowrap}
+      .super-admin-remove-button{min-width:82px;padding:8px 12px;border:1px solid #e5b8b8;border-radius:7px;background:#fff6f6;color:#a52a2a;font-weight:800;cursor:pointer;transition:.15s ease}
+      .super-admin-remove-button:hover:not(:disabled){background:#fdeaea;border-color:#d99494}
+      .super-admin-remove-button:disabled{opacity:.55;cursor:not-allowed}
       .super-admin-empty{text-align:center;padding:30px 16px!important;color:#738078!important}
       @media(max-width:760px){.super-admin-management-header{align-items:flex-start}.super-admin-summary-row{grid-template-columns:1fr 1fr}.super-admin-table thead th,.super-admin-table tbody td{padding-left:12px;padding-right:12px}}
       @media(max-width:520px){.super-admin-summary-row{grid-template-columns:1fr}}
