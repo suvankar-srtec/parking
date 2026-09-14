@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
 function parseDate(value: string | null) {
   if (!value) return null;
@@ -10,26 +11,66 @@ function parseDate(value: string | null) {
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "EMPLOYEE") {
-    return NextResponse.json({ ok: false, message: "Supervisor access required." }, { status: 403 });
-  }
-  if (!user.buildingId) {
-    return NextResponse.json({ ok: false, message: "No building is assigned to this Supervisor." }, { status: 403 });
+  if (!user) {
+    return NextResponse.json({ ok: false, message: "Sign in required." }, { status: 401 });
   }
 
   const url = new URL(request.url);
   const start = parseDate(url.searchParams.get("start"));
   const end = parseDate(url.searchParams.get("end"));
+  const requestedBuildingId = String(url.searchParams.get("buildingId") || "").trim();
+  const requestedCompanyId = String(url.searchParams.get("companyId") || "").trim();
+
   if (!start || !end || start >= end) {
     return NextResponse.json({ ok: false, message: "A valid local-day range is required." }, { status: 400 });
   }
 
-  const [building, totalIn, totalOut, insideVehicles] = await Promise.all([
-    prisma.building.findUnique({ where: { id: user.buildingId }, select: { name: true } }),
-    prisma.rfidEvent.count({ where: { buildingId: user.buildingId, action: "ENTRY", createdAt: { gte: start, lt: end } } }),
-    prisma.rfidEvent.count({ where: { buildingId: user.buildingId, action: "EXIT", createdAt: { gte: start, lt: end } } }),
+  let buildingId: string | null = null;
+  let companyId: string | null = null;
+
+  if (user.role === "EMPLOYEE" || user.role === "BUILDING_ADMIN") {
+    buildingId = user.buildingId;
+  } else if (user.role === "COMPANY_ADMIN" || user.role === "BUILDING_OWNER") {
+    buildingId = user.buildingId;
+    companyId = user.companyId;
+  } else if (user.role === "SUPER_ADMIN") {
+    if (!requestedBuildingId) {
+      return NextResponse.json({ ok: false, message: "Select a building to view realtime monitoring." }, { status: 400 });
+    }
+
+    const building = await prisma.building.findUnique({
+      where: { id: requestedBuildingId },
+      select: { id: true, superAdminId: true },
+    });
+    if (!building) return NextResponse.json({ ok: false, message: "Building not found." }, { status: 404 });
+    if (!isPrimarySuperAdmin(user) && building.superAdminId !== user.id) {
+      return NextResponse.json({ ok: false, message: "This building is outside your scope." }, { status: 403 });
+    }
+    buildingId = building.id;
+    companyId = requestedCompanyId || null;
+  } else {
+    return NextResponse.json({ ok: false, message: "Realtime monitor access is not available for this account." }, { status: 403 });
+  }
+
+  if (!buildingId) {
+    return NextResponse.json({ ok: false, message: "No building is assigned to this account." }, { status: 403 });
+  }
+
+  if (companyId) {
+    const company = await prisma.company.findFirst({ where: { id: companyId, buildingId }, select: { id: true } });
+    if (!company) return NextResponse.json({ ok: false, message: "Company does not belong to the selected building." }, { status: 400 });
+  }
+
+  const companyFilter = companyId ? { companyId } : {};
+  const vehicleCompanyFilter = companyId ? { id: companyId } : { buildingId };
+
+  const [building, company, totalIn, totalOut, insideVehicles] = await Promise.all([
+    prisma.building.findUnique({ where: { id: buildingId }, select: { name: true } }),
+    companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
+    prisma.rfidEvent.count({ where: { buildingId, ...companyFilter, action: "ENTRY", createdAt: { gte: start, lt: end } } }),
+    prisma.rfidEvent.count({ where: { buildingId, ...companyFilter, action: "EXIT", createdAt: { gte: start, lt: end } } }),
     prisma.vehicle.findMany({
-      where: { isInside: true, company: { buildingId: user.buildingId } },
+      where: { isInside: true, company: vehicleCompanyFilter },
       select: { department: true },
     }),
   ]);
@@ -46,6 +87,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     buildingName: building?.name || "Assigned building",
+    companyName: company?.name || null,
     totalIn,
     totalOut,
     totalOnSite: insideVehicles.length,
