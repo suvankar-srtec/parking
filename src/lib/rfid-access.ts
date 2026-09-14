@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
 import { normalizeCard, SCAN_DEBOUNCE_MS, type ParsedRfidReaderMessage } from "@/lib/rfid-reader";
+import { parseGateConfig } from "@/lib/gate-config";
 
 export const RFID_TRANSACTION = { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 20000 };
 const CAPTURED_SAVE_WINDOW_MS = 5 * 60 * 1000;
@@ -102,8 +103,17 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     if (vehicle.company.buildingId !== reader.buildingId) return record("1004", "Card belongs to another building.");
     const context = [vehicle.id, vehicle.companyId] as const;
 
-    if (!["ENTRY_EXIT", "ENTRY", "EXIT"].includes(reader.mode)) {
-      return record(READER_NO_SUCCESS_CODE, "Reader must be configured as Entry/Exit or Registration.", "DENIED", ...context);
+    const buildingGates = await tx.gate.findMany({
+      where: { buildingId: reader.buildingId },
+      select: { gateNumber: true, direction: true },
+      orderBy: { gateNumber: "asc" },
+    });
+    const allottedGate = buildingGates.find((gate) => parseGateConfig(gate.direction).readerId === reader.id);
+    const allottedDirection = allottedGate ? parseGateConfig(allottedGate.direction).direction : null;
+    const effectiveMode = allottedDirection && allottedDirection !== "SELECT" ? allottedDirection : reader.mode;
+
+    if (!["ENTRY_EXIT", "ENTRY", "EXIT"].includes(effectiveMode)) {
+      return record(READER_NO_SUCCESS_CODE, "Reader must be allotted to a gate direction or configured as Entry/Exit.", "DENIED", ...context);
     }
 
     if (vehicle.lastAccessAt && receivedAt - vehicle.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
@@ -111,11 +121,9 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     }
 
     let enter: boolean;
-    if (reader.mode === "ENTRY_EXIT") {
-      // Combined reader automatically treats the next valid scan as ENTRY when outside
-      // and EXIT when already inside.
+    if (effectiveMode === "ENTRY_EXIT") {
       enter = !vehicle.isInside;
-    } else if (reader.mode === "ENTRY") {
+    } else if (effectiveMode === "ENTRY") {
       if (vehicle.isInside) return record(READER_NO_SUCCESS_CODE, "Exit before Entry.", "DENIED", ...context);
       enter = true;
     } else {
@@ -134,8 +142,6 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
 
     await tx.vehicle.update({ where: { id: vehicle.id }, data: { isInside: enter, lastAccessAt: new Date(), lastAccessDevice: reader.deviceNumber } });
 
-    // Valid ENTRY and valid EXIT both return 0000 so the configured red LED can blink.
-    // Registration and all denied/duplicate scans return 0001.
     return record(READER_SUCCESS_CODE, enter ? "Parking allowed" : "Vehicle checked out", enter ? "ENTRY" : "EXIT", ...context);
   }, RFID_TRANSACTION);
 }
