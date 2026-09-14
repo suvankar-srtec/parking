@@ -93,13 +93,17 @@ export default function CreateEntityModal({ kind, buildingId, companyId }: { kin
     let body: Record<string, unknown> = { ...credentials, userId: generatedUserId, reservationId };
     if (isBuilding) {
       delete body.userId;
+      const maximumGate = Number(formData.get("maximumGate"));
+      if (!Number.isInteger(maximumGate) || maximumGate < 1) {
+        notify("Maximum Gate must be at least 1.", "error"); return;
+      }
       const parsed = validateParking({
         totalParking: Number(parking.totalParking),
         ownerParking: Number(parking.ownerParking),
         companyParking: Number(parking.companyParking),
       });
       if (!parsed.ok) { notify(parsed.message, "error"); return; }
-      body = { ...body, ...parsed.values };
+      body = { ...body, ...parsed.values, maximumGate };
     } else if (kind === "company") {
       body.parkingAllocation = Number(formData.get("parkingAllocation") ?? 0);
     } else {
@@ -143,6 +147,7 @@ export default function CreateEntityModal({ kind, buildingId, companyId }: { kin
             </div>
             {kind !== "employee" && <label>{isBuilding ? "Building username" : "Username"}<input name="username" required autoComplete="off" placeholder="Username" /></label>}
             {kind !== "employee" && <PasswordInput label={isBuilding ? "Building password" : "Password"} name="password" required autoComplete="new-password" placeholder="Password" disabled={pending} />}
+            {isBuilding && <label>Maximum Gate<input name="maximumGate" type="number" min="1" step="1" defaultValue="1" required /></label>}
             {kind === "company" && <label>Parking allocation<input name="parkingAllocation" type="number" min="0" step="1" max="2147483647" defaultValue="0" required /></label>}
             {kind === "employee" && <>
               <label>Type<select name="category" defaultValue="EMPLOYEE" required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
