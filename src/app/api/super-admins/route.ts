@@ -60,6 +60,50 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true, message: `Super Admin created successfully. User ID: ${result.userId}.`, admin: result }, { status: 201 });
 }
 
+export async function PATCH(request: Request) {
+  const currentUser = await requireRootSuperAdmin();
+  if (!currentUser) {
+    return NextResponse.json({ ok: false, message: "Only the primary Super Admin can edit another Super Admin." }, { status: 403 });
+  }
+
+  const body = await request.json().catch(() => null);
+  const adminId = String(body?.id ?? "").trim();
+  const username = String(body?.username ?? "").trim();
+
+  if (!adminId) {
+    return NextResponse.json({ ok: false, message: "Super Admin ID is required." }, { status: 400 });
+  }
+  if (!username) {
+    return NextResponse.json({ ok: false, message: "Super Admin name is required." }, { status: 400 });
+  }
+  if (username.length > 120) {
+    return NextResponse.json({ ok: false, message: "Super Admin name is too long." }, { status: 400 });
+  }
+  if (adminId === currentUser.id) {
+    return NextResponse.json({ ok: false, message: "Edit your primary account from its account settings." }, { status: 400 });
+  }
+
+  const target = await prisma.user.findFirst({
+    where: { id: adminId, role: "SUPER_ADMIN" },
+    select: { id: true, userId: true },
+  });
+  if (!target) {
+    return NextResponse.json({ ok: false, message: "Super Admin account not found." }, { status: 404 });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: target.id },
+    data: { username },
+    select: { id: true, userId: true, username: true, createdAt: true },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    message: `Super Admin ${updated.userId} updated successfully.`,
+    admin: updated,
+  });
+}
+
 export async function DELETE(request: Request) {
   const currentUser = await requireRootSuperAdmin();
   if (!currentUser) {
