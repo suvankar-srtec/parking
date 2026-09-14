@@ -17,24 +17,53 @@ export default async function GateDetailsPage() {
     ? (primary ? undefined : { superAdminId: user.id })
     : { id: user.buildingId || "__none__" };
 
-  const buildings = await prisma.building.findMany({
-    where,
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      name: true,
-      maximumGate: true,
-      gates: {
-        select: { gateNumber: true, direction: true },
-        orderBy: { gateNumber: "asc" },
+  const [buildings, availableReaders] = await Promise.all([
+    prisma.building.findMany({
+      where,
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        maximumGate: true,
+        gates: {
+          select: { gateNumber: true, direction: true },
+          orderBy: { gateNumber: "asc" },
+        },
+        readers: {
+          orderBy: { deviceNumber: "asc" },
+          select: {
+            id: true,
+            name: true,
+            deviceNumber: true,
+            mode: true,
+            enabled: true,
+            readerIp: true,
+          },
+        },
       },
-    },
-  });
+    }),
+    user.role === "SUPER_ADMIN"
+      ? prisma.rfidReader.findMany({
+          where: { buildingId: null, lastSeenAt: { not: null } },
+          orderBy: { deviceNumber: "asc" },
+          select: {
+            id: true,
+            name: true,
+            deviceNumber: true,
+            mode: true,
+            enabled: true,
+            readerIp: true,
+          },
+        })
+      : Promise.resolve([]),
+  ]);
 
   const gateRows = buildings.map((building) => ({
     id: building.id,
     name: building.name,
     maximumGate: building.maximumGate,
+    readers: building.readers,
+    availableReaders,
     gates: building.gates.length
       ? building.gates.map((gate) => ({
           gateNumber: gate.gateNumber,
