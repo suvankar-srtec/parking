@@ -5,8 +5,7 @@ import GateDetailsManager from "@/components/GateDetailsManager";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
-
-type GateDirection = "SELECT" | "ENTRY" | "EXIT" | "ENTRY_EXIT";
+import { parseGateConfig } from "@/lib/gate-config";
 
 export default async function GateDetailsPage() {
   const user = await getCurrentUser();
@@ -17,61 +16,46 @@ export default async function GateDetailsPage() {
     ? (primary ? undefined : { superAdminId: user.id })
     : { id: user.buildingId || "__none__" };
 
-  const [buildings, availableReaders] = await Promise.all([
-    prisma.building.findMany({
-      where,
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        maximumGate: true,
-        gates: {
-          select: { gateNumber: true, direction: true },
-          orderBy: { gateNumber: "asc" },
-        },
-        readers: {
-          orderBy: { deviceNumber: "asc" },
-          select: {
-            id: true,
-            name: true,
-            deviceNumber: true,
-            mode: true,
-            enabled: true,
-            readerIp: true,
-          },
+  const buildings = await prisma.building.findMany({
+    where,
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      maximumGate: true,
+      gates: {
+        select: { gateNumber: true, direction: true },
+        orderBy: { gateNumber: "asc" },
+      },
+      readers: {
+        orderBy: { deviceNumber: "asc" },
+        select: {
+          id: true,
+          name: true,
+          deviceNumber: true,
+          mode: true,
+          enabled: true,
+          readerIp: true,
         },
       },
-    }),
-    user.role === "SUPER_ADMIN"
-      ? prisma.rfidReader.findMany({
-          where: { buildingId: null, lastSeenAt: { not: null } },
-          orderBy: { deviceNumber: "asc" },
-          select: {
-            id: true,
-            name: true,
-            deviceNumber: true,
-            mode: true,
-            enabled: true,
-            readerIp: true,
-          },
-        })
-      : Promise.resolve([]),
-  ]);
+    },
+  });
 
   const gateRows = buildings.map((building) => ({
     id: building.id,
     name: building.name,
     maximumGate: building.maximumGate,
     readers: building.readers,
-    availableReaders,
     gates: building.gates.length
-      ? building.gates.map((gate) => ({
-          gateNumber: gate.gateNumber,
-          direction: (["ENTRY", "EXIT", "ENTRY_EXIT"] as const).includes(gate.direction as "ENTRY" | "EXIT" | "ENTRY_EXIT")
-            ? gate.direction as GateDirection
-            : "SELECT" as GateDirection,
-        }))
-      : [{ gateNumber: 1, direction: "SELECT" as GateDirection }],
+      ? building.gates.map((gate) => {
+          const config = parseGateConfig(gate.direction);
+          return {
+            gateNumber: gate.gateNumber,
+            direction: config.direction,
+            readerId: config.readerId,
+          };
+        })
+      : [{ gateNumber: 1, direction: "SELECT" as const, readerId: null }],
   }));
 
   return <main className="dashboard-page">
