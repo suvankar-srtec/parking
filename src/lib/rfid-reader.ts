@@ -1,5 +1,5 @@
 export type ParsedRfidReaderMessage = { decodedResult: string; deviceNumber: string };
-export const READER_MODES = ["REGISTER", "ENTRY_EXIT", "ENTRY", "EXIT"] as const;
+export const READER_MODES = ["REGISTER", "ENTRY", "EXIT"] as const;
 export const SCAN_DEBOUNCE_MS = 3000;
 export function normalizeCard(value: string) { return value.trim().toUpperCase(); }
 export function readerReply(success: boolean, message: string) {
