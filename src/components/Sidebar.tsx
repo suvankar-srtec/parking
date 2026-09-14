@@ -2,7 +2,8 @@
 
 import type { UserRole } from "@prisma/client";
 import Link from "@/components/AppLink";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import ReaderConsole from "./ReaderConsole";
 import { canConfigureReaders, dashboardLabel, roleLabel } from "@/lib/roles";
 
@@ -11,36 +12,75 @@ export default function Sidebar({
   dashboardHref = "/dashboard",
   canCreateSuperAdmins = false,
 }: { role?: UserRole; dashboardHref?: string; canCreateSuperAdmins?: boolean }) {
-  const [expanded, setExpanded] = useState({ dashboard: true, access: false });
-  function toggle(section: keyof typeof expanded) { setExpanded((current) => ({ ...current, [section]: !current[section] })); }
+  const pathname = usePathname();
+
+  const dashboardPageActive = pathname === dashboardHref || pathname.startsWith(`${dashboardHref}/`);
+  const superAdminsActive = pathname === "/super-admins" || pathname.startsWith("/super-admins/");
+  const dashboardGroupActive = dashboardPageActive || superAdminsActive;
+  const accessGroupActive = pathname === "/access-control" || pathname.startsWith("/access-control/");
+  const reportsActive = pathname === "/reports" || pathname.startsWith("/reports/");
+
+  const [expanded, setExpanded] = useState({
+    dashboard: dashboardGroupActive,
+    access: accessGroupActive,
+  });
+
+  useEffect(() => {
+    setExpanded((current) => ({
+      dashboard: dashboardGroupActive ? true : current.dashboard,
+      access: accessGroupActive ? true : current.access,
+    }));
+  }, [dashboardGroupActive, accessGroupActive]);
+
+  function toggle(section: keyof typeof expanded) {
+    setExpanded((current) => ({ ...current, [section]: !current[section] }));
+  }
 
   const showAccess = canConfigureReaders(role);
   const showReaderStatus = showAccess || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER";
   const roleClass = `sidebar-${role.toLowerCase().replaceAll("_", "-")}`;
+
+  const isAccessPage = (href: string) => pathname === href;
 
   return <aside className={`sidebar ${roleClass}`}>
     <div className="sidebar-brand"><div className="logo-box">P</div><div><strong>ParkControl</strong><span>{roleLabel(role)}</span></div></div>
     <div className="sidebar-line" />
     <nav aria-label="Main navigation">
       <div className="menu-group">
-        <button type="button" className="menu-button menu-button-main menu-toggle" aria-expanded={expanded.dashboard} aria-controls="dashboard-menu" onClick={() => toggle("dashboard")}><span>Dashboard</span><span className="menu-chevron" aria-hidden="true" /></button>
+        <button
+          type="button"
+          className={`menu-button menu-button-main menu-toggle${dashboardGroupActive ? " sidebar-parent-active" : ""}`}
+          aria-expanded={expanded.dashboard}
+          aria-controls="dashboard-menu"
+          onClick={() => toggle("dashboard")}
+        >
+          <span>Dashboard</span><span className="menu-chevron" aria-hidden="true" />
+        </button>
         <div id="dashboard-menu" className="menu-items" hidden={!expanded.dashboard}>
-          <Link className="menu-button menu-button-sub active-menu" href={dashboardHref}>{dashboardLabel(role)}</Link>
-          {canCreateSuperAdmins ? <Link className="menu-button menu-button-sub dark-menu" href="/super-admins">Create Super Admin</Link> : null}
+          <Link className={`menu-button menu-button-sub${dashboardPageActive ? " active-menu" : " dark-menu"}`} href={dashboardHref}>{dashboardLabel(role)}</Link>
+          {canCreateSuperAdmins ? <Link className={`menu-button menu-button-sub dark-menu${superAdminsActive ? " active-menu" : ""}`} href="/super-admins">Create Super Admin</Link> : null}
         </div>
       </div>
 
       {showAccess ? <div className="menu-group">
-        <button type="button" className="menu-section-title menu-toggle" aria-expanded={expanded.access} aria-controls="access-menu" onClick={() => toggle("access")}><span>Access Control</span><span className="menu-chevron" aria-hidden="true" /></button>
+        <button
+          type="button"
+          className={`menu-section-title menu-toggle${accessGroupActive ? " sidebar-section-active" : ""}`}
+          aria-expanded={expanded.access}
+          aria-controls="access-menu"
+          onClick={() => toggle("access")}
+        >
+          <span>Access Control</span><span className="menu-chevron" aria-hidden="true" />
+        </button>
         <div id="access-menu" className="menu-items" hidden={!expanded.access}>
-          <Link className="menu-button dark-menu" href="/access-control">RFID devices</Link>
-          <Link className="menu-button dark-menu" href="/access-control/register-cards">Register cards</Link>
-          <Link className="menu-button dark-menu" href="/access-control/activity">Real Time Monitor</Link>
-          <Link className="menu-button dark-menu" href="/access-control/gate-details">Gate Details</Link>
-          <Link className="menu-button dark-menu" href="/access-control/reader-details">Reader Details</Link>
+          <Link className={`menu-button dark-menu${isAccessPage("/access-control") ? " active-menu" : ""}`} href="/access-control">RFID devices</Link>
+          <Link className={`menu-button dark-menu${isAccessPage("/access-control/register-cards") ? " active-menu" : ""}`} href="/access-control/register-cards">Register cards</Link>
+          <Link className={`menu-button dark-menu${isAccessPage("/access-control/activity") ? " active-menu" : ""}`} href="/access-control/activity">Real Time Monitor</Link>
+          <Link className={`menu-button dark-menu${isAccessPage("/access-control/gate-details") ? " active-menu" : ""}`} href="/access-control/gate-details">Gate Details</Link>
+          <Link className={`menu-button dark-menu${isAccessPage("/access-control/reader-details") ? " active-menu" : ""}`} href="/access-control/reader-details">Reader Details</Link>
         </div>
       </div> : null}
-      <Link className="menu-section-title" href="/reports"><span>Reports</span></Link>
+      <Link className={`menu-section-title${reportsActive ? " sidebar-section-active" : ""}`} href="/reports"><span>Reports</span></Link>
     </nav>
     {showReaderStatus ? <ReaderConsole compact /> : null}
 
@@ -94,6 +134,16 @@ export default function Sidebar({
       }
       .sidebar .menu-toggle.menu-section-title{padding-bottom:8px}
       .sidebar .menu-chevron{width:6px;height:6px;border-width:0 1.5px 1.5px 0;margin-right:2px}
+      .sidebar .sidebar-parent-active{box-shadow:inset 4px 0 0 #8a4dbc}
+      .sidebar .sidebar-section-active{background:rgba(255,255,255,.10);color:#fff}
+      .sidebar .dark-menu.active-menu,
+      .sidebar .menu-button-sub.active-menu{
+        background:#fff;
+        color:#352245;
+        border-color:#fff;
+        font-weight:800;
+      }
+      .sidebar .dark-menu.active-menu{box-shadow:inset 4px 0 0 #9a58c8}
       .sidebar .reader-panel{
         margin-top:auto;
         padding:10px 7px 2px;
