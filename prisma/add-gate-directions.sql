@@ -2,11 +2,14 @@ CREATE TABLE IF NOT EXISTS "gates" (
   "id" TEXT NOT NULL,
   "buildingId" TEXT NOT NULL,
   "gateNumber" INTEGER NOT NULL,
-  "direction" TEXT NOT NULL DEFAULT 'ENTRY',
+  "direction" TEXT NOT NULL DEFAULT 'SELECT',
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "gates_pkey" PRIMARY KEY ("id")
 );
+
+ALTER TABLE "gates"
+ALTER COLUMN "direction" SET DEFAULT 'SELECT';
 
 CREATE UNIQUE INDEX IF NOT EXISTS "gates_buildingId_gateNumber_key"
 ON "gates"("buildingId", "gateNumber");
