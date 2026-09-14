@@ -29,6 +29,12 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
   const { notify } = useFeedback();
   const [rows, setRows] = useState(buildings);
   const [savingKey, setSavingKey] = useState("");
+  const [search, setSearch] = useState("");
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleRows = normalizedSearch
+    ? rows.filter((building) => building.name.toLowerCase().includes(normalizedSearch))
+    : rows;
 
   async function updateDirection(buildingId: string, gateNumber: number, direction: GateDirection) {
     const key = `${buildingId}:${gateNumber}`;
@@ -98,84 +104,121 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
     }
   }
 
-  if (!rows.length) return <p className="muted">No buildings are available for this account.</p>;
-
-  return <div className="gate-building-list">
-    {rows.map((building) => <section className="gate-building-card" key={building.id}>
-      <div className="gate-building-head">
-        <div className="gate-building-title">
-          <div className="section-kicker">BUILDING</div>
-          <h3>{building.name}</h3>
-        </div>
-        <div className="gate-limit-badge"><span>Max Gates</span><strong>{building.maximumGate}</strong></div>
+  return <div className="gate-manager">
+    <div className="gate-manager-toolbar">
+      <div>
+        <div className="section-kicker">BUILDING GATES</div>
+        <h2>Gate direction management</h2>
       </div>
+      <label className="gate-search" aria-label="Search building">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" /></svg>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search building name"
+          autoComplete="off"
+        />
+      </label>
+    </div>
+    <div className="gate-manager-divider" />
 
-      <div className="gate-table-wrap">
-        <table className="gate-table">
-          <thead>
-            <tr>
-              <th>Gate</th>
-              <th>Direction</th>
-              <th>Entry</th>
-              <th>Exit</th>
-              <th>Status</th>
-              <th className="manage-heading">Manage</th>
-            </tr>
-          </thead>
-          <tbody>
-            {building.gates.map((gate, index) => {
-              const key = `${building.id}:${gate.gateNumber}`;
-              const saving = savingKey === key || savingKey === `${key}:remove`;
-              const entryActive = gate.direction === "ENTRY" || gate.direction === "ENTRY_EXIT";
-              const exitActive = gate.direction === "EXIT" || gate.direction === "ENTRY_EXIT";
-              const isLast = index === building.gates.length - 1;
-              const canAdd = isLast && building.gates.length < building.maximumGate;
-              const canRemove = building.gates.length > 1;
-              return <tr key={gate.gateNumber}>
-                <td><span className="gate-number">Gate {gate.gateNumber}</span></td>
-                <td>
-                  <div className="gate-select-shell">
-                    <select
-                      aria-label={`${building.name} Gate ${gate.gateNumber} direction`}
-                      value={gate.direction}
-                      disabled={saving}
-                      onChange={(event) => void updateDirection(building.id, gate.gateNumber, event.target.value as GateDirection)}
-                    >
-                      <option value="SELECT">Select</option>
-                      <option value="ENTRY">Entry</option>
-                      <option value="EXIT">Exit</option>
-                      <option value="ENTRY_EXIT">Entry / Exit</option>
-                    </select>
-                    <span aria-hidden="true">⌄</span>
-                  </div>
-                </td>
-                <td>
-                  <label className={`gate-radio-state ${entryActive ? "active" : "faded"}`}>
-                    <input type="radio" checked={entryActive} readOnly tabIndex={-1} aria-label="Entry enabled" />
-                    <span>Entry</span>
-                  </label>
-                </td>
-                <td>
-                  <label className={`gate-radio-state ${exitActive ? "active" : "faded"}`}>
-                    <input type="radio" checked={exitActive} readOnly tabIndex={-1} aria-label="Exit enabled" />
-                    <span>Exit</span>
-                  </label>
-                </td>
-                <td><span className={`gate-status-pill ${saving ? "saving" : gate.direction === "SELECT" ? "unconfigured" : "ready"}`}>{saving ? "Saving…" : directionLabel(gate.direction)}</span></td>
-                <td>
-                  <div className="gate-row-actions">
-                    {canRemove ? <button type="button" className="gate-icon-button remove" aria-label={`Remove Gate ${gate.gateNumber}`} disabled={Boolean(savingKey)} onClick={() => void removeGate(building.id, gate.gateNumber)}>−</button> : <span className="gate-icon-placeholder" />}
-                    {canAdd ? <button type="button" className="gate-icon-button add" aria-label={`Add gate to ${building.name}`} disabled={Boolean(savingKey)} onClick={() => void addGate(building.id)}>+</button> : null}
-                  </div>
-                </td>
-              </tr>;
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>)}
+    {!rows.length ? <p className="gate-empty">No buildings are available for this account.</p> :
+      !visibleRows.length ? <div className="gate-empty-search">
+        <strong>No building found</strong>
+        <span>No building matches “{search.trim()}”.</span>
+      </div> :
+      <div className="gate-building-list">
+        {visibleRows.map((building) => <section className="gate-building-card" key={building.id}>
+          <div className="gate-building-head">
+            <div className="gate-building-title">
+              <div className="section-kicker">BUILDING</div>
+              <h3>{building.name}</h3>
+            </div>
+            <div className="gate-limit-badge"><span>Max Gates</span><strong>{building.maximumGate}</strong></div>
+          </div>
+
+          <div className="gate-table-wrap">
+            <table className="gate-table">
+              <thead>
+                <tr>
+                  <th>Gate</th>
+                  <th>Direction</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>Status</th>
+                  <th className="manage-heading">Manage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {building.gates.map((gate, index) => {
+                  const key = `${building.id}:${gate.gateNumber}`;
+                  const saving = savingKey === key || savingKey === `${key}:remove`;
+                  const entryActive = gate.direction === "ENTRY" || gate.direction === "ENTRY_EXIT";
+                  const exitActive = gate.direction === "EXIT" || gate.direction === "ENTRY_EXIT";
+                  const isLast = index === building.gates.length - 1;
+                  const canAdd = isLast && building.gates.length < building.maximumGate;
+                  const canRemove = building.gates.length > 1;
+                  return <tr key={gate.gateNumber}>
+                    <td><span className="gate-number">Gate {gate.gateNumber}</span></td>
+                    <td>
+                      <div className="gate-select-shell">
+                        <select
+                          aria-label={`${building.name} Gate ${gate.gateNumber} direction`}
+                          value={gate.direction}
+                          disabled={saving}
+                          onChange={(event) => void updateDirection(building.id, gate.gateNumber, event.target.value as GateDirection)}
+                        >
+                          <option value="SELECT">Select</option>
+                          <option value="ENTRY">Entry</option>
+                          <option value="EXIT">Exit</option>
+                          <option value="ENTRY_EXIT">Entry / Exit</option>
+                        </select>
+                        <span aria-hidden="true">⌄</span>
+                      </div>
+                    </td>
+                    <td>
+                      <label className={`gate-radio-state ${entryActive ? "active" : "faded"}`}>
+                        <input type="radio" checked={entryActive} readOnly tabIndex={-1} aria-label="Entry enabled" />
+                        <span>Entry</span>
+                      </label>
+                    </td>
+                    <td>
+                      <label className={`gate-radio-state ${exitActive ? "active" : "faded"}`}>
+                        <input type="radio" checked={exitActive} readOnly tabIndex={-1} aria-label="Exit enabled" />
+                        <span>Exit</span>
+                      </label>
+                    </td>
+                    <td><span className={`gate-status-pill ${saving ? "saving" : gate.direction === "SELECT" ? "unconfigured" : "ready"}`}>{saving ? "Saving…" : directionLabel(gate.direction)}</span></td>
+                    <td>
+                      <div className="gate-row-actions">
+                        {canRemove ? <button type="button" className="gate-icon-button remove" aria-label={`Remove Gate ${gate.gateNumber}`} disabled={Boolean(savingKey)} onClick={() => void removeGate(building.id, gate.gateNumber)}>−</button> : <span className="gate-icon-placeholder" />}
+                        {canAdd ? <button type="button" className="gate-icon-button add" aria-label={`Add gate to ${building.name}`} disabled={Boolean(savingKey)} onClick={() => void addGate(building.id)}>+</button> : null}
+                      </div>
+                    </td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>)}
+      </div>}
 
     <style>{`
+      .gate-manager{width:100%}
+      .gate-manager-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 0 11px}
+      .gate-manager-toolbar h2{margin:3px 0 0;font-size:19px;line-height:1.2}
+      .gate-search{width:min(300px,38%);height:36px;display:flex;align-items:center;gap:8px;padding:0 11px;border:1px solid #ccd8d1;border-radius:8px;background:#fff;transition:border-color .15s ease,box-shadow .15s ease}
+      .gate-search:focus-within{border-color:#8249b4;box-shadow:0 0 0 3px rgba(130,73,180,.09)}
+      .gate-search svg{width:16px;height:16px;fill:none;stroke:#77837c;stroke-width:1.8;stroke-linecap:round;flex:0 0 auto}
+      .gate-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#24362c;font:inherit;font-size:12px;font-weight:600}
+      .gate-search input::placeholder{color:#8a958f;font-weight:500}
+      .gate-search input::-webkit-search-cancel-button{cursor:pointer}
+      .gate-manager-divider{height:1px;background:#dce4df;margin:0 0 10px}
+      .gate-empty{margin:14px 0;color:#738078}
+      .gate-empty-search{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:130px;border:1px dashed #d5ded9;border-radius:9px;background:#fafcfb;color:#6f7c75;text-align:center}
+      .gate-empty-search strong{color:#2a3b32;font-size:13px}
+      .gate-empty-search span{font-size:11px}
       .gate-building-list{display:grid;gap:10px}
       .gate-building-card{border:1px solid #d9e3dd;border-radius:9px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(31,51,40,.025)}
       .gate-building-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 14px;background:#fff}
@@ -220,6 +263,8 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
       .gate-icon-button:disabled{opacity:.45;cursor:not-allowed}
       .gate-icon-placeholder{display:inline-block;width:26px;height:26px}
       @media(max-width:760px){
+        .gate-manager-toolbar{align-items:stretch;flex-direction:column;gap:9px}
+        .gate-search{width:100%}
         .gate-building-head{padding:9px 11px}
         .gate-building-title{gap:7px}
         .gate-limit-badge span{display:none}
