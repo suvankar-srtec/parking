@@ -42,6 +42,8 @@ export default function Sidebar({
           <Link className="menu-button dark-menu" href="/access-control">RFID devices</Link>
           <Link className="menu-button dark-menu" href="/access-control/register-cards">Register cards</Link>
           <Link className="menu-button dark-menu" href="/access-control/activity">Real Time Monitor</Link>
+          <Link className="menu-button dark-menu" href="/access-control/gate-details">Gate Details</Link>
+          <Link className="menu-button dark-menu" href="/access-control/reader-details">Reader Details</Link>
         </div>
       </div> : null}
       <Link className="menu-section-title" href="/reports"><span>Reports</span></Link>
