@@ -79,7 +79,7 @@ export default function Sidebar({
           <Link className={`menu-button dark-menu${isAccessPage("/access-control/activity") ? " active-menu" : ""}`} href="/access-control/activity">Real Time Monitor</Link>
         </div>
       </div> : null}
-      <Link className={`menu-section-title${reportsActive ? " sidebar-section-active" : ""}`} href="/reports"><span>Reports</span></Link>
+      <Link className={`menu-button menu-button-main report-nav-item${reportsActive ? " active-menu" : ""}`} href="/reports"><span>Reports</span></Link>
     </nav>
     {showReaderStatus ? <ReaderConsole compact /> : null}
 
@@ -116,6 +116,9 @@ export default function Sidebar({
       }
       .sidebar .menu-button{padding:8px 10px}
       .sidebar .menu-button-main{min-height:35px}
+      .sidebar .report-nav-item{margin:0;width:100%;color:#eee7f1;background:transparent;border:1px solid transparent;font-weight:700;text-align:left;justify-content:flex-start}
+      .sidebar .report-nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+      .sidebar .report-nav-item.active-menu{background:#fff;color:#352245;border-color:#fff;box-shadow:inset 4px 0 0 #9a58c8;font-weight:800}
       .sidebar .menu-button-sub,
       .sidebar .dark-menu{
         margin-left:10px;
