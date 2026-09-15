@@ -95,6 +95,7 @@ model Company {
 
   users User[] @relation("CompanyUsers")
   employees Employee[]
+  departments CompanyDepartment[]
   vehicles Vehicle[]
   cardEnrollments RfidEnrollment[]
   rfidEvents RfidEvent[]
@@ -107,6 +108,21 @@ model Company {
   @@map("companies")
 }
 
+model CompanyDepartment {
+  id        String @id @default(cuid())
+  companyId String
+  name      String
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("company_departments")
+}
+
 model Employee {
   id           String @id @default(cuid())
   name         String
@@ -115,6 +131,7 @@ model Employee {
   accountId    String? @unique
   category     String @default("EMPLOYEE")
   parkingLimit Int    @default(1)
+  department   String @default("Unassigned")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   account User? @relation("EmployeeAccount", fields: [accountId], references: [id], onDelete: SetNull)
