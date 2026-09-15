@@ -6,7 +6,6 @@ import { useFeedback, useMutation } from "./FeedbackProvider";
 import { ActionButton } from "./LoadingIndicator";
 import CardCapture, { type CapturedCard } from "./CardCapture";
 
-const departments = ["Admin", "Finance", "HR", "IT", "Operations", "Security", "Other"];
 const vehicleTypes = ["Two wheeler", "Four wheeler"];
 
 export default function VehicleModal({ companyId, employeeId, ownerName }: { companyId: string; employeeId: string; ownerName: string }) {
@@ -25,7 +24,6 @@ export default function VehicleModal({ companyId, employeeId, ownerName }: { com
       plateNumber: String(data.get("plateNumber") ?? "").trim(),
       vehicleType: String(data.get("vehicleType") ?? ""),
       workerType: String(data.get("workerType") ?? ""),
-      department: String(data.get("department") ?? ""),
       enrollmentId: card?.enrollmentId,
     };
     void execute(async () => {
@@ -45,7 +43,6 @@ export default function VehicleModal({ companyId, employeeId, ownerName }: { com
             <label>Owner Name<input name="ownerName" defaultValue={ownerName} required /></label>
             <label>Plate Number<input name="plateNumber" required placeholder="e.g. KA 01 AB 1234" /></label>
             <label>Vehicle Type<select name="vehicleType" defaultValue="" required><option value="" disabled>Select vehicle type</option>{vehicleTypes.map((vehicleType) => <option key={vehicleType}>{vehicleType}</option>)}</select></label>
-            <label>Department<select name="department" defaultValue="Admin" required>{departments.map((department) => <option key={department}>{department}</option>)}</select></label>
             <label>Staff or Employee<select name="workerType" defaultValue="" required><option value="" disabled>Select type</option><option>Staff</option><option>Employee</option></select></label>
             <CardCapture employeeId={employeeId} onCaptured={setCard} />
           </fieldset>
