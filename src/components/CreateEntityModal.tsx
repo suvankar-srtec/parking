@@ -8,21 +8,32 @@ import { ActionButton } from "./LoadingIndicator";
 import ParkingInputs from "./ParkingInputs";
 import PasswordInput from "./PasswordInput";
 
-export default function CreateEntityModal({ kind, buildingId, companyId }: { kind: "building" | "company" | "employee"; buildingId?: string; companyId?: string }) {
+type DepartmentOption = { id: string; name: string };
+
+export default function CreateEntityModal({ kind, buildingId, companyId, departments = [] }: { kind: "building" | "company" | "employee"; buildingId?: string; companyId?: string; departments?: DepartmentOption[] }) {
   const { notify, refresh } = useFeedback();
   const { pending, execute } = useMutation();
   const [open, setOpen] = useState(false);
   const [parking, setParking] = useState(() => parkingFields({ totalParking: 100, ownerParking: 15, companyParking: 85 }));
   const isBuilding = kind === "building";
-  const title = isBuilding ? "Create building" : kind === "company" ? "Create company" : "Add person";
+  const title = isBuilding ? "Create building" : kind === "company" ? "Create company" : "Add Employee";
   const [name, setName] = useState("");
   const [generatedUserId, setGeneratedUserId] = useState("");
   const [reservationId, setReservationId] = useState("");
   const [generatingUserId, setGeneratingUserId] = useState(false);
   const [generationError, setGenerationError] = useState("");
   const [idRefresh, setIdRefresh] = useState(0);
+  const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>(departments);
+  const [department, setDepartment] = useState(departments[0]?.name || "");
+  const [newDepartment, setNewDepartment] = useState("");
+  const [addingDepartment, setAddingDepartment] = useState(false);
   const requestVersion = useRef(0);
   const reservationRef = useRef("");
+
+  useEffect(() => {
+    setDepartmentOptions(departments);
+    if (!department && departments[0]) setDepartment(departments[0].name);
+  }, [departments, department]);
 
   function show() {
     setParking(parkingFields({ totalParking: 100, ownerParking: 15, companyParking: 85 }));
@@ -32,7 +43,30 @@ export default function CreateEntityModal({ kind, buildingId, companyId }: { kin
     reservationRef.current = "";
     setGeneratingUserId(false);
     setGenerationError("");
+    setDepartmentOptions(departments);
+    setDepartment(departments[0]?.name || "");
+    setNewDepartment("");
     setOpen(true);
+  }
+
+  async function addDepartment() {
+    const clean = newDepartment.trim().replace(/\s+/g, " ");
+    if (!companyId || !clean) {
+      notify("Enter a department name.", "error");
+      return;
+    }
+    setAddingDepartment(true);
+    try {
+      const result = await requestJson<{ ok: true; message: string; department: DepartmentOption }>(`/api/companies/${companyId}/departments`, "POST", { name: clean });
+      setDepartmentOptions((current) => [...current.filter((item) => item.id !== result.department.id), result.department].sort((a, b) => a.name.localeCompare(b.name)));
+      setDepartment(result.department.name);
+      setNewDepartment("");
+      notify(result.message);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Unable to add department.", "error");
+    } finally {
+      setAddingDepartment(false);
+    }
   }
 
   useEffect(() => {
@@ -107,8 +141,10 @@ export default function CreateEntityModal({ kind, buildingId, companyId }: { kin
     } else if (kind === "company") {
       body.parkingAllocation = Number(formData.get("parkingAllocation") ?? 0);
     } else {
+      if (!department) { notify("Select or add a department.", "error"); return; }
       body.category = String(formData.get("category") ?? "EMPLOYEE");
       body.parkingLimit = Number(formData.get("parkingLimit") ?? 1);
+      body.department = department;
     }
     void execute(async () => {
       const endpoint = isBuilding ? "/api/buildings" : kind === "company" ? `/api/buildings/${buildingId}/companies` : `/api/companies/${companyId}/employees`;
@@ -122,7 +158,7 @@ export default function CreateEntityModal({ kind, buildingId, companyId }: { kin
   return <>
     <button type="button" className={isBuilding ? "create-building-card" : "add-building-button"} onClick={show}>
       <span className={isBuilding ? "create-building-icon" : "plus-icon"} aria-hidden="true">+</span>
-      {isBuilding ? "Create building" : kind === "company" ? "New company" : "Add employee / owner"}
+      {isBuilding ? "Create building" : kind === "company" ? "New company" : "Add Employee"}
     </button>
     {open && <div className="modal-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget && !pending) setOpen(false);
@@ -130,7 +166,7 @@ export default function CreateEntityModal({ kind, buildingId, companyId }: { kin
       <section className={isBuilding ? "modal-card" : "modal-card small-modal"} role="dialog" aria-modal="true" aria-labelledby="entity-modal-title">
         <div className="modal-head">
           <div><div className="section-kicker">ACCOUNT SETUP</div><h2 id="entity-modal-title">{title}</h2>
-            <p>{isBuilding ? "Set up the building and its administrator account." : kind === "company" ? "Add a company and its login account." : "Assign parking spaces to an employee or company owner."}</p></div>
+            <p>{isBuilding ? "Set up the building and its administrator account." : kind === "company" ? "Add a company and its login account." : "Create an employee or company owner and assign their department and parking limit."}</p></div>
           <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={() => setOpen(false)}>×</button>
         </div>
         <form className="modal-form entity-form" aria-busy={pending} noValidate onSubmit={submit}>
@@ -152,12 +188,14 @@ export default function CreateEntityModal({ kind, buildingId, companyId }: { kin
             {kind === "employee" && <>
               <label>Type<select name="category" defaultValue="EMPLOYEE" required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
               <label>Parking lot limit<input name="parkingLimit" type="number" min="1" step="1" defaultValue="1" required /></label>
+              <label>Department<select value={department} onChange={(event) => setDepartment(event.target.value)} required><option value="" disabled>Select department</option>{departmentOptions.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select></label>
+              <div className="generated-id-field"><label htmlFor="new-department">Add department</label><div className="generated-id-wrap"><input id="new-department" value={newDepartment} onChange={(event) => setNewDepartment(event.target.value)} placeholder="e.g. Marketing" /><button type="button" className="id-refresh" style={{ width: 68, borderRadius: 7, fontWeight: 800, fontSize: 11 }} disabled={addingDepartment || !newDepartment.trim()} onClick={() => void addDepartment()}>{addingDepartment ? "Adding…" : "+ Add"}</button></div></div>
             </>}
           </fieldset>
           {isBuilding && <ParkingInputs fields={parking} onChange={setParking} disabled={pending} />}
           <div className="modal-actions">
             <button type="button" className="secondary-button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button>
-            <ActionButton type="submit" className="primary-button" pending={pending} pendingText={`Creating ${kind}…`}>{title}</ActionButton>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText={kind === "employee" ? "Adding employee…" : `Creating ${kind}…`}>{title}</ActionButton>
           </div>
         </form>
       </section>
