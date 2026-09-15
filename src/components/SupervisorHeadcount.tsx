@@ -60,11 +60,17 @@ export default function SupervisorHeadcount() {
   const range = useMemo(localDayRange, []);
   const seenEventId = useRef<string | null>(null);
   const initialized = useRef(false);
+  const requestInFlight = useRef(false);
 
   const load = useCallback(async () => {
+    if (requestInFlight.current || document.visibilityState !== "visible") return;
+    requestInFlight.current = true;
     try {
       const params = new URLSearchParams(range);
-      const response = await fetch(`/api/supervisor/headcount?${params.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/supervisor/headcount?${params.toString()}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      });
       const next = await response.json();
       if (!response.ok) throw new Error(next.message || "Unable to load realtime head count.");
 
@@ -82,15 +88,34 @@ export default function SupervisorHeadcount() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load realtime head count.");
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   }, [range]);
 
   useEffect(() => {
-    void load();
-    const poller = window.setInterval(() => void load(), 2500);
+    let stopped = false;
+    let pollTimer: ReturnType<typeof setTimeout>;
+
+    async function poll() {
+      if (stopped) return;
+      await load();
+      if (!stopped) pollTimer = window.setTimeout(poll, 3000);
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+
+    void poll();
+    document.addEventListener("visibilitychange", onVisibility);
     const timer = window.setInterval(() => setClock(new Date()), 1000);
-    return () => { window.clearInterval(poller); window.clearInterval(timer); };
+    return () => {
+      stopped = true;
+      window.clearTimeout(pollTimer);
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -125,7 +150,7 @@ export default function SupervisorHeadcount() {
         <div>
           <div className="section-kicker"><span className={styles.liveDot} />REALTIME MONITOR</div>
           <h2>Realtime Head Count</h2>
-          <p>{data?.buildingName || "Assigned building"} · updates every 2.5 seconds</p>
+          <p>{data?.buildingName || "Assigned building"} · updates every 3 seconds</p>
         </div>
         <div className={styles.clock}><strong>{clock.toLocaleDateString()}</strong><span>{clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>
       </div>
