@@ -51,12 +51,16 @@ export async function PATCH(
     const name = String(body?.name ?? "").trim();
     const category = String(body?.category ?? "EMPLOYEE").toUpperCase();
     const parkingLimit = Number(body?.parkingLimit);
+    const department = String(body?.department ?? "").trim();
 
     if (!name) {
       return NextResponse.json({ ok: false, message: "Enter the employee or company owner name." }, { status: 400 });
     }
     if (!["EMPLOYEE", "OWNER"].includes(category)) {
       return NextResponse.json({ ok: false, message: "Choose Employee or Company Owner." }, { status: 400 });
+    }
+    if (!department) {
+      return NextResponse.json({ ok: false, message: "Select a department." }, { status: 400 });
     }
     if (!Number.isInteger(parkingLimit) || parkingLimit < 1) {
       return NextResponse.json({ ok: false, message: "Parking limit must be at least 1." }, { status: 400 });
@@ -76,6 +80,9 @@ export async function PATCH(
       if (!canEditEmployee(user, employee)) {
         throw new EmployeeUpdateError("You do not have permission to edit this person.", 403);
       }
+
+      const departmentExists = await tx.companyDepartment.findFirst({ where: { companyId, name: department }, select: { id: true } });
+      if (!departmentExists) throw new EmployeeUpdateError("Select a department created for this company.");
 
       if (parkingLimit < employee._count.vehicles) {
         throw new EmployeeUpdateError(
@@ -97,13 +104,13 @@ export async function PATCH(
 
       const updated = await tx.employee.update({
         where: { id: employeeId },
-        data: { name, category, parkingLimit },
+        data: { name, category, parkingLimit, department },
       });
 
-      if (name !== employee.name) {
+      if (name !== employee.name || department !== employee.department) {
         await tx.vehicle.updateMany({
           where: { employeeId },
-          data: { ownerName: name },
+          data: { ownerName: name, department },
         });
       }
 
@@ -120,6 +127,7 @@ export async function PATCH(
         userId: result.userId,
         category: result.category,
         parkingLimit: result.parkingLimit,
+        department: result.department,
       },
     });
   } catch (error) {
