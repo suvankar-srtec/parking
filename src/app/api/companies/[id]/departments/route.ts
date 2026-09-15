@@ -25,8 +25,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const user = await canManageCompany(companyId);
   if (!user) return NextResponse.json({ ok: false, message: "You do not have access to this company's departments." }, { status: 403 });
 
-  const departments = await prisma.companyDepartment.findMany({ where: { companyId }, orderBy: { name: "asc" } });
-  return NextResponse.json({ ok: true, departments });
+  const [departments, company] = await Promise.all([
+    prisma.companyDepartment.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+    prisma.company.findUnique({ where: { id: companyId }, select: { maximumDepartments: true } }),
+  ]);
+  return NextResponse.json({ ok: true, departments, maximumDepartments: company?.maximumDepartments ?? 0 });
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -40,10 +43,24 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!name) return NextResponse.json({ ok: false, message: "Enter a department name." }, { status: 400 });
     if (name.length > 80) return NextResponse.json({ ok: false, message: "Department name must be 80 characters or less." }, { status: 400 });
 
-    const department = await prisma.companyDepartment.create({ data: { companyId, name } });
+    const result = await prisma.$transaction(async (tx) => {
+      const company = await tx.company.findUnique({ where: { id: companyId }, select: { maximumDepartments: true } });
+      if (!company) throw new Error("COMPANY_NOT_FOUND");
+      const count = await tx.companyDepartment.count({ where: { companyId } });
+      if (count >= company.maximumDepartments) throw new Error("DEPARTMENT_LIMIT");
+      const department = await tx.companyDepartment.create({ data: { companyId, name } });
+      return { department, remaining: company.maximumDepartments - count - 1 };
+    });
+
     revalidatePath("/dashboard");
-    return NextResponse.json({ ok: true, message: `${department.name} department added.`, department }, { status: 201 });
+    return NextResponse.json({ ok: true, message: `${result.department.name} department added. ${result.remaining} department slots remaining.`, department: result.department }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "COMPANY_NOT_FOUND") {
+      return NextResponse.json({ ok: false, message: "Company not found." }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === "DEPARTMENT_LIMIT") {
+      return NextResponse.json({ ok: false, message: "This company has reached its department limit." }, { status: 409 });
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ ok: false, message: "This department already exists for the company." }, { status: 409 });
     }
