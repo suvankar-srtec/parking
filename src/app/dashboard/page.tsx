@@ -75,7 +75,14 @@ export default async function DashboardPage() {
   if (user.role === "COMPANY_ADMIN" || user.role === "BUILDING_OWNER") {
     if (!user.companyId) return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main"><header className="topbar"><div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>Dashboard</h1></div><SignOutButton /></header><AssignmentRequired title="Company not assigned" message="This account must be linked to a company before parking allocation is available." /></section></main>;
 
-    const company = await prisma.company.findUnique({ where: { id: user.companyId }, include: { building: { select: { name: true } }, employees: { orderBy: { createdAt: "asc" }, include: { vehicles: true } } } });
+    const company = await prisma.company.findUnique({
+      where: { id: user.companyId },
+      include: {
+        building: { select: { name: true } },
+        departments: { orderBy: { name: "asc" } },
+        employees: { orderBy: { createdAt: "asc" }, include: { vehicles: true } },
+      },
+    });
     if (!company) redirect("/");
     const allotted = company.employees.reduce((total, employee) => total + employee.parkingLimit, 0);
     const used = company.employees.reduce((total, employee) => total + employee.vehicles.length, 0);
@@ -84,7 +91,7 @@ export default async function DashboardPage() {
     return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
       <header className="topbar"><div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>{company.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>Building</span><strong>{company.building.name}</strong></div><SignOutButton /></div></header>
       <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANY PARKING</div><h2>Parking allocation</h2><p>Assign parking limits to employees and company owners. Total assignments cannot exceed the company limit.</p></div></div><div className="portfolio-divider" /><div className="account-parking-grid account-company-parking-grid"><div className="large-stat"><span>Company limit</span><strong>{company.parkingAllocation}</strong></div><div className="large-stat"><span>Assigned limits</span><strong>{allotted}</strong></div><div className="large-stat"><span>Registered vehicles</span><strong>{used}</strong></div><div className="large-stat"><span>Unassigned</span><strong>{available}</strong></div></div></section>
-      <section className="portfolio-card building-management"><div className="employee-section-header"><div><div className="section-kicker">PEOPLE</div><h2>Employees & Company Owners</h2></div><CreateEntityModal kind="employee" companyId={company.id} /></div><div className="portfolio-divider" /><EmployeeList companyId={company.id} employees={company.employees} /></section>
+      <section className="portfolio-card building-management"><div className="employee-section-header"><div><div className="section-kicker">PEOPLE</div><h2>Employees & Company Owners</h2></div><CreateEntityModal kind="employee" companyId={company.id} departments={company.departments} /></div><div className="portfolio-divider" /><EmployeeList companyId={company.id} employees={company.employees} departments={company.departments} /></section>
     </section></main>;
   }
 
