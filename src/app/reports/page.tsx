@@ -85,7 +85,7 @@ export default async function ReportsPage() {
     companyName: string;
     vehicleNumber: string;
     rfidUid: string;
-    driver: string;
+    rider: string;
     department: string;
     inTime: string;
     outTime: string | null;
@@ -114,7 +114,7 @@ export default async function ReportsPage() {
       companyName: company?.name || "Building owner",
       vehicleNumber: vehicle?.plateNumber || "-",
       rfidUid: entry.cardNo,
-      driver: vehicle?.employee?.name || vehicle?.ownerName || "-",
+      rider: vehicle?.employee?.name || vehicle?.ownerName || "-",
       department: vehicle?.department || "-",
       inTime: entry.createdAt.toISOString(),
       outTime: event.createdAt.toISOString(),
@@ -133,7 +133,7 @@ export default async function ReportsPage() {
       companyName: entry.company?.name || "Building owner",
       vehicleNumber: vehicle?.plateNumber || "-",
       rfidUid: entry.cardNo,
-      driver: vehicle?.employee?.name || vehicle?.ownerName || "-",
+      rider: vehicle?.employee?.name || vehicle?.ownerName || "-",
       department: vehicle?.department || "-",
       inTime: entry.createdAt.toISOString(),
       outTime: null,
