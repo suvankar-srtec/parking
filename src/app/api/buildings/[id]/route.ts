@@ -39,14 +39,51 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ ok: false, message: "You do not have permission to update this building." }, { status: 403 });
     }
 
-    if ("enabled" in body) {
+    const bodyRecord = body as Record<string, unknown>;
+    const hasCredentialField = "username" in bodyRecord || "password" in bodyRecord;
+    if (hasCredentialField) {
+      const allowedKeys = new Set(["username", "password"]);
+      if (Object.keys(bodyRecord).some((key) => !allowedKeys.has(key))) {
+        return NextResponse.json({ ok: false, message: "Send only building username and password when updating login credentials." }, { status: 400 });
+      }
+
+      const username = typeof bodyRecord.username === "string" ? bodyRecord.username.trim() : "";
+      const password = typeof bodyRecord.password === "string" ? bodyRecord.password : "";
+      if (!username || !password.trim()) {
+        return NextResponse.json({ ok: false, message: "Building username and password are required." }, { status: 400 });
+      }
+
+      const account = await prisma.user.findFirst({
+        where: { role: "BUILDING_ADMIN", buildingId: id },
+        select: { id: true, userId: true },
+      });
+      if (!account) {
+        return NextResponse.json({ ok: false, message: "Building administrator account not found." }, { status: 404 });
+      }
+
+      if (user.role === "BUILDING_ADMIN" && account.id !== user.id) {
+        return NextResponse.json({ ok: false, message: "You can update only your own building login credentials." }, { status: 403 });
+      }
+
+      const updatedAccount = await prisma.user.update({
+        where: { id: account.id },
+        data: { username, password },
+        select: { userId: true, username: true },
+      });
+
+      revalidatePath("/dashboard");
+      revalidatePath(`/dashboard/buildings/${id}`);
+      return NextResponse.json({ ok: true, message: "Building login credentials updated.", account: updatedAccount });
+    }
+
+    if ("enabled" in bodyRecord) {
       if (user.role !== "SUPER_ADMIN") {
         return NextResponse.json({ ok: false, message: "Only a Super Admin can enable or disable buildings." }, { status: 403 });
       }
-      if (typeof body.enabled !== "boolean" || Object.keys(body).some((key) => key !== "enabled")) {
+      if (typeof bodyRecord.enabled !== "boolean" || Object.keys(bodyRecord).some((key) => key !== "enabled")) {
         return NextResponse.json({ ok: false, message: "Send only a boolean enabled setting." }, { status: 400 });
       }
-      const enabled = body.enabled;
+      const enabled = bodyRecord.enabled;
       const updated = await prisma.$transaction(async (tx) => {
         await lockBuildingParking(tx, id);
         return tx.building.update({ where: { id }, data: { enabled }, select: { id: true, enabled: true } });
@@ -57,19 +94,19 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ ok: true, message: enabled ? "Building enabled." : "Building disabled. Existing vehicles can still exit.", building: updated });
     }
 
-    const parsed = validateParking(body);
+    const parsed = validateParking(bodyRecord);
     if (!parsed.ok) {
       return NextResponse.json({ ok: false, message: parsed.message }, { status: 400 });
     }
 
-    const requestedMaximumGate = Number((body as Record<string, unknown>).maximumGate);
+    const requestedMaximumGate = Number(bodyRecord.maximumGate);
     const maximumGate = user.role === "SUPER_ADMIN" ? requestedMaximumGate : building.maximumGate;
 
     if (user.role === "SUPER_ADMIN") {
       if (!Number.isInteger(maximumGate) || maximumGate < 1 || maximumGate > 2147483647) {
         return NextResponse.json({ ok: false, message: "Maximum Gate must be a whole number of at least 1." }, { status: 400 });
       }
-    } else if ("maximumGate" in body && requestedMaximumGate !== building.maximumGate) {
+    } else if ("maximumGate" in bodyRecord && requestedMaximumGate !== building.maximumGate) {
       return NextResponse.json({ ok: false, message: "Only a Super Admin can change Maximum Gate." }, { status: 403 });
     }
 
