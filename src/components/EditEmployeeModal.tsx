@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { requestJson } from "@/lib/client-request";
 import { useFeedback, useMutation } from "./FeedbackProvider";
 import { ActionButton } from "./LoadingIndicator";
+import DepartmentPicker from "./DepartmentPicker";
 
 type DepartmentOption = { id: string; name: string };
 type EmployeeSummary = {
@@ -17,7 +18,9 @@ type EmployeeSummary = {
 
 export default function EditEmployeeModal({ companyId, employee, departments }: { companyId: string; employee: EmployeeSummary; departments: DepartmentOption[] }) {
   const { notify, refresh } = useFeedback();
-  const { pending, execute } = useMutation();
+  const { pending: saving, execute } = useMutation();
+  const [departmentBusy, setDepartmentBusy] = useState(false);
+  const pending = saving || departmentBusy;
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(employee.name);
   const [category, setCategory] = useState(employee.category);
@@ -34,6 +37,7 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     const cleanName = name.trim();
     if (!cleanName) {
       notify("Enter the employee or company owner name.", "error");
@@ -79,7 +83,7 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
             <label>Name<input value={name} onChange={(event) => setName(event.target.value)} required autoFocus /></label>
             <label>User ID<input value={employee.userId} readOnly /></label>
             <label>Type<select value={category} onChange={(event) => setCategory(event.target.value)} required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
-            <label>Department<select value={department} onChange={(event) => setDepartment(event.target.value)} required><option value="" disabled>Select department</option>{departments.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select></label>
+            <DepartmentPicker companyId={companyId} departments={departments} value={department} onChange={setDepartment} disabled={pending} onBusyChange={setDepartmentBusy} />
             <label>Parking lot limit<input type="number" min="1" step="1" value={parkingLimit} onChange={(event) => setParkingLimit(Number(event.target.value))} required /></label>
           </fieldset>
           <div className="modal-actions">

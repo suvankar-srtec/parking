@@ -1,0 +1,14 @@
+.field { position: relative; display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; font-weight: 700; color: #304238; }
+.trigger { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #cad6cf; border-radius: 8px; background: white; color: #17231d; font: inherit; text-align: left; cursor: pointer; }
+.trigger:focus-visible, .option:focus-visible, .remove:focus-visible { outline: 2px solid #8246ad; outline-offset: 2px; }
+.options { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; margin-top: 4px; padding: 4px; max-height: 220px; overflow-y: auto; border: 1px solid #d9cbe4; border-radius: 9px; background: white; box-shadow: 0 8px 24px #25173724; }
+.row { display: flex; align-items: center; gap: 6px; padding: 2px; }
+.option { flex: 1; min-width: 0; border: 0; border-radius: 5px; padding: 9px 8px; background: white; color: #283d32; text-align: left; font: inherit; overflow-wrap: anywhere; cursor: pointer; }
+.option:hover, .option[aria-pressed="true"] { background: #f0e8f7; color: #703ba0; }
+.remove { display: inline-flex; justify-content: center; align-items: center; flex: 0 0 30px; width: 30px; height: 30px; padding: 0; border: 1px solid #f1cccc; border-radius: 6px; color: #ae3030; background: #fff5f5; font-size: 21px; cursor: pointer; }
+.remove:hover { background: #ffe3e3; }
+.field button:disabled { opacity: .55; cursor: wait; }
+.empty { padding: 10px; margin: 0; font-weight: 400; color: #68776f; }
+
+.field .trigger > span { margin: 0; color: inherit; font-size: inherit; font-weight: inherit; }
+.field .remove > span { margin: 0; color: inherit; font-size: 21px; line-height: 1; }

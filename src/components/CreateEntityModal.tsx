@@ -5,16 +5,18 @@ import { checkForm, requestJson } from "@/lib/client-request";
 import { parkingFields, validateParking } from "@/lib/parking";
 import { useFeedback, useMutation } from "./FeedbackProvider";
 import { ActionButton } from "./LoadingIndicator";
+import DepartmentPicker from "./DepartmentPicker";
 import ParkingInputs from "./ParkingInputs";
 import PasswordInput from "./PasswordInput";
 
 type DepartmentOption = { id: string; name: string };
+const emptyDepartments: DepartmentOption[] = [];
 
 export default function CreateEntityModal({
   kind,
   buildingId,
   companyId,
-  departments = [],
+  departments = emptyDepartments,
   maximumDepartments = 10,
 }: {
   kind: "building" | "company" | "employee";
@@ -24,7 +26,9 @@ export default function CreateEntityModal({
   maximumDepartments?: number;
 }) {
   const { notify, refresh } = useFeedback();
-  const { pending, execute } = useMutation();
+  const { pending: saving, execute } = useMutation();
+  const [departmentBusy, setDepartmentBusy] = useState(false);
+  const pending = saving || departmentBusy;
   const [open, setOpen] = useState(false);
   const [parking, setParking] = useState(() => parkingFields({ totalParking: 100, ownerParking: 15, companyParking: 85 }));
   const isBuilding = kind === "building";
@@ -39,15 +43,13 @@ export default function CreateEntityModal({
   const [department, setDepartment] = useState(departments[0]?.name || "");
   const [newDepartment, setNewDepartment] = useState("");
   const [addingDepartment, setAddingDepartment] = useState(false);
-  const [deletingDepartmentId, setDeletingDepartmentId] = useState("");
   const [departmentLimit, setDepartmentLimit] = useState(1);
   const requestVersion = useRef(0);
   const reservationRef = useRef("");
 
   useEffect(() => {
     setDepartmentOptions(departments);
-    if (!department && departments[0]) setDepartment(departments[0].name);
-  }, [departments, department]);
+  }, [departments]);
 
   function show() {
     setParking(parkingFields({ totalParking: 100, ownerParking: 15, companyParking: 85 }));
@@ -86,25 +88,6 @@ export default function CreateEntityModal({
       notify(error instanceof Error ? error.message : "Unable to add department.", "error");
     } finally {
       setAddingDepartment(false);
-    }
-  }
-
-  async function deleteDepartment(item: DepartmentOption) {
-    if (!companyId) return;
-    const confirmed = window.confirm(`Delete the ${item.name} department? Employees and vehicles using it will be moved to Unassigned.`);
-    if (!confirmed) return;
-    setDeletingDepartmentId(item.id);
-    try {
-      const result = await requestJson<{ ok: true; message: string }>(`/api/companies/${companyId}/departments/${item.id}`, "DELETE");
-      const remaining = departmentOptions.filter((option) => option.id !== item.id);
-      setDepartmentOptions(remaining);
-      if (department === item.name) setDepartment(remaining[0]?.name || "");
-      notify(result.message);
-      refresh();
-    } catch (error) {
-      notify(error instanceof Error ? error.message : "Unable to delete department.", "error");
-    } finally {
-      setDeletingDepartmentId("");
     }
   }
 
@@ -149,6 +132,7 @@ export default function CreateEntityModal({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending || addingDepartment) return;
     const formError = checkForm(event.currentTarget);
     if (formError) { notify(formError, "error"); return; }
     const formData = new FormData(event.currentTarget);
@@ -231,9 +215,8 @@ export default function CreateEntityModal({
             {kind === "employee" && <>
               <label>Type<select name="category" defaultValue="EMPLOYEE" required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
               <label>Parking lot limit<input name="parkingLimit" type="number" min="1" step="1" defaultValue="1" required /></label>
-              <label>Department<select value={department} onChange={(event) => setDepartment(event.target.value)} required><option value="" disabled>Select department</option>{departmentOptions.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select></label>
+              <DepartmentPicker companyId={companyId!} departments={departmentOptions} value={department} onChange={setDepartment} disabled={pending || addingDepartment} onBusyChange={setDepartmentBusy} onRemoved={(id) => setDepartmentOptions((current) => current.filter((item) => item.id !== id))} />
               <div className="generated-id-field"><label htmlFor="new-department">Add department <span className="department-count">{departmentOptions.length}/{maximumDepartments}</span></label><div className="generated-id-wrap"><input id="new-department" value={newDepartment} onChange={(event) => setNewDepartment(event.target.value)} placeholder="e.g. Marketing" /><button type="button" className="id-refresh" style={{ width: 68, borderRadius: 7, fontWeight: 800, fontSize: 11 }} disabled={addingDepartment || !newDepartment.trim() || departmentOptions.length >= maximumDepartments} onClick={() => void addDepartment()}>{addingDepartment ? "Adding…" : "+ Add"}</button></div></div>
-              <div className="department-list" aria-label="Company departments">{departmentOptions.map((item) => <span className="department-chip" key={item.id}>{item.name}<button type="button" aria-label={`Delete ${item.name} department`} title={`Delete ${item.name}`} disabled={deletingDepartmentId === item.id} onClick={() => void deleteDepartment(item)}>×</button></span>)}</div>
             </>}
           </fieldset>
           {isBuilding && <ParkingInputs fields={parking} onChange={setParking} disabled={pending} />}
@@ -245,7 +228,7 @@ export default function CreateEntityModal({
       </section>
     </div>}
     <style>{`
-      .department-limit-field{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;color:#304238}.department-stepper{height:42px;border:1px solid #cad6cf;border-radius:8px;background:#fff;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;overflow:hidden}.department-stepper button{height:100%;border:0;background:#f6f8f7;color:#6f3da3;font-size:20px;font-weight:900;cursor:pointer}.department-stepper button:hover{background:#efe6f6}.department-stepper strong{text-align:center;font-size:15px;color:#2a3a31}.department-count{font-size:10px;color:#7d8982;font-weight:700}.department-list{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:-2px}.department-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 7px 5px 9px;border:1px solid #d8e0dc;border-radius:999px;background:#f7f9f8;color:#34463c;font-size:10px;font-weight:700}.department-chip button{width:18px;height:18px;border:0;border-radius:50%;background:#fff0f0;color:#b33a3a;font-size:14px;line-height:16px;font-weight:900;cursor:pointer;padding:0}.department-chip button:hover{background:#ffe1e1}.department-chip button:disabled{opacity:.45;cursor:not-allowed}
+      .department-limit-field{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;color:#304238}.department-stepper{height:42px;border:1px solid #cad6cf;border-radius:8px;background:#fff;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;overflow:hidden}.department-stepper button{height:100%;border:0;background:#f6f8f7;color:#6f3da3;font-size:20px;font-weight:900;cursor:pointer}.department-stepper button:hover{background:#efe6f6}.department-stepper strong{text-align:center;font-size:15px;color:#2a3a31}.department-count{font-size:10px;color:#7d8982;font-weight:700}
     `}</style>
   </>;
 }
