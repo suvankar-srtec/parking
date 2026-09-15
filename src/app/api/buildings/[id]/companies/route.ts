@@ -29,11 +29,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const username = String(body.username ?? "").trim();
     const password = String(body.password ?? "");
     const parkingAllocation = Number(body.parkingAllocation ?? 0);
+    const maximumDepartments = Number(body.maximumDepartments ?? 1);
     if (!name || !userId || !reservationId || !username || !password) {
       return NextResponse.json({ ok: false, message: "Company name and all login fields are required." }, { status: 400 });
     }
     if (!Number.isInteger(parkingAllocation) || parkingAllocation < 0 || parkingAllocation > MAX_PARKING) {
       return NextResponse.json({ ok: false, message: "Parking allocation must be a valid whole number of 0 or greater." }, { status: 400 });
+    }
+    if (!Number.isInteger(maximumDepartments) || maximumDepartments < 1 || maximumDepartments > 500) {
+      return NextResponse.json({ ok: false, message: "Department limit must be between 1 and 500." }, { status: 400 });
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -47,7 +51,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         throw new ParkingError("This company already exists in the building.", 409);
       }
 
-      const company = await tx.company.create({ data: { name, parkingAllocation, buildingId } });
+      const company = await tx.company.create({ data: { name, parkingAllocation, maximumDepartments, buildingId } });
       const claimedUserId = await claimUserId(tx, { ownerId: user.id, reservationId, kind: "company", scopeId: buildingId, name });
       if (claimedUserId !== userId) throw new ParkingError("The generated User ID changed. Refresh the form and try again.", 409);
       const account = await tx.user.create({
