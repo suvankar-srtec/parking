@@ -43,7 +43,7 @@ export default function Sidebar({
   const isAccessPage = (href: string) => pathname === href;
 
   return <aside className={`sidebar ${roleClass}`}>
-    <div className="sidebar-brand"><div className="logo-box">P</div><div><strong>ParkControl</strong><span>{roleLabel(role)}</span></div></div>
+    <div className="sidebar-brand"><div className="logo-box">S</div><div><strong>SRTEC Access Control</strong><span>{roleLabel(role)}</span></div></div>
     <div className="sidebar-line" />
     <nav aria-label="Main navigation">
       <div className="menu-group">
