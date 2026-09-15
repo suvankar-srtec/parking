@@ -1,0 +1,8 @@
+.control { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e6e2; }
+.control > span { display: inline-flex; padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.enabled { background: #e7f5ee; color: #16724d; }
+.disabled { background: #f3e9e8; color: #9a4038; }
+.button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #c9d4ce; border-radius: 6px; background: white; color: #384b41; font-size: 12px; font-weight: 700; cursor: pointer; }
+.button:hover { background: #f3eef8; border-color: #8a58ae; }
+.button:focus-visible { outline: 2px solid #8246ad; outline-offset: 2px; }
+.button:disabled { opacity: .6; cursor: wait; }

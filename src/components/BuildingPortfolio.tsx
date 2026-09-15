@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "@/components/AppLink";
+import BuildingStatusControl from "./BuildingStatusControl";
 import AddBuildingModal from "@/components/AddBuildingModal";
 
 type Building = {
+  enabled: boolean;
   id: string;
   name: string;
   totalParking: number;
@@ -65,6 +67,7 @@ export default function BuildingPortfolio({ buildings }: { buildings: Building[]
             <div className="stat-box"><span>Owner reserve</span><strong>{building.ownerParking}</strong></div>
             <div className="stat-box"><span>Company parking</span><strong>{building.companyParking}</strong></div>
           </div>
+          <BuildingStatusControl buildingId={building.id} buildingName={building.name} enabled={building.enabled} />
           <div className="building-footer">
             <span>{building._count.companies} {building._count.companies === 1 ? "company" : "companies"}</span>
             <Link href={`/dashboard/buildings/${building.id}`}>Manage</Link>

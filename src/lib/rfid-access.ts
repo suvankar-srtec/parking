@@ -68,6 +68,11 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     if (!reader.enabled || !reader.buildingId) return record("1004", "Reader must be assigned to a building and enabled.");
     await lockBuildingParking(tx, reader.buildingId);
 
+    const buildingStatus = await tx.building.findUniqueOrThrow({ where: { id: reader.buildingId }, select: { enabled: true } });
+    if (reader.mode === "REGISTER" && !buildingStatus.enabled) {
+      return record(READER_NO_SUCCESS_CODE, "Building is disabled. Card registration is unavailable.");
+    }
+
     if (reader.mode === "REGISTER") {
       await expireEnrollments(tx);
       const enrollment = await tx.rfidEnrollment.findFirst({ where: { readerId: reader.id, status: { in: ["WAITING", "CAPTURED"] } } });
@@ -139,6 +144,10 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       enter = false;
     }
 
+    if (enter && !buildingStatus.enabled) {
+      return record(READER_NO_SUCCESS_CODE, "Building is disabled. Entry is not allowed.", "DENIED", ...context);
+    }
+
     if (enter) {
       const companyInside = await tx.vehicle.count({ where: { companyId: vehicle.companyId, isInside: true } });
       const buildingInside = await tx.vehicle.count({ where: { isInside: true, company: { buildingId: reader.buildingId } } });
@@ -157,6 +166,8 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
 export async function consumeCardEnrollment(tx: Prisma.TransactionClient, input: {
   enrollmentId: string; ownerId: string; companyId: string; employeeId: string; buildingId: string; vehicleId?: string;
 }) {
+  const building = await tx.building.findUnique({ where: { id: input.buildingId }, select: { enabled: true } });
+  if (!building?.enabled) throw new ParkingError("Building is disabled. Card registration is unavailable.", 403);
   const enrollment = await tx.rfidEnrollment.findUnique({ where: { id: input.enrollmentId }, include: { reader: true } });
   if (!enrollment || enrollment.ownerId !== input.ownerId || enrollment.companyId !== input.companyId ||
     enrollment.employeeId !== input.employeeId || enrollment.vehicleId !== (input.vehicleId || null)) {

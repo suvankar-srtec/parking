@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { validateParking } from "@/lib/parking";
-import { ParkingError, updateBuildingParking } from "@/lib/building-parking";
+import { lockBuildingParking, ParkingError, updateBuildingParking } from "@/lib/building-parking";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -39,6 +39,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ ok: false, message: "You do not have permission to update this building." }, { status: 403 });
     }
 
+    if ("enabled" in body) {
+      if (user.role !== "SUPER_ADMIN") {
+        return NextResponse.json({ ok: false, message: "Only a Super Admin can enable or disable buildings." }, { status: 403 });
+      }
+      if (typeof body.enabled !== "boolean" || Object.keys(body).some((key) => key !== "enabled")) {
+        return NextResponse.json({ ok: false, message: "Send only a boolean enabled setting." }, { status: 400 });
+      }
+      const enabled = body.enabled;
+      const updated = await prisma.$transaction(async (tx) => {
+        await lockBuildingParking(tx, id);
+        return tx.building.update({ where: { id }, data: { enabled }, select: { id: true, enabled: true } });
+      }, { maxWait: 10000, timeout: 20000 });
+      revalidatePath("/dashboard", "layout");
+      revalidatePath("/account");
+      revalidatePath("/access-control", "layout");
+      return NextResponse.json({ ok: true, message: enabled ? "Building enabled." : "Building disabled. Existing vehicles can still exit.", building: updated });
+    }
+
     const parsed = validateParking(body);
     if (!parsed.ok) {
       return NextResponse.json({ ok: false, message: parsed.message }, { status: 400 });
@@ -68,4 +86,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     console.error("UPDATE_BUILDING_PARKING_FAILED");
     return NextResponse.json({ ok: false, message: "Unable to save building settings. Please try again." }, { status: 500 });
   }
+}
+
+// Building records are permanent for every application role, including Super Admin.
+export async function DELETE() {
+  return NextResponse.json({ ok: false, message: "Buildings cannot be deleted. A Super Admin can disable the building instead." }, { status: 405, headers: { Allow: "PATCH" } });
 }

@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { hasActiveBuilding } from "@/lib/building-status";
 
 export const SESSION_COOKIE = "parking_session";
 export const SESSION_MAX_AGE = 60 * 60 * 8;
@@ -58,7 +59,8 @@ export async function getCurrentUser() {
   const payload = verifySessionToken(token);
   if (!payload) return null;
 
-  return prisma.user.findUnique({ where: { id: payload.userDbId } });
+  const user = await prisma.user.findUnique({ where: { id: payload.userDbId } });
+  return user && await hasActiveBuilding(user) ? user : null;
 }
 
 export async function requireSuperAdmin() {

@@ -3,17 +3,19 @@ import Link from "@/components/AppLink";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/session";
+import { isPrimarySuperAdmin as hasPrimaryAccess } from "@/lib/super-admin-scope";
 import Sidebar from "@/components/Sidebar";
 import CompanyList from "@/components/CompanyList";
 import BuildingParkingEditor from "@/components/BuildingParkingEditor";
 import BuildingAdminPanel from "@/components/BuildingAdminPanel";
+import BuildingStatusControl from "@/components/BuildingStatusControl";
 import SupervisorManager from "@/components/SupervisorManager";
 
 export default async function BuildingPage({ params }: { params: Promise<{ id: string }> }) {
   const admin = await requireSuperAdmin();
   if (!admin) redirect("/");
   const { id } = await params;
-  const isPrimarySuperAdmin = !admin.createdBySuperAdminId;
+  const isPrimarySuperAdmin = hasPrimaryAccess(admin);
   const [building, supervisor] = await Promise.all([
     prisma.building.findFirst({
       where: isPrimarySuperAdmin ? { id } : { id, superAdminId: admin.id },
@@ -45,6 +47,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
           <SupervisorManager buildingId={building.id} currentUserId={supervisor?.userId} />
         </div>
         <div className="portfolio-divider" />
+        <BuildingStatusControl buildingId={building.id} buildingName={building.name} enabled={building.enabled} />
         <BuildingParkingEditor buildingId={building.id} initialValues={{ totalParking: building.totalParking, ownerParking: building.ownerParking, companyParking: building.companyParking, maximumGate: building.maximumGate }} />
       </section>
       <section className="portfolio-card building-management">
