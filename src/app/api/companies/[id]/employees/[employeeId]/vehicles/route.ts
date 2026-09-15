@@ -6,7 +6,6 @@ import { getCurrentUser } from "@/lib/session";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
 import { consumeCardEnrollment, lockRfid, RFID_TRANSACTION } from "@/lib/rfid-access";
 
-const departments = ["Admin", "Finance", "HR", "IT", "Operations", "Security", "Other"];
 const vehicleTypes = ["Two wheeler", "Four wheeler"];
 
 export async function POST(request: Request, context: { params: Promise<{ id: string; employeeId: string }> }) {
@@ -20,17 +19,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const ownerName = String(body?.ownerName ?? "").trim();
     const plateNumber = String(body?.plateNumber ?? "").trim().toUpperCase();
     const vehicleType = String(body?.vehicleType ?? "").trim();
-    const department = String(body?.department ?? "").trim();
     const enrollmentId = String(body?.enrollmentId ?? "").trim();
     if (body?.rfidCardNo) throw new ParkingError("Scan the card using a registration reader before saving.");
     const workerType = String(body?.workerType ?? "").trim();
     const isStaff = workerType === "Staff";
-    if (!ownerName || !plateNumber || !vehicleTypes.includes(vehicleType) || !["Staff", "Employee"].includes(workerType) || !departments.includes(department)) {
+    if (!ownerName || !plateNumber || !vehicleTypes.includes(vehicleType) || !["Staff", "Employee"].includes(workerType)) {
       return NextResponse.json({ ok: false, message: "Complete all vehicle registration fields." }, { status: 400 });
     }
     const result = await prisma.$transaction(async (tx) => {
       await lockRfid(tx);
-      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId }, select: { id: true, parkingLimit: true } });
+      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId }, select: { id: true, parkingLimit: true, department: true } });
       if (!employee) throw new ParkingError("Employee or company owner was not found in this company.", 404);
       const company = await tx.company.findUnique({ where: { id: companyId }, select: { buildingId: true, parkingAllocation: true } });
       if (!company) throw new ParkingError("Company was not found.", 404);
@@ -46,7 +44,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       }
 
       const enrollment = enrollmentId ? await consumeCardEnrollment(tx, { enrollmentId, ownerId: user.id, companyId, employeeId, buildingId: company.buildingId }) : null;
-      const vehicle = await tx.vehicle.create({ data: { ownerName, plateNumber, vehicleType, isStaff, department, rfidCardNo: enrollment?.cardNo || null, companyId, employeeId } });
+      const vehicle = await tx.vehicle.create({ data: { ownerName, plateNumber, vehicleType, isStaff, department: employee.department, rfidCardNo: enrollment?.cardNo || null, companyId, employeeId } });
       if (enrollment) await tx.rfidEvent.create({ data: { readerId: enrollment.readerId, buildingId: company.buildingId, companyId, vehicleId: vehicle.id, deviceNumber: enrollment.reader.deviceNumber, cardNo: enrollment.cardNo!, action: "REGISTER", code: "0000", message: "Card registered to vehicle." } });
       return { vehicle, available: company.parkingAllocation - companyUsed - 1 };
     }, RFID_TRANSACTION);
