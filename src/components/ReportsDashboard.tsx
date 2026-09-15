@@ -13,7 +13,7 @@ type ReportRow = {
   companyName: string;
   vehicleNumber: string;
   rfidUid: string;
-  driver: string;
+  rider: string;
   department: string;
   inTime: string;
   outTime: string | null;
@@ -24,7 +24,7 @@ type ReportRow = {
 type ColumnKey =
   | "vehicleNumber"
   | "rfidUid"
-  | "driver"
+  | "rider"
   | "buildingName"
   | "companyName"
   | "department"
@@ -48,7 +48,7 @@ function formatDateTime(value: string | null) {
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: "vehicleNumber", label: "Vehicle number", pdfWidth: 13, value: (row) => row.vehicleNumber },
   { key: "rfidUid", label: "RFID UID", pdfWidth: 12, value: (row) => row.rfidUid },
-  { key: "driver", label: "Driver", pdfWidth: 14, value: (row) => row.driver },
+  { key: "rider", label: "Rider", pdfWidth: 14, value: (row) => row.rider },
   { key: "buildingName", label: "Building", pdfWidth: 16, value: (row) => row.buildingName },
   { key: "companyName", label: "Company", pdfWidth: 16, value: (row) => row.companyName },
   { key: "department", label: "Department", pdfWidth: 14, value: (row) => row.department },
