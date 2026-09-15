@@ -1,8 +1,12 @@
 export type ReaderConnection = {
   connectionType: string; tcpConnected: boolean; lastGatewaySeenAt: string | null;
   lastSeenAt: string | null; heartbeatSeconds: number;
+  enabled?: boolean; buildingId?: string | null;
 };
 export function readerStatus(reader: ReaderConnection, now = Date.now()) {
+  if (reader.enabled === false || reader.buildingId === null) {
+    return { tone: "unknown", label: "Not configured" };
+  }
   if (reader.connectionType === "TCP") {
     if (!reader.lastGatewaySeenAt || now - Date.parse(reader.lastGatewaySeenAt) > 45000) return { tone: "unknown", label: "Gateway unavailable" };
     return reader.tcpConnected ? { tone: "online", label: "Connected" } : { tone: "offline", label: "Disconnected" };
