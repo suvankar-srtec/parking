@@ -40,7 +40,7 @@ export default function RealtimeMonitor({
   const [data, setData] = useState<Headcount | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [clock, setClock] = useState(() => new Date());
+  const [clock, setClock] = useState<Date | null>(null);
   const range = useMemo(localDayRange, []);
 
   const visibleCompanies = useMemo(
@@ -78,6 +78,7 @@ export default function RealtimeMonitor({
     setLoading(true);
     void load();
     const poller = window.setInterval(() => void load(), 5000);
+    setClock(new Date());
     const timer = window.setInterval(() => setClock(new Date()), 1000);
     return () => { window.clearInterval(poller); window.clearInterval(timer); };
   }, [load]);
@@ -123,7 +124,7 @@ export default function RealtimeMonitor({
           <h2>Realtime Head Count</h2>
           <p>{data ? `${data.buildingName}${data.companyName ? ` · ${data.companyName}` : " · All companies"}` : "Select scope above"} · updates every 5 seconds</p>
         </div>
-        <div className={styles.clock}><strong>{clock.toLocaleDateString()}</strong><span>{clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>
+        <div className={styles.clock}><strong>{clock ? clock.toLocaleDateString() : "..."}</strong><span>{clock ? clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "..."}</span></div>
       </div>
       <div className="portfolio-divider" />
       {error ? <div className={`parking-feedback parking-feedback-error ${styles.error}`}>{error}</div> : null}

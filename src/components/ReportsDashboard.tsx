@@ -154,6 +154,8 @@ export default function ReportsDashboard({
   companies: ScopeOption[];
 }) {
   const router = useRouter();
+  const [browserReady, setBrowserReady] = useState(false);
+  useEffect(() => setBrowserReady(true), []);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [buildingId, setBuildingId] = useState(role === "SUPER_ADMIN" ? "" : buildings[0]?.id || "");
@@ -266,7 +268,7 @@ export default function ReportsDashboard({
     <section className={styles.reportToolbar}>
       <div>
         <strong>Vehicle IN / OUT time</strong>
-        <span>Generated {new Date().toLocaleString()} · Auto-updating every 3 seconds</span>
+        <span>Generated {browserReady ? new Date().toLocaleString() : "..."} · Auto-updating every 3 seconds</span>
       </div>
       <div className={styles.toolbarActions}>
         <select value={reportType} onChange={(event) => setReportType(event.target.value)} aria-label="Report type">
@@ -318,7 +320,7 @@ export default function ReportsDashboard({
         <table>
           <thead><tr>{visibleColumns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
           <tbody>{filtered.length ? filtered.map((row) => <tr key={row.id}>
-            {visibleColumns.map((column) => <td key={column.key}>{column.key === "status" ? <span className={row.status === "Inside" ? styles.inside : styles.exited}>{row.status}</span> : column.value(row)}</td>)}
+            {visibleColumns.map((column) => <td key={column.key}>{column.key === "status" ? <span className={row.status === "Inside" ? styles.inside : styles.exited}>{row.status}</span> : !browserReady && (column.key === "inTime" || column.key === "outTime") ? "..." : column.value(row)}</td>)}
           </tr>) : <tr><td colSpan={visibleColumns.length}>No parking records match the selected filters.</td></tr>}</tbody>
         </table>
       </div>

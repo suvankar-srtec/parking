@@ -32,10 +32,10 @@ function canEditEmployee(
 
 export async function PATCH(
   request: Request,
-  context: { params: Promise<{ companyId: string; employeeId: string }> },
+  context: { params: Promise<{ id: string; employeeId: string }> },
 ) {
   try {
-    const { companyId, employeeId } = await context.params;
+    const { id: companyId, employeeId } = await context.params;
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ ok: false, message: "Sign in to edit this person." }, { status: 401 });
