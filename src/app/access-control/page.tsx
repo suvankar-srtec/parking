@@ -19,8 +19,8 @@ export default async function AccessControlPage() {
 
   const primary = user.role === "SUPER_ADMIN" && isPrimarySuperAdmin(user);
   const where = user.role === "SUPER_ADMIN"
-    ? (primary ? { buildingId: { not: null } } : { building: { superAdminId: user.id } })
-    : { buildingId: user.buildingId || "__none__" };
+    ? (primary ? { enabled: true, buildingId: { not: null } } : { enabled: true, building: { superAdminId: user.id } })
+    : { enabled: true, buildingId: user.buildingId || "__none__" };
 
   const readers = await prisma.rfidReader.findMany({
     where,
@@ -63,7 +63,7 @@ export default async function AccessControlPage() {
               {readers.map((reader) => <tr key={reader.id}>
                 <td>
                   <div className="rfid-reader-name-cell">
-                    <span className={`rfid-reader-dot ${reader.enabled ? "enabled" : "disabled"}`} />
+                    <span className="rfid-reader-dot enabled" />
                     <strong>{reader.name}</strong>
                   </div>
                 </td>
@@ -71,10 +71,10 @@ export default async function AccessControlPage() {
                 <td>{reader.readerIp || <span className="rfid-reader-muted">Not detected</span>}</td>
                 <td>{reader.building?.name || <span className="rfid-reader-muted">Not assigned</span>}</td>
                 <td><span className="rfid-reader-mode-pill">{readerMode(reader.mode)}</span></td>
-                <td><span className={`rfid-reader-status-pill ${reader.enabled ? "approved" : "disabled"}`}>{reader.enabled ? "Approved" : "Disabled"}</span></td>
-                <td>{reader.lastSeenAt ? reader.lastSeenAt.toLocaleString() : <span className="rfid-reader-muted">No contact yet</span>}</td>
+                <td><span className="rfid-reader-status-pill approved">Approved</span></td>
+                <td>{reader.lastSeenAt ? reader.lastSeenAt.toLocaleString() : <span className="rfid-reader-muted">No heartbeat yet</span>}</td>
               </tr>)}
-              {!readers.length ? <tr><td colSpan={7} className="rfid-reader-empty-row">No configured readers are available.</td></tr> : null}
+              {!readers.length ? <tr><td colSpan={7} className="rfid-reader-empty-row">No readers have been added yet.</td></tr> : null}
             </tbody>
           </table>
         </div>
@@ -104,12 +104,10 @@ export default async function AccessControlPage() {
         .rfid-reader-name-cell strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .rfid-reader-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
         .rfid-reader-dot.enabled{background:#19a66e;box-shadow:0 0 0 3px rgba(25,166,110,.10)}
-        .rfid-reader-dot.disabled{background:#d79d1f;box-shadow:0 0 0 3px rgba(215,157,31,.10)}
         .rfid-reader-code{display:inline-flex;padding:3px 7px;border-radius:5px;background:#f3eef8;color:#6d3998;font-size:10px;font-weight:800;letter-spacing:.15px}
         .rfid-reader-mode-pill,.rfid-reader-status-pill{display:inline-flex;align-items:center;justify-content:center;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800;white-space:nowrap}
         .rfid-reader-mode-pill{background:#eef4fb;color:#315f8b;border:1px solid #d7e4f2}
         .rfid-reader-status-pill.approved{background:#edf8f2;color:#176b4d;border:1px solid #cbe8d8}
-        .rfid-reader-status-pill.disabled{background:#fff6e7;color:#8a5a00;border:1px solid #f1ddb7}
         .rfid-reader-muted{color:#87928c}
         .rfid-reader-empty-row{text-align:center!important;padding:26px!important;color:#7a8780!important}
         @media(max-width:760px){
