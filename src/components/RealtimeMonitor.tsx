@@ -83,7 +83,7 @@ export default function RealtimeMonitor({
 
   useEffect(() => {
     let stopped = false;
-    let pollTimer: ReturnType<typeof setTimeout>;
+    let pollTimer: number | undefined;
 
     async function poll() {
       if (stopped) return;
@@ -102,7 +102,7 @@ export default function RealtimeMonitor({
     const timer = window.setInterval(() => setClock(new Date()), 1000);
     return () => {
       stopped = true;
-      window.clearTimeout(pollTimer);
+      if (pollTimer !== undefined) window.clearTimeout(pollTimer);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibility);
     };
