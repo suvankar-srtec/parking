@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "./LoadingIndicator";
 import styles from "./SupervisorHeadcount.module.css";
 
@@ -42,6 +42,7 @@ export default function RealtimeMonitor({
   const [loading, setLoading] = useState(true);
   const [clock, setClock] = useState<Date | null>(null);
   const range = useMemo(localDayRange, []);
+  const requestInFlight = useRef(false);
 
   const visibleCompanies = useMemo(
     () => companies.filter((company) => !buildingId || company.buildingId === buildingId),
@@ -59,10 +60,15 @@ export default function RealtimeMonitor({
       setError("Select a building to view realtime monitoring.");
       return;
     }
+    if (requestInFlight.current || document.visibilityState !== "visible") return;
+    requestInFlight.current = true;
     try {
       const params = new URLSearchParams({ ...range, buildingId });
       if (companyId) params.set("companyId", companyId);
-      const response = await fetch(`/api/supervisor/headcount?${params.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/supervisor/headcount?${params.toString()}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      });
       const next = await response.json();
       if (!response.ok) throw new Error(next.message || "Unable to load realtime monitor.");
       setData(next);
@@ -70,17 +76,36 @@ export default function RealtimeMonitor({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load realtime monitor.");
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   }, [range, buildingId, companyId]);
 
   useEffect(() => {
+    let stopped = false;
+    let pollTimer: ReturnType<typeof setTimeout>;
+
+    async function poll() {
+      if (stopped) return;
+      await load();
+      if (!stopped) pollTimer = window.setTimeout(poll, 5000);
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+
     setLoading(true);
-    void load();
-    const poller = window.setInterval(() => void load(), 5000);
+    void poll();
+    document.addEventListener("visibilitychange", onVisibility);
     setClock(new Date());
     const timer = window.setInterval(() => setClock(new Date()), 1000);
-    return () => { window.clearInterval(poller); window.clearInterval(timer); };
+    return () => {
+      stopped = true;
+      window.clearTimeout(pollTimer);
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [load]);
 
   return <>
