@@ -4,7 +4,7 @@ import "./globals.css";
 import "./sidebar-fixed.css";
 
 export const metadata: Metadata = {
-  title: "ParkControl",
+  title: "SRTEC Access Control",
   description: "Multi-building parking allocation and access control",
 };
 
