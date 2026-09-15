@@ -31,11 +31,11 @@ export async function GET() {
     const user = await rfidUser();
     const primarySuperAdmin = user.role === "SUPER_ADMIN" && isPrimarySuperAdmin(user);
 
-    const readerWhere = user.role === "SUPER_ADMIN"
+    const configuredReaderWhere = user.role === "SUPER_ADMIN"
       ? (primarySuperAdmin
-          ? { buildingId: { not: null } }
-          : { building: { superAdminId: user.id } })
-      : { buildingId: user.buildingId! };
+          ? { enabled: true, buildingId: { not: null } }
+          : { enabled: true, building: { superAdminId: user.id } })
+      : { enabled: true, buildingId: user.buildingId! };
 
     const buildingWhere = user.role === "SUPER_ADMIN"
       ? (primarySuperAdmin ? undefined : { superAdminId: user.id })
@@ -43,13 +43,13 @@ export async function GET() {
 
     const [readers, availableReaders, buildings] = await Promise.all([
       prisma.rfidReader.findMany({
-        where: readerWhere,
+        where: configuredReaderWhere,
         include: { building: { select: { name: true } } },
         orderBy: { deviceNumber: "asc" },
       }),
       user.role === "SUPER_ADMIN"
         ? prisma.rfidReader.findMany({
-            where: { buildingId: null, lastSeenAt: { not: null } },
+            where: { enabled: false, buildingId: null, lastSeenAt: { not: null } },
             orderBy: [{ lastSeenAt: "desc" }, { deviceNumber: "asc" }],
           })
         : Promise.resolve([]),
@@ -185,6 +185,6 @@ export async function POST(request: Request) {
       return reader;
     }, RFID_TRANSACTION);
 
-    return NextResponse.json({ ok: true, reader: readerSummary(result), message: result.enabled ? "Reader allowed and assigned successfully." : "Reader settings saved." });
+    return NextResponse.json({ ok: true, reader: readerSummary(result), message: result.enabled ? "Reader allowed and assigned successfully. Heartbeat monitoring is now active." : "Reader settings saved." });
   } catch (error) { return rfidApiError(error); }
 }
