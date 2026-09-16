@@ -20,6 +20,25 @@ async function getAuthorizedBuilding(user: NonNullable<Awaited<ReturnType<typeof
   return { building };
 }
 
+async function validateReader(buildingId: string, readerId: string | null, label: "Entry" | "Exit") {
+  if (!readerId) return null;
+
+  const reader = await prisma.rfidReader.findUnique({
+    where: { id: readerId },
+    select: { id: true, buildingId: true, enabled: true, mode: true },
+  });
+  if (!reader || reader.buildingId !== buildingId) {
+    return `${label} reader must be assigned to this building.`;
+  }
+  if (!reader.enabled) {
+    return `${label} reader is disabled and cannot be allotted to a gate.`;
+  }
+  if (reader.mode === "REGISTER") {
+    return `A Registration reader cannot be used as the ${label.toLowerCase()} reader.`;
+  }
+  return null;
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ buildingId: string; gateNumber: string }> },
@@ -54,41 +73,56 @@ export async function PATCH(
     ? String(body.direction ?? "")
     : current.direction;
   if (!isGateDirection(direction)) {
-    return NextResponse.json({ ok: false, message: "Select Entry, Exit, Entry / Exit, or Select." }, { status: 400 });
+    return NextResponse.json({ ok: false, message: "Select Entry, Exit, Entry & Exit, or Select." }, { status: 400 });
   }
 
-  let readerId = body && Object.prototype.hasOwnProperty.call(body, "readerId")
-    ? String(body.readerId ?? "").trim() || null
-    : current.readerId;
+  let entryReaderId = body && Object.prototype.hasOwnProperty.call(body, "entryReaderId")
+    ? String(body.entryReaderId ?? "").trim() || null
+    : current.entryReaderId;
+  let exitReaderId = body && Object.prototype.hasOwnProperty.call(body, "exitReaderId")
+    ? String(body.exitReaderId ?? "").trim() || null
+    : current.exitReaderId;
 
-  if (direction === "SELECT") readerId = null;
+  // Backward compatibility for older clients that still send readerId.
+  if (body && Object.prototype.hasOwnProperty.call(body, "readerId")) {
+    const legacyReaderId = String(body.readerId ?? "").trim() || null;
+    if (direction === "EXIT") exitReaderId = legacyReaderId;
+    else entryReaderId = legacyReaderId;
+  }
 
-  if (readerId) {
-    const reader = await prisma.rfidReader.findUnique({
-      where: { id: readerId },
-      select: { id: true, buildingId: true, enabled: true, mode: true },
+  if (direction === "SELECT") {
+    entryReaderId = null;
+    exitReaderId = null;
+  } else if (direction === "ENTRY") {
+    exitReaderId = null;
+  } else if (direction === "EXIT") {
+    entryReaderId = null;
+  }
+
+  if (entryReaderId && exitReaderId && entryReaderId === exitReaderId) {
+    return NextResponse.json({ ok: false, message: "Entry and Exit must use different readers." }, { status: 409 });
+  }
+
+  const entryError = await validateReader(buildingId, entryReaderId, "Entry");
+  if (entryError) return NextResponse.json({ ok: false, message: entryError }, { status: 400 });
+  const exitError = await validateReader(buildingId, exitReaderId, "Exit");
+  if (exitError) return NextResponse.json({ ok: false, message: exitError }, { status: 400 });
+
+  const allGates = await prisma.gate.findMany({ select: { buildingId: true, gateNumber: true, direction: true } });
+  const requestedReaderIds = [entryReaderId, exitReaderId].filter((id): id is string => Boolean(id));
+
+  for (const readerId of requestedReaderIds) {
+    const usedElsewhere = allGates.find((gate) => {
+      if (gate.buildingId === buildingId && gate.gateNumber === gateNumber) return false;
+      const config = parseGateConfig(gate.direction);
+      return config.entryReaderId === readerId || config.exitReaderId === readerId;
     });
-    if (!reader || reader.buildingId !== buildingId) {
-      return NextResponse.json({ ok: false, message: "Select a reader assigned to this building." }, { status: 400 });
-    }
-    if (!reader.enabled) {
-      return NextResponse.json({ ok: false, message: "This reader is disabled and cannot be allotted to a gate." }, { status: 409 });
-    }
-    if (reader.mode === "REGISTER") {
-      return NextResponse.json({ ok: false, message: "A Registration reader cannot be allotted to an Entry/Exit gate." }, { status: 409 });
-    }
-
-    const allGates = await prisma.gate.findMany({ select: { buildingId: true, gateNumber: true, direction: true } });
-    const usedElsewhere = allGates.find((gate) =>
-      !(gate.buildingId === buildingId && gate.gateNumber === gateNumber) &&
-      parseGateConfig(gate.direction).readerId === readerId,
-    );
     if (usedElsewhere) {
       return NextResponse.json({ ok: false, message: "This reader is already allotted to another gate. Remove that allocation first." }, { status: 409 });
     }
   }
 
-  const storedDirection = serializeGateConfig(direction, readerId);
+  const storedDirection = serializeGateConfig(direction, entryReaderId, exitReaderId);
   const gate = await prisma.gate.upsert({
     where: { buildingId_gateNumber: { buildingId, gateNumber } },
     create: { buildingId, gateNumber, direction: storedDirection },
@@ -99,8 +133,8 @@ export async function PATCH(
   revalidatePath("/access-control/gate-details");
   return NextResponse.json({
     ok: true,
-    message: readerId ? `Gate ${gateNumber} reader allocation updated.` : `Gate ${gateNumber} updated successfully.`,
-    gate: { ...gate, direction, readerId },
+    message: requestedReaderIds.length ? `Gate ${gateNumber} reader allocation updated.` : `Gate ${gateNumber} updated successfully.`,
+    gate: { ...gate, direction, entryReaderId, exitReaderId },
   });
 }
 
