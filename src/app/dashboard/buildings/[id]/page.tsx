@@ -60,7 +60,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
       <section className="portfolio-card building-management">
         <div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div>
         <div className="portfolio-divider" />
-        <CompanyList companies={building.companies} companyParking={building.companyParking} />
+        <CompanyList companies={building.companies} companyParking={building.companyParking} showUserId />
       </section>
     </section>
   </main>;
