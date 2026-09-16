@@ -16,22 +16,12 @@ type ScanEvent = {
   company: { name: string } | null;
 };
 
-type EmployeeParkingCompany = {
-  companyId: string;
-  companyName: string;
-  spacesAllotted: number;
-  vehiclesInside: number;
-};
-
 type Headcount = {
   ok: true;
   buildingName: string;
   totalIn: number;
   totalOut: number;
   totalOnSite: number;
-  employeeSpacesAllotted: number;
-  employeeVehiclesInside: number;
-  employeeParkingByCompany: EmployeeParkingCompany[];
   recentEvents: ScanEvent[];
   updatedAt: string;
 };
@@ -174,32 +164,6 @@ export default function SupervisorHeadcount() {
         <article className={`${styles.totalCard} ${styles.onsite}`}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article>
         <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article>
         <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article>
-      </div>
-    </section>
-
-    <section className={`portfolio-card ${styles.employeeParkingCard}`}>
-      <div className={styles.employeeParkingHeader}>
-        <div>
-          <div className="section-kicker">EMPLOYEE PARKING</div>
-          <h2>Employee Parking Allocation</h2>
-          <p>Parking spaces allotted by companies and employee vehicles currently inside the building.</p>
-        </div>
-        <div className={styles.employeeParkingTotals}>
-          <div><span>Spaces Allotted</span><strong>{data?.employeeSpacesAllotted ?? 0}</strong></div>
-          <div><span>Vehicles In</span><strong>{data?.employeeVehiclesInside ?? 0}</strong></div>
-        </div>
-      </div>
-      <div className="portfolio-divider" />
-      <div className={styles.companyParkingGrid}>
-        {data?.employeeParkingByCompany.length ? data.employeeParkingByCompany.map((company) => (
-          <article className={styles.companyParkingCard} key={company.companyId}>
-            <h3>{company.companyName}</h3>
-            <div>
-              <span>Employee spaces allotted<strong>{company.spacesAllotted}</strong></span>
-              <span>Employee vehicles in<strong>{company.vehiclesInside}</strong></span>
-            </div>
-          </article>
-        )) : <p className={styles.emptyParking}>No employee parking allocation found.</p>}
       </div>
     </section>
 
