@@ -171,7 +171,7 @@ export default function SupervisorHeadcount() {
       <div className={styles.scanTableHeader}>
         <div>
           <div className="section-kicker">RFID ACTIVITY</div>
-          <h2>Scan History</h2>
+          <h2>Live Dashboard</h2>
         </div>
       </div>
       <div className={styles.tableWrap}>
