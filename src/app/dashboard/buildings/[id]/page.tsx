@@ -53,7 +53,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
           <SupervisorManager buildingId={building.id} currentUserId={supervisor?.userId} />
         </div>
         <div className="portfolio-divider" />
-        {buildingAdmin ? <BuildingCredentialsEditor buildingId={building.id} userId={buildingAdmin.userId} initialPassword={buildingAdmin.password} /> : null}
+        {buildingAdmin ? <BuildingCredentialsEditor buildingId={building.id} userId={buildingAdmin.userId} username={buildingAdmin.username} initialPassword={buildingAdmin.password} /> : null}
         <BuildingStatusControl buildingId={building.id} buildingName={building.name} enabled={building.enabled} />
         <BuildingParkingEditor buildingId={building.id} initialValues={{ totalParking: building.totalParking, ownerParking: building.ownerParking, companyParking: building.companyParking, maximumGate: building.maximumGate }} />
       </section>
