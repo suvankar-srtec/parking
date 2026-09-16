@@ -36,7 +36,7 @@ export default function CompanyList({
           <span>User ID</span>
           <strong>{userId}</strong>
         </div> : null}
-        {showPassword ? <CompanyPasswordField password={password} /> : null}
+        {showPassword ? <CompanyPasswordField companyId={company.id} password={password} /> : null}
         <div className={`entity-parking ${styles.metrics}`}>
           <span>Employees <strong>{employeeCount}</strong></span>
           <span>Allotted <strong>{company.vehicles.length}</strong></span>
