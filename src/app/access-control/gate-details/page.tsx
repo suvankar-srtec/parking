@@ -51,10 +51,11 @@ export default async function GateDetailsPage() {
           return {
             gateNumber: gate.gateNumber,
             direction: config.direction,
-            readerId: config.readerId,
+            entryReaderId: config.entryReaderId,
+            exitReaderId: config.exitReaderId,
           };
         })
-      : [{ gateNumber: 1, direction: "SELECT" as const, readerId: null }],
+      : [{ gateNumber: 1, direction: "SELECT" as const, entryReaderId: null, exitReaderId: null }],
   }));
 
   return <main className="dashboard-page">
