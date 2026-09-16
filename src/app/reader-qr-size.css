@@ -12,25 +12,81 @@
   grid-template-columns: minmax(0, 1.2fr) minmax(330px, .8fr) !important;
 }
 
-.reader-qr-preview {
-  grid-template-columns: minmax(0, 1fr) 270px !important;
+/* Keep the QR card vertical so its heading/instruction never collapse into a narrow text strip. */
+.reader-qr-preview,
+.reader-config-qr {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  text-align: center !important;
+}
+
+.reader-qr-preview > div:first-child,
+.reader-config-qr > div:first-child {
+  width: 100% !important;
+  align-self: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.reader-qr-preview .section-kicker,
+.reader-config-qr .section-kicker {
+  margin: 0 !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+}
+
+.reader-qr-preview strong,
+.reader-config-qr strong {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 4px 8px !important;
+  border: 1px solid #d8c8e5 !important;
+  border-radius: 999px !important;
+  background: #f7f1fb !important;
+  color: #64308f !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
 }
 
 .reader-qr-preview img,
 .reader-qr-preview .reader-qr-placeholder,
 .reader-config-qr img,
 .reader-config-qr .reader-qr-placeholder {
+  grid-column: auto !important;
+  grid-row: auto !important;
   width: 270px !important;
   height: 270px !important;
+  margin: 0 auto !important;
   padding: 10px !important;
+  border: 1px solid #d8e0dc !important;
+  border-radius: 8px !important;
   background: #fff !important;
   object-fit: contain !important;
   image-rendering: crisp-edges;
   image-rendering: pixelated;
+  box-shadow: 0 2px 8px rgba(28, 45, 36, .06) !important;
 }
 
-.reader-config-qr {
-  grid-template-columns: minmax(0, 1fr) 270px !important;
+.reader-qr-preview small,
+.reader-config-qr small {
+  width: 100% !important;
+  max-width: 290px !important;
+  align-self: auto !important;
+  color: #69776f !important;
+  font-size: 9.5px !important;
+  line-height: 1.35 !important;
+  text-align: center !important;
 }
 
 @media (max-width: 760px) {
@@ -42,11 +98,6 @@
   .reader-setup-body,
   .reader-config-form {
     grid-template-columns: 1fr !important;
-  }
-
-  .reader-qr-preview,
-  .reader-config-qr {
-    grid-template-columns: minmax(0, 1fr) 250px !important;
   }
 
   .reader-qr-preview img,
@@ -61,16 +112,13 @@
 @media (max-width: 560px) {
   .reader-qr-preview,
   .reader-config-qr {
-    grid-template-columns: 1fr !important;
-    text-align: center;
+    text-align: center !important;
   }
 
   .reader-qr-preview img,
   .reader-qr-preview .reader-qr-placeholder,
   .reader-config-qr img,
   .reader-config-qr .reader-qr-placeholder {
-    grid-column: 1 !important;
-    grid-row: auto !important;
     width: min(260px, 78vw) !important;
     height: min(260px, 78vw) !important;
     margin: 0 auto !important;
