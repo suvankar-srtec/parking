@@ -29,7 +29,6 @@ export default function CompanyList({
       const userId = company.users[0]?.userId || "-";
       const password = company.users[0]?.password || "";
       const registeredVehicles = company.vehicles.length;
-      const availableParking = Math.max(company.parkingAllocation - registeredVehicles, 0);
 
       return <article className={`entity-row ${styles.row}`} key={company.id}>
         <div className="entity-company-details">
@@ -44,7 +43,6 @@ export default function CompanyList({
           <span>Employees <strong>{employeeCount}</strong></span>
           <span>Company Parking <strong>{company.parkingAllocation}</strong></span>
           <span>Registered <strong>{registeredVehicles}</strong></span>
-          <span>Available <strong>{availableParking}</strong></span>
         </div>
       </article>;
     })}
