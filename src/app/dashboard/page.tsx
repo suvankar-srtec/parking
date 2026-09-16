@@ -63,6 +63,7 @@ export default async function DashboardPage() {
     ]);
     if (!building) redirect("/");
     const allocated = building.companies.reduce((total, company) => total + company.parkingAllocation, 0);
+    const available = Math.max(building.companyParking - allocated, 0);
 
     return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
       <header className="topbar"><div><div className="section-kicker">ADMIN</div><h1>{building.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
@@ -70,7 +71,27 @@ export default async function DashboardPage() {
         <div className="portfolio-header"><div><div className="section-kicker">ADMIN DASHBOARD</div><h2>Parking allocation</h2><p>Create companies, create the building Supervisor, set company parking limits, configure gate directions, register cards and review reports.</p></div><SupervisorManager buildingId={building.id} currentUserId={supervisor?.userId} /></div>
         <div className="portfolio-divider" />
         <BuildingCredentialsEditor buildingId={building.id} userId={user.userId} buildingName={building.name} initialPassword={user.password} />
-        <div className="account-parking-grid account-company-parking-grid"><div className="large-stat"><span>Company parking</span><strong>{building.companyParking}</strong></div><div className="large-stat"><span>Allocated</span><strong>{allocated}</strong></div><div className="large-stat"><span>Available</span><strong>{Math.max(building.companyParking - allocated, 0)}</strong></div><div className="large-stat"><span>Maximum Gates</span><strong>{building.maximumGate}</strong></div></div>
+        <div className="building-parking-summary">
+          <div className="building-parking-row building-parking-row-primary">
+            <div className="large-stat"><span>Owner parking</span><strong>{building.ownerParking}</strong></div>
+            <div className="large-stat"><span>Maximum Gates</span><strong>{building.maximumGate}</strong></div>
+          </div>
+          <div className="building-parking-row building-parking-row-secondary">
+            <div className="large-stat"><span>Company parking</span><strong>{building.companyParking}</strong></div>
+            <div className="large-stat"><span>Allotted</span><strong>{allocated}</strong></div>
+            <div className="large-stat"><span>Available</span><strong>{available}</strong></div>
+          </div>
+        </div>
+        <style>{`
+          .building-parking-summary{display:grid;gap:10px;margin-top:10px}
+          .building-parking-row{display:grid;gap:10px}
+          .building-parking-row-primary{grid-template-columns:repeat(2,minmax(0,1fr))}
+          .building-parking-row-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}
+          .building-parking-summary .large-stat{min-width:0}
+          @media(max-width:760px){
+            .building-parking-row-primary,.building-parking-row-secondary{grid-template-columns:1fr}
+          }
+        `}</style>
       </section>
       <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div><div className="portfolio-divider" /><CompanyList companies={building.companies} companyParking={building.companyParking} showUserId showPassword /></section>
     </section></main>;
