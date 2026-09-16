@@ -64,7 +64,7 @@ export async function GET(request: Request) {
   const companyFilter = companyId ? { companyId } : {};
   const vehicleCompanyFilter = companyId ? { id: companyId } : { buildingId };
 
-  const [building, company, totalIn, totalOut, insideVehicles, recentEvents] = await Promise.all([
+  const [building, company, totalIn, totalOut, insideVehicles, recentEvents, parkingCompanies] = await Promise.all([
     prisma.building.findUnique({ where: { id: buildingId }, select: { name: true } }),
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
     prisma.rfidEvent.count({ where: { buildingId, ...companyFilter, action: "ENTRY", createdAt: { gte: start, lt: end } } }),
@@ -88,6 +88,22 @@ export async function GET(request: Request) {
         company: { select: { name: true } },
       },
     }),
+    prisma.company.findMany({
+      where: companyId ? { id: companyId, buildingId } : { buildingId },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        employees: {
+          where: { category: "EMPLOYEE" },
+          select: { parkingLimit: true },
+        },
+        vehicles: {
+          where: { isInside: true, employee: { category: "EMPLOYEE" } },
+          select: { id: true },
+        },
+      },
+    }),
   ]);
 
   const departmentMap = new Map<string, number>();
@@ -99,6 +115,15 @@ export async function GET(request: Request) {
   const departments = Array.from(departmentMap, ([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
+  const employeeParkingByCompany = parkingCompanies.map((parkingCompany) => ({
+    companyId: parkingCompany.id,
+    companyName: parkingCompany.name,
+    spacesAllotted: parkingCompany.employees.reduce((sum, employee) => sum + employee.parkingLimit, 0),
+    vehiclesInside: parkingCompany.vehicles.length,
+  }));
+  const employeeSpacesAllotted = employeeParkingByCompany.reduce((sum, item) => sum + item.spacesAllotted, 0);
+  const employeeVehiclesInside = employeeParkingByCompany.reduce((sum, item) => sum + item.vehiclesInside, 0);
+
   return NextResponse.json({
     ok: true,
     buildingName: building?.name || "Assigned building",
@@ -106,6 +131,9 @@ export async function GET(request: Request) {
     totalIn,
     totalOut,
     totalOnSite: insideVehicles.length,
+    employeeSpacesAllotted,
+    employeeVehiclesInside,
+    employeeParkingByCompany,
     departments,
     recentEvents,
     updatedAt: new Date().toISOString(),
