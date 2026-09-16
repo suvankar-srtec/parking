@@ -1,0 +1,78 @@
+/* Larger, scanner-friendly reader configuration QR previews. */
+.reader-selector-modal,
+.reader-config-modal {
+  width: min(900px, 96vw) !important;
+}
+
+.reader-setup-body {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .8fr) !important;
+}
+
+.reader-config-form {
+  grid-template-columns: minmax(0, 1.2fr) minmax(330px, .8fr) !important;
+}
+
+.reader-qr-preview {
+  grid-template-columns: minmax(0, 1fr) 270px !important;
+}
+
+.reader-qr-preview img,
+.reader-qr-preview .reader-qr-placeholder,
+.reader-config-qr img,
+.reader-config-qr .reader-qr-placeholder {
+  width: 270px !important;
+  height: 270px !important;
+  padding: 10px !important;
+  background: #fff !important;
+  object-fit: contain !important;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.reader-config-qr {
+  grid-template-columns: minmax(0, 1fr) 270px !important;
+}
+
+@media (max-width: 760px) {
+  .reader-selector-modal,
+  .reader-config-modal {
+    width: min(680px, 96vw) !important;
+  }
+
+  .reader-setup-body,
+  .reader-config-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  .reader-qr-preview,
+  .reader-config-qr {
+    grid-template-columns: minmax(0, 1fr) 250px !important;
+  }
+
+  .reader-qr-preview img,
+  .reader-qr-preview .reader-qr-placeholder,
+  .reader-config-qr img,
+  .reader-config-qr .reader-qr-placeholder {
+    width: 250px !important;
+    height: 250px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .reader-qr-preview,
+  .reader-config-qr {
+    grid-template-columns: 1fr !important;
+    text-align: center;
+  }
+
+  .reader-qr-preview img,
+  .reader-qr-preview .reader-qr-placeholder,
+  .reader-config-qr img,
+  .reader-config-qr .reader-qr-placeholder {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    width: min(260px, 78vw) !important;
+    height: min(260px, 78vw) !important;
+    margin: 0 auto !important;
+  }
+}
