@@ -52,7 +52,7 @@ export default async function DashboardPage() {
           companies: {
             orderBy: { createdAt: "asc" },
             include: {
-              users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true }, take: 1 },
+              users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true, password: true }, take: 1 },
               vehicles: { select: { id: true } },
               employees: { select: { id: true, category: true } },
             },
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
         <BuildingCredentialsEditor buildingId={building.id} userId={user.userId} buildingName={building.name} initialPassword={user.password} />
         <div className="account-parking-grid account-company-parking-grid"><div className="large-stat"><span>Company parking</span><strong>{building.companyParking}</strong></div><div className="large-stat"><span>Allocated</span><strong>{allocated}</strong></div><div className="large-stat"><span>Available</span><strong>{Math.max(building.companyParking - allocated, 0)}</strong></div><div className="large-stat"><span>Maximum Gates</span><strong>{building.maximumGate}</strong></div></div>
       </section>
-      <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div><div className="portfolio-divider" /><CompanyList companies={building.companies} companyParking={building.companyParking} showUserId /></section>
+      <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div><div className="portfolio-divider" /><CompanyList companies={building.companies} companyParking={building.companyParking} showUserId showPassword /></section>
     </section></main>;
   }
 
