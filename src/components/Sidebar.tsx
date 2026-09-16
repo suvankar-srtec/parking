@@ -153,8 +153,17 @@ export default function Sidebar({
         font-size:9.5px;
         line-height:1.25;
       }
-      .sidebar .reader-heading{font-size:10px}
-      .sidebar .reader-status-dot{width:7px;height:7px}
+      .sidebar .reader-heading{
+        font-size:10px;
+        color:#fff !important;
+        font-weight:800;
+        text-decoration:none;
+      }
+      .sidebar .reader-line small{display:none !important}
+      .sidebar .reader-line .reader-dot{width:7px;height:7px;flex:0 0 7px}
+      .sidebar .reader-line .reader-dot.online{background:#20bf6b !important}
+      .sidebar .reader-line .reader-dot.offline,
+      .sidebar .reader-line .reader-dot.unknown{background:#e5484d !important}
       @media(max-height:760px) and (min-width:951px){
         .sidebar{padding-top:10px;padding-bottom:8px}
         .sidebar .sidebar-brand{padding-bottom:9px}
