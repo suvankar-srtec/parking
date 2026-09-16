@@ -39,7 +39,7 @@ export default function Sidebar({
   }
 
   const showAccess = canConfigureReaders(role);
-  const showReaderStatus = showAccess || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER";
+  const showReaderStatus = showAccess || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER" || role === "EMPLOYEE";
   const roleClass = `sidebar-${role.toLowerCase().replaceAll("_", "-")}`;
 
   const isAccessPage = (href: string) => pathname === href;
@@ -84,7 +84,11 @@ export default function Sidebar({
       </div> : null}
       <Link className={`menu-button menu-button-main report-nav-item${reportsActive ? " active-menu" : ""}`} href="/reports"><span>Reports</span></Link>
     </nav>
-    {showReaderStatus ? <SidebarReaderStatus /> : null}
+    {showReaderStatus ? (
+      role === "EMPLOYEE"
+        ? <SidebarReaderStatus endpoint="/api/supervisor/readers" title="Allotted Reader" linkToAccess={false} />
+        : <SidebarReaderStatus />
+    ) : null}
 
     <style>{`
       .sidebar{
