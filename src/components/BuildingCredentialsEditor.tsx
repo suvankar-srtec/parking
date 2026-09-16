@@ -9,26 +9,29 @@ import { requestJson } from "@/lib/client-request";
 export default function BuildingCredentialsEditor({
   buildingId,
   userId,
-  username: initialUsername,
+  buildingName: initialBuildingName,
   initialPassword,
+  canEditBuildingName = false,
 }: {
   buildingId: string;
   userId: string;
-  username: string;
+  buildingName: string;
   initialPassword: string;
+  canEditBuildingName?: boolean;
 }) {
   const { notify, refresh } = useFeedback();
   const { pending, execute } = useMutation();
-  const [username, setUsername] = useState(initialUsername);
+  const [buildingName, setBuildingName] = useState(initialBuildingName);
   const [password, setPassword] = useState(initialPassword);
 
-  const dirty = username.trim() !== initialUsername || password !== initialPassword;
+  const dirty = buildingName.trim() !== initialBuildingName || password !== initialPassword;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const cleanUsername = username.trim();
-    if (!cleanUsername) {
-      notify("Building username is required.", "error");
+    const cleanBuildingName = buildingName.trim();
+
+    if (!cleanBuildingName) {
+      notify("Building name is required.", "error");
       return;
     }
     if (!password.trim()) {
@@ -37,13 +40,17 @@ export default function BuildingCredentialsEditor({
     }
 
     void execute(async () => {
-      const result = await requestJson<{ ok: true; message: string; account: { userId: string; username: string } }>(
-        `/api/buildings/${buildingId}`,
-        "PATCH",
-        { username: cleanUsername, password },
-      );
-      setUsername(result.account.username);
-      notify(result.message || "Building login credentials updated.");
+      const payload: Record<string, string> = { password };
+      if (canEditBuildingName) payload.buildingName = cleanBuildingName;
+
+      const result = await requestJson<{
+        ok: true;
+        message: string;
+        building?: { id: string; name: string };
+      }>(`/api/buildings/${buildingId}`, "PATCH", payload);
+
+      if (result.building?.name) setBuildingName(result.building.name);
+      notify(result.message || "Building details updated.");
       refresh();
     });
   }
@@ -64,11 +71,11 @@ export default function BuildingCredentialsEditor({
         <input value={userId} readOnly autoComplete="username" />
       </label>
       <label>
-        Building username
+        Building name
         <input
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
-          autoComplete="username"
+          value={buildingName}
+          onChange={(event) => setBuildingName(event.target.value)}
+          readOnly={!canEditBuildingName}
           disabled={pending}
           required
         />
