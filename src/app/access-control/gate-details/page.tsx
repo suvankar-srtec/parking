@@ -71,6 +71,38 @@ export default async function GateDetailsPage() {
 
       <section className="portfolio-card building-management" style={{ marginTop: 19 }}>
         <GateDetailsManager buildings={gateRows} />
+        <style>{`
+          .dual-reader-selects {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 8px !important;
+            max-width: 360px;
+          }
+          .dual-reader-selects label {
+            grid-template-columns: 48px minmax(0, 1fr) !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          .dual-reader-selects label:first-child > span {
+            color: #16845e !important;
+          }
+          .dual-reader-selects label:last-child > span {
+            color: #c53e3e !important;
+          }
+          .dual-reader-selects label:first-child select {
+            border-color: #b9ddce !important;
+          }
+          .dual-reader-selects label:last-child select {
+            border-color: #edc7c7 !important;
+          }
+          .dual-reader-selects label:first-child select:focus {
+            border-color: #16845e !important;
+            box-shadow: 0 0 0 2px rgba(22,132,94,.10) !important;
+          }
+          .dual-reader-selects label:last-child select:focus {
+            border-color: #c53e3e !important;
+            box-shadow: 0 0 0 2px rgba(197,62,62,.10) !important;
+          }
+        `}</style>
       </section>
     </section>
   </main>;
