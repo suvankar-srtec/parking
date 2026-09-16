@@ -28,6 +28,9 @@ export default function CompanyList({
       const employeeCount = company.employees.filter((person) => person.category !== "OWNER").length;
       const userId = company.users[0]?.userId || "-";
       const password = company.users[0]?.password || "";
+      const registeredVehicles = company.vehicles.length;
+      const availableParking = Math.max(company.parkingAllocation - registeredVehicles, 0);
+
       return <article className={`entity-row ${styles.row}`} key={company.id}>
         <div className="entity-company-details">
           <strong>{company.name}</strong>
@@ -39,8 +42,9 @@ export default function CompanyList({
         {showPassword ? <CompanyPasswordField companyId={company.id} password={password} /> : null}
         <div className={`entity-parking ${styles.metrics}`}>
           <span>Employees <strong>{employeeCount}</strong></span>
-          <span>Allotted <strong>{company.vehicles.length}</strong></span>
-          <span>Unallotted <strong>{Math.max(company.parkingAllocation - company.vehicles.length, 0)}</strong></span>
+          <span>Company Parking <strong>{company.parkingAllocation}</strong></span>
+          <span>Registered <strong>{registeredVehicles}</strong></span>
+          <span>Available <strong>{availableParking}</strong></span>
         </div>
       </article>;
     })}
