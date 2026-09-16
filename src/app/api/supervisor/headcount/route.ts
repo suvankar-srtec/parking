@@ -76,7 +76,6 @@ export async function GET(request: Request) {
     prisma.rfidEvent.findMany({
       where: { buildingId, ...companyFilter, createdAt: { gte: start, lt: end } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: 12,
       select: {
         id: true,
         action: true,
