@@ -6,6 +6,7 @@ import { readerStatus, type ReaderConnection } from "@/lib/reader-status";
 
 type SidebarReader = ReaderConnection & {
   id: string;
+  name?: string;
   deviceNumber: string;
 };
 
@@ -13,7 +14,15 @@ type ReaderResponse = {
   readers: SidebarReader[];
 };
 
-export default function SidebarReaderStatus() {
+export default function SidebarReaderStatus({
+  endpoint = "/api/rfid/readers",
+  title = "RFID Reader",
+  linkToAccess = true,
+}: {
+  endpoint?: string;
+  title?: string;
+  linkToAccess?: boolean;
+}) {
   const [readers, setReaders] = useState<SidebarReader[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -23,7 +32,7 @@ export default function SidebarReaderStatus() {
 
     async function load() {
       try {
-        const response = await fetch("/api/rfid/readers", {
+        const response = await fetch(endpoint, {
           cache: "no-store",
           signal: AbortSignal.timeout(10000),
         });
@@ -45,15 +54,17 @@ export default function SidebarReaderStatus() {
       stopped = true;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, []);
+  }, [endpoint]);
 
   return <div className="sidebar-reader-status">
-    <Link href="/access-control" className="sidebar-reader-title">RFID Reader</Link>
-    {!loaded ? null : readers.length === 0 ? <span className="sidebar-reader-empty">No reader configured</span> : readers.map((reader) => {
+    {linkToAccess
+      ? <Link href="/access-control" className="sidebar-reader-title">{title}</Link>
+      : <span className="sidebar-reader-title">{title}</span>}
+    {!loaded ? null : readers.length === 0 ? <span className="sidebar-reader-empty">No reader allotted</span> : readers.map((reader) => {
       const online = readerStatus(reader).tone === "online";
       return <div className="sidebar-reader-item" key={reader.id} title={online ? "Heartbeat active" : "Heartbeat unavailable"}>
         <i className={online ? "online" : "offline"} aria-hidden="true" />
-        <span>Reader : <strong>{reader.deviceNumber}</strong></span>
+        <span>{reader.name ? `${reader.name} : ` : "Reader : "}<strong>{reader.deviceNumber}</strong></span>
       </div>;
     })}
     <style>{`
