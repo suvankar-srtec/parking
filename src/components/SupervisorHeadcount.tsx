@@ -50,6 +50,11 @@ function popupTitle(event: PopupState) {
   return "RFID Scan";
 }
 
+function eventResult(event: ScanEvent) {
+  if (event.code === "0000") return event.action === "ENTRY" ? "Entry allowed" : event.action === "EXIT" ? "Exit allowed" : event.message;
+  return event.message || "Denied";
+}
+
 export default function SupervisorHeadcount() {
   const [data, setData] = useState<Headcount | null>(null);
   const [error, setError] = useState("");
@@ -71,7 +76,7 @@ export default function SupervisorHeadcount() {
         signal: AbortSignal.timeout(8000),
       });
       const next = await response.json();
-      if (!response.ok) throw new Error(next.message || "Unable to load live dashboard.");
+      if (!response.ok) throw new Error(next.message || "Unable to load real time monitor.");
 
       const newestEvent = Array.isArray(next.recentEvents) ? next.recentEvents[0] as ScanEvent | undefined : undefined;
       if (!initialized.current) {
@@ -85,7 +90,7 @@ export default function SupervisorHeadcount() {
       setData(next);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load live dashboard.");
+      setError(err instanceof Error ? err.message : "Unable to load real time monitor.");
     } finally {
       requestInFlight.current = false;
       setLoading(false);
@@ -124,7 +129,7 @@ export default function SupervisorHeadcount() {
   }, [popup]);
 
   if (loading && !data) {
-    return <section className={`portfolio-card ${styles.headcount}`}><p><Spinner /> Loading Live Dashboard…</p></section>;
+    return <section className={`portfolio-card ${styles.headcount}`}><p><Spinner /> Loading Real Time Monitor…</p></section>;
   }
 
   return <>
@@ -147,8 +152,8 @@ export default function SupervisorHeadcount() {
     <section className={`portfolio-card ${styles.headcount}`}>
       <div className={styles.titleRow}>
         <div>
-          <div className="section-kicker"><span className={styles.liveDot} />LIVE DASHBOARD</div>
-          <h2>Live Dashboard</h2>
+          <div className="section-kicker"><span className={styles.liveDot} />REAL TIME MONITOR</div>
+          <h2>Real Time Monitor</h2>
           <p>{data?.buildingName || "Assigned building"} · updates every 3 seconds</p>
         </div>
         <div className={styles.clock}><strong>{clock.toLocaleDateString()}</strong><span>{clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>
@@ -159,6 +164,33 @@ export default function SupervisorHeadcount() {
         <article className={`${styles.totalCard} ${styles.onsite}`}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article>
         <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article>
         <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article>
+      </div>
+    </section>
+
+    <section className={`portfolio-card ${styles.scanTableCard}`}>
+      <div className={styles.scanTableHeader}>
+        <div>
+          <div className="section-kicker">RFID ACTIVITY</div>
+          <h2>Scan History</h2>
+        </div>
+        <span>{data?.recentEvents.length ?? 0} scans today</span>
+      </div>
+      <div className={styles.tableWrap}>
+        <table className={styles.scanTable}>
+          <thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Rider</th><th>Company</th><th>Action</th><th>Result</th></tr></thead>
+          <tbody>
+            {data?.recentEvents.length ? data.recentEvents.map((event) => <tr key={event.id}>
+              <td>{new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
+              <td>{event.deviceNumber || "-"}</td>
+              <td>{event.cardNo || "-"}</td>
+              <td>{event.vehicle?.plateNumber || "-"}</td>
+              <td>{event.vehicle?.ownerName || "-"}</td>
+              <td>{event.company?.name || "-"}</td>
+              <td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td>
+              <td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{eventResult(event)}</td>
+            </tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No RFID scans recorded today.</td></tr>}
+          </tbody>
+        </table>
       </div>
     </section>
   </>;
