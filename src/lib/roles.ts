@@ -16,7 +16,7 @@ export function dashboardLabel(role: UserRole) {
   if (role === "SUPER_ADMIN") return "Buildings";
   if (role === "BUILDING_ADMIN") return "My building";
   if (role === "COMPANY_ADMIN" || role === "BUILDING_OWNER") return "My company";
-  return "Live Dashboard";
+  return "Real Time Monitor";
 }
 
 export function canConfigureReaders(role: UserRole) {
