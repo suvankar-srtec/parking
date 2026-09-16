@@ -9,17 +9,29 @@ type CompanySummary = {
   users: { userId: string; username: string }[];
 };
 
-export default function CompanyList({ companies, companyParking }: { companies: CompanySummary[]; companyParking: number }) {
+export default function CompanyList({
+  companies,
+  companyParking,
+  showUserId = false,
+}: {
+  companies: CompanySummary[];
+  companyParking: number;
+  showUserId?: boolean;
+}) {
   if (companies.length === 0) return <p className="muted">No companies created yet.</p>;
 
   return <div className="entity-list">
     {companies.map((company) => {
       const employeeCount = company.employees.filter((person) => person.category !== "OWNER").length;
+      const userId = company.users[0]?.userId || "-";
       return <article className={`entity-row ${styles.row}`} key={company.id}>
         <div className="entity-company-details">
           <strong>{company.name}</strong>
-          <span>User ID: {company.users[0]?.userId || "-"}</span>
         </div>
+        {showUserId ? <div className={styles.companyUserId}>
+          <span>User ID</span>
+          <strong>{userId}</strong>
+        </div> : null}
         <div className={`entity-parking ${styles.metrics}`}>
           <span>Employees <strong>{employeeCount}</strong></span>
           <span>Allotted <strong>{company.vehicles.length}</strong></span>
