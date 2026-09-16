@@ -4,7 +4,7 @@ import type { UserRole } from "@prisma/client";
 import Link from "@/components/AppLink";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import ReaderConsole from "./ReaderConsole";
+import SidebarReaderStatus from "./SidebarReaderStatus";
 import { canConfigureReaders, dashboardLabel, roleLabel } from "@/lib/roles";
 
 export default function Sidebar({
@@ -81,7 +81,7 @@ export default function Sidebar({
       </div> : null}
       <Link className={`menu-button menu-button-main report-nav-item${reportsActive ? " active-menu" : ""}`} href="/reports"><span>Reports</span></Link>
     </nav>
-    {showReaderStatus ? <ReaderConsole compact /> : null}
+    {showReaderStatus ? <SidebarReaderStatus /> : null}
 
     <style>{`
       .sidebar{
@@ -147,23 +147,6 @@ export default function Sidebar({
         font-weight:800;
       }
       .sidebar .dark-menu.active-menu{box-shadow:inset 4px 0 0 #9a58c8}
-      .sidebar .reader-panel{
-        margin-top:auto;
-        padding:10px 7px 2px;
-        font-size:9.5px;
-        line-height:1.25;
-      }
-      .sidebar .reader-heading{
-        font-size:10px;
-        color:#fff !important;
-        font-weight:800;
-        text-decoration:none;
-      }
-      .sidebar .reader-line small{display:none !important}
-      .sidebar .reader-line .reader-dot{width:7px;height:7px;flex:0 0 7px}
-      .sidebar .reader-line .reader-dot.online{background:#20bf6b !important}
-      .sidebar .reader-line .reader-dot.offline,
-      .sidebar .reader-line .reader-dot.unknown{background:#e5484d !important}
       @media(max-height:760px) and (min-width:951px){
         .sidebar{padding-top:10px;padding-bottom:8px}
         .sidebar .sidebar-brand{padding-bottom:9px}
@@ -174,7 +157,6 @@ export default function Sidebar({
         .sidebar .menu-button-sub,.sidebar .dark-menu{padding:6px 9px;font-size:10.5px}
         .sidebar .menu-section-title{min-height:29px;padding:6px 9px;font-size:12px}
         .sidebar .menu-toggle.menu-section-title{padding-bottom:6px}
-        .sidebar .reader-panel{padding-top:7px;font-size:9px}
       }
       @media(max-width:950px){
         .sidebar{height:auto;min-height:auto;position:relative;overflow:visible}
