@@ -9,7 +9,7 @@ import { requestJson } from "@/lib/client-request";
 export default function BuildingCredentialsEditor({
   buildingId,
   userId,
-  username,
+  username: initialUsername,
   initialPassword,
 }: {
   buildingId: string;
@@ -19,24 +19,31 @@ export default function BuildingCredentialsEditor({
 }) {
   const { notify, refresh } = useFeedback();
   const { pending, execute } = useMutation();
+  const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState(initialPassword);
 
-  const dirty = password !== initialPassword;
+  const dirty = username.trim() !== initialUsername || password !== initialPassword;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const cleanUsername = username.trim();
+    if (!cleanUsername) {
+      notify("Building username is required.", "error");
+      return;
+    }
     if (!password.trim()) {
       notify("Building password is required.", "error");
       return;
     }
 
     void execute(async () => {
-      const result = await requestJson<{ ok: true; message: string; account: { userId: string } }>(
+      const result = await requestJson<{ ok: true; message: string; account: { userId: string; username: string } }>(
         `/api/buildings/${buildingId}`,
         "PATCH",
-        { password },
+        { username: cleanUsername, password },
       );
-      notify(result.message || "Building password updated.");
+      setUsername(result.account.username);
+      notify(result.message || "Building login credentials updated.");
       refresh();
     });
   }
@@ -48,12 +55,24 @@ export default function BuildingCredentialsEditor({
         <strong>Admin credentials</strong>
       </div>
       <ActionButton type="submit" className="secondary-button credentials-save" pending={pending} pendingText="Saving…" disabled={!dirty || pending}>
-        Update password
+        Update credentials
       </ActionButton>
     </div>
-    <div className="building-username-row"><span>Username</span><strong>{username || "-"}</strong></div>
     <div className="building-credentials-grid">
-      <label>Building User ID<input value={userId} readOnly autoComplete="username" /></label>
+      <label>
+        Building User ID
+        <input value={userId} readOnly autoComplete="username" />
+      </label>
+      <label>
+        Building username
+        <input
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          autoComplete="username"
+          disabled={pending}
+          required
+        />
+      </label>
       <PasswordInput
         label="Building password"
         value={password}
@@ -69,20 +88,18 @@ export default function BuildingCredentialsEditor({
       .building-credentials-head>div{display:flex;align-items:baseline;gap:9px;min-width:0}
       .building-credentials-head span{font-size:9px;font-weight:900;letter-spacing:.08em;color:#8241b2}
       .building-credentials-head strong{font-size:13px;color:#17261e}
-      .building-username-row{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:8px 10px;border:1px solid #e1e7e3;border-radius:8px;background:#fff;font-size:12px}
-      .building-username-row span{font-weight:700;color:#68766e}
-      .building-username-row strong{color:#17261e;font-weight:800}
-      .building-credentials-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
-      .building-credentials-grid>label,.building-credentials-grid>.password-field{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:800;color:#3d4c44}
-      .building-credentials-grid input{width:100%;height:40px;border:1px solid #cbd7d0;border-radius:8px;background:#fff;padding:0 12px;font:inherit;color:#17261e;outline:none}
+      .building-credentials-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+      .building-credentials-grid>label,.building-credentials-grid>.password-field{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:800;color:#3d4c44;min-width:0}
+      .building-credentials-grid input{width:100%;height:40px;border:1px solid #cbd7d0;border-radius:8px;background:#fff;padding:0 12px;font:inherit;color:#17261e;outline:none;box-sizing:border-box}
       .building-credentials-grid input[readonly]{background:#f1edf5;color:#564663}
       .building-credentials-grid input:focus{border-color:#8d4bbb;box-shadow:0 0 0 2px rgba(141,75,187,.10)}
       .building-credentials-grid .password-input-wrap{position:relative}
       .building-credentials-grid .password-input-wrap input{padding-right:44px}
       .building-credentials-grid .password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:30px;height:30px;border:0;background:transparent;color:#69766f;cursor:pointer}
       .building-credentials-grid .password-toggle:hover{color:#7f3faf}
-      .credentials-save{min-width:126px;justify-content:center}
-      @media(max-width:720px){.building-credentials-head{align-items:flex-start;flex-direction:column}.building-credentials-grid{grid-template-columns:1fr}.credentials-save{width:100%}}
+      .credentials-save{min-width:138px;justify-content:center}
+      @media(max-width:900px){.building-credentials-grid{grid-template-columns:1fr 1fr}.building-credentials-grid>.password-field{grid-column:1/-1}}
+      @media(max-width:620px){.building-credentials-head{align-items:flex-start;flex-direction:column}.building-credentials-grid{grid-template-columns:1fr}.building-credentials-grid>.password-field{grid-column:auto}.credentials-save{width:100%}}
     `}</style>
   </form>;
 }
