@@ -15,6 +15,8 @@ export default function Sidebar({
   const pathname = usePathname();
 
   const dashboardPageActive = pathname === dashboardHref || pathname.startsWith(`${dashboardHref}/`);
+  const supervisorParkingActive = role === "EMPLOYEE" && (pathname === "/dashboard/employee-parking" || pathname.startsWith("/dashboard/employee-parking/"));
+  const dashboardLinkActive = role === "EMPLOYEE" ? pathname === dashboardHref : dashboardPageActive;
   const superAdminsActive = pathname === "/super-admins" || pathname.startsWith("/super-admins/");
   const dashboardGroupActive = dashboardPageActive || superAdminsActive;
   const accessGroupActive = pathname === "/access-control" || pathname.startsWith("/access-control/");
@@ -57,7 +59,8 @@ export default function Sidebar({
           <span>Dashboard</span><span className="menu-chevron" aria-hidden="true" />
         </button>
         <div id="dashboard-menu" className="menu-items" hidden={!expanded.dashboard}>
-          <Link className={`menu-button menu-button-sub${dashboardPageActive ? " active-menu" : " dark-menu"}`} href={dashboardHref}>{dashboardLabel(role)}</Link>
+          <Link className={`menu-button menu-button-sub${dashboardLinkActive ? " active-menu" : " dark-menu"}`} href={dashboardHref}>{dashboardLabel(role)}</Link>
+          {role === "EMPLOYEE" ? <Link className={`menu-button menu-button-sub${supervisorParkingActive ? " active-menu" : " dark-menu"}`} href="/dashboard/employee-parking">Employee Parking Allocation</Link> : null}
           {canCreateSuperAdmins ? <Link className={`menu-button menu-button-sub dark-menu${superAdminsActive ? " active-menu" : ""}`} href="/super-admins">Create Super Admin</Link> : null}
         </div>
       </div>
