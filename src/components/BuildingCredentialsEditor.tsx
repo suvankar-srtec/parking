@@ -9,10 +9,12 @@ import { requestJson } from "@/lib/client-request";
 export default function BuildingCredentialsEditor({
   buildingId,
   userId,
+  username,
   initialPassword,
 }: {
   buildingId: string;
   userId: string;
+  username: string;
   initialPassword: string;
 }) {
   const { notify, refresh } = useFeedback();
@@ -49,7 +51,7 @@ export default function BuildingCredentialsEditor({
         Update password
       </ActionButton>
     </div>
-    <p className="building-login-help">Sign in with this User ID and your password. The User ID cannot be changed.</p>
+    <div className="building-username-row"><span>Username</span><strong>{username || "-"}</strong></div>
     <div className="building-credentials-grid">
       <label>Building User ID<input value={userId} readOnly autoComplete="username" /></label>
       <PasswordInput
@@ -67,7 +69,9 @@ export default function BuildingCredentialsEditor({
       .building-credentials-head>div{display:flex;align-items:baseline;gap:9px;min-width:0}
       .building-credentials-head span{font-size:9px;font-weight:900;letter-spacing:.08em;color:#8241b2}
       .building-credentials-head strong{font-size:13px;color:#17261e}
-      .building-login-help{margin:0 0 10px;font-size:12px;color:#627168;line-height:1.5}
+      .building-username-row{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:8px 10px;border:1px solid #e1e7e3;border-radius:8px;background:#fff;font-size:12px}
+      .building-username-row span{font-weight:700;color:#68766e}
+      .building-username-row strong{color:#17261e;font-weight:800}
       .building-credentials-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
       .building-credentials-grid>label,.building-credentials-grid>.password-field{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:800;color:#3d4c44}
       .building-credentials-grid input{width:100%;height:40px;border:1px solid #cbd7d0;border-radius:8px;background:#fff;padding:0 12px;font:inherit;color:#17261e;outline:none}
