@@ -1,4 +1,4 @@
-/* Reader card assignment line: show the configured building and operating mode clearly. */
+/* Reader card assignment line: show only the configured building and operating mode. */
 .reader-card > p:nth-of-type(2) {
   display: inline-flex;
   align-items: center;
@@ -16,22 +16,8 @@
   letter-spacing: .01em;
 }
 
-.reader-card > p:nth-of-type(2)::before {
-  content: "Assigned to: ";
-  margin-right: 4px;
-  color: #66756d;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-
 @media (max-width: 640px) {
   .reader-card > p:nth-of-type(2) {
     font-size: 11px;
-  }
-
-  .reader-card > p:nth-of-type(2)::before {
-    font-size: 9px;
   }
 }
