@@ -26,7 +26,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const { id } = await context.params;
     const building = await prisma.building.findUnique({
       where: { id },
-      select: { id: true, maximumGate: true, superAdminId: true },
+      select: { id: true, name: true, maximumGate: true, superAdminId: true },
     });
     if (!building) {
       return NextResponse.json({ ok: false, message: "Building not found." }, { status: 404 });
@@ -40,44 +40,63 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     const bodyRecord = body as Record<string, unknown>;
-    const hasCredentialField = "username" in bodyRecord || "password" in bodyRecord;
+    const hasCredentialField = "password" in bodyRecord || "buildingName" in bodyRecord;
     if (hasCredentialField) {
-      const allowedKeys = new Set(["username", "password"]);
+      const allowedKeys = new Set(["password", "buildingName"]);
       if (Object.keys(bodyRecord).some((key) => !allowedKeys.has(key))) {
-        return NextResponse.json({ ok: false, message: "Send only username and password when updating building credentials." }, { status: 400 });
+        return NextResponse.json({ ok: false, message: "Send only buildingName and password when updating building login details." }, { status: 400 });
       }
 
-      const username = typeof bodyRecord.username === "string" ? bodyRecord.username.trim() : "";
       const password = typeof bodyRecord.password === "string" ? bodyRecord.password : "";
-      if (!username) {
-        return NextResponse.json({ ok: false, message: "Building username is required." }, { status: 400 });
-      }
       if (!password.trim()) {
         return NextResponse.json({ ok: false, message: "Building password is required." }, { status: 400 });
+      }
+
+      let nextBuildingName = building.name;
+      if ("buildingName" in bodyRecord) {
+        if (user.role !== "SUPER_ADMIN") {
+          return NextResponse.json({ ok: false, message: "Only a Super Admin can change the building name." }, { status: 403 });
+        }
+        nextBuildingName = typeof bodyRecord.buildingName === "string" ? bodyRecord.buildingName.trim() : "";
+        if (!nextBuildingName) {
+          return NextResponse.json({ ok: false, message: "Building name is required." }, { status: 400 });
+        }
+        const duplicate = await prisma.building.findFirst({
+          where: { name: nextBuildingName, NOT: { id } },
+          select: { id: true },
+        });
+        if (duplicate) {
+          return NextResponse.json({ ok: false, message: "Another building already uses this name." }, { status: 409 });
+        }
       }
 
       const account = await prisma.user.findFirst({
         where: { role: "BUILDING_ADMIN", buildingId: id, ...(user.role === "BUILDING_ADMIN" ? { id: user.id } : {}) },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        select: { id: true, userId: true, username: true },
+        select: { id: true, userId: true },
       });
       if (!account) {
         return NextResponse.json({ ok: false, message: "Building administrator account not found." }, { status: 404 });
       }
 
-      if (user.role === "BUILDING_ADMIN" && account.id !== user.id) {
-        return NextResponse.json({ ok: false, message: "You can update only your own building login credentials." }, { status: 403 });
-      }
-
-      const updatedAccount = await prisma.user.update({
-        where: { id: account.id },
-        data: { username, password },
-        select: { userId: true, username: true },
-      });
+      const [updatedBuilding] = await prisma.$transaction([
+        prisma.building.update({
+          where: { id },
+          data: user.role === "SUPER_ADMIN" ? { name: nextBuildingName } : {},
+          select: { id: true, name: true },
+        }),
+        prisma.user.update({
+          where: { id: account.id },
+          data: { password },
+          select: { userId: true },
+        }),
+      ]);
 
       revalidatePath("/dashboard");
       revalidatePath(`/dashboard/buildings/${id}`);
-      return NextResponse.json({ ok: true, message: "Building login credentials updated.", account: updatedAccount });
+      revalidatePath("/access-control", "layout");
+      revalidatePath("/reports");
+      return NextResponse.json({ ok: true, message: "Building details updated.", building: updatedBuilding });
     }
 
     if ("enabled" in bodyRecord) {
@@ -129,7 +148,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 }
 
-// Building records are permanent for every application role, including Super Admin.
 export async function DELETE() {
   return NextResponse.json({ ok: false, message: "Buildings cannot be deleted. A Super Admin can disable the building instead." }, { status: 405, headers: { Allow: "PATCH" } });
 }
