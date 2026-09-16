@@ -22,7 +22,6 @@ type Headcount = {
   totalIn: number;
   totalOut: number;
   totalOnSite: number;
-  departments: { name: string; count: number }[];
   recentEvents: ScanEvent[];
   updatedAt: string;
 };
@@ -156,20 +155,10 @@ export default function SupervisorHeadcount() {
       </div>
       <div className="portfolio-divider" />
       {error ? <div className={`parking-feedback parking-feedback-error ${styles.error}`}>{error}</div> : null}
-      <div className={styles.layout}>
-        <div className={styles.totals}>
-          <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article>
-          <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article>
-          <article className={`${styles.totalCard} ${styles.onsite}`}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article>
-        </div>
-        <div className={styles.departments}>
-          <h3>Department on Site</h3>
-          <div className={styles.departmentGrid}>
-            {data?.departments.length ? data.departments.map((department) => <article className={styles.departmentCard} key={department.name}>
-              <span>{department.name}</span><strong>{department.count}</strong>
-            </article>) : <div className={styles.empty}><p>No vehicles are currently on site.</p></div>}
-          </div>
-        </div>
+      <div className={styles.totals} style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+        <article className={`${styles.totalCard} ${styles.onsite}`}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article>
+        <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article>
+        <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article>
       </div>
     </section>
   </>;
