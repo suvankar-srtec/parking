@@ -1,15 +1,29 @@
 "use client";
 
-import { useFeedback, useMutation } from "./FeedbackProvider";
+import { useState, type FormEvent } from "react";
 import { ActionButton } from "./LoadingIndicator";
-import { requestJson } from "@/lib/client-request";
 
 export default function SignOutButton({ className = "logout-button" }: { className?: string }) {
-  const { notify, navigate } = useFeedback();
-  const { pending, execute } = useMutation();
-  return <ActionButton type="button" className={className} pending={pending} pendingText="Signing out…" onClick={() => execute(async () => {
-    await requestJson("/api/logout", "POST");
-    notify("You have been signed out.");
-    navigate("/", true);
-  })}>Sign out</ActionButton>;
+  const [pending, setPending] = useState(false);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    if (pending) {
+      event.preventDefault();
+      return;
+    }
+    setPending(true);
+  }
+
+  return (
+    <form action="/api/logout" method="post" onSubmit={submit}>
+      <ActionButton
+        type="submit"
+        className={className}
+        pending={pending}
+        pendingText="Signing out…"
+      >
+        Sign out
+      </ActionButton>
+    </form>
+  );
 }
