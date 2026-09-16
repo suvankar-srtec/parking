@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import FeedbackProvider from "@/components/FeedbackProvider";
 import "./globals.css";
 import "./sidebar-fixed.css";
+import "./reader-qr-size.css";
 
 export const metadata: Metadata = {
   title: "SRTEC Access Control",
