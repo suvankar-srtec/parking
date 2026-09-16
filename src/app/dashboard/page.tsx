@@ -121,7 +121,7 @@ export default async function DashboardPage() {
   }
 
   return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
-    <header className="topbar"><div><div className="section-kicker">SUPERVISOR</div><h1>Realtime Head Count</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
-    {user.buildingId ? <SupervisorHeadcount /> : <AssignmentRequired title="Building not assigned" message="This Supervisor must be assigned to a building before realtime head count and reports are available." />}
+    <header className="topbar"><div><div className="section-kicker">SUPERVISOR</div><h1>Live Dashboard</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
+    {user.buildingId ? <SupervisorHeadcount /> : <AssignmentRequired title="Building not assigned" message="This Supervisor must be assigned to a building before the Live Dashboard and reports are available." />}
   </section></main>;
 }
