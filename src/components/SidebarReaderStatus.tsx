@@ -53,13 +53,14 @@ export default function SidebarReaderStatus() {
       const online = readerStatus(reader).tone === "online";
       return <div className="sidebar-reader-item" key={reader.id} title={online ? "Heartbeat active" : "Heartbeat unavailable"}>
         <i className={online ? "online" : "offline"} aria-hidden="true" />
-        <span>{reader.deviceNumber}</span>
+        <span>Reader : <strong>{reader.deviceNumber}</strong></span>
       </div>;
     })}
     <style>{`
       .sidebar-reader-status{margin-top:auto;padding:10px 7px 2px;border-top:1px solid rgba(255,255,255,.14);display:grid;gap:7px}
       .sidebar-reader-title{color:#fff!important;text-decoration:none;font-size:10px;font-weight:800;line-height:1.2}
-      .sidebar-reader-item{display:flex;align-items:center;gap:8px;color:#fff;font-size:10px;font-weight:700;line-height:1.2;min-height:16px}
+      .sidebar-reader-item{display:flex;align-items:center;gap:8px;color:#fff;font-size:10px;font-weight:500;line-height:1.2;min-height:16px}
+      .sidebar-reader-item strong{font-weight:800;color:#fff}
       .sidebar-reader-item i{width:8px;height:8px;border-radius:50%;flex:0 0 8px;box-shadow:0 0 0 2px rgba(255,255,255,.05)}
       .sidebar-reader-item i.online{background:#20bf6b}
       .sidebar-reader-item i.offline{background:#e5484d}
