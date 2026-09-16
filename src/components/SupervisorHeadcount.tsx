@@ -71,7 +71,7 @@ export default function SupervisorHeadcount() {
         signal: AbortSignal.timeout(8000),
       });
       const next = await response.json();
-      if (!response.ok) throw new Error(next.message || "Unable to load realtime head count.");
+      if (!response.ok) throw new Error(next.message || "Unable to load live dashboard.");
 
       const newestEvent = Array.isArray(next.recentEvents) ? next.recentEvents[0] as ScanEvent | undefined : undefined;
       if (!initialized.current) {
@@ -85,7 +85,7 @@ export default function SupervisorHeadcount() {
       setData(next);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load realtime head count.");
+      setError(err instanceof Error ? err.message : "Unable to load live dashboard.");
     } finally {
       requestInFlight.current = false;
       setLoading(false);
@@ -124,7 +124,7 @@ export default function SupervisorHeadcount() {
   }, [popup]);
 
   if (loading && !data) {
-    return <section className={`portfolio-card ${styles.headcount}`}><p><Spinner /> Loading realtime head count…</p></section>;
+    return <section className={`portfolio-card ${styles.headcount}`}><p><Spinner /> Loading Live Dashboard…</p></section>;
   }
 
   return <>
@@ -147,8 +147,8 @@ export default function SupervisorHeadcount() {
     <section className={`portfolio-card ${styles.headcount}`}>
       <div className={styles.titleRow}>
         <div>
-          <div className="section-kicker"><span className={styles.liveDot} />REALTIME MONITOR</div>
-          <h2>Realtime Head Count</h2>
+          <div className="section-kicker"><span className={styles.liveDot} />LIVE DASHBOARD</div>
+          <h2>Live Dashboard</h2>
           <p>{data?.buildingName || "Assigned building"} · updates every 3 seconds</p>
         </div>
         <div className={styles.clock}><strong>{clock.toLocaleDateString()}</strong><span>{clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>
