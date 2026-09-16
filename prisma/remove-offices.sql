@@ -4,7 +4,8 @@
 BEGIN;
 SET LOCAL lock_timeout = '10s';
 SET LOCAL statement_timeout = '60s';
-SELECT pg_advisory_xact_lock(hashtext('parkcontrol-company-only'));
+-- Preserve the existing migration lock identity across branding changes.
+SELECT pg_advisory_xact_lock(-1786405835);
 LOCK TABLE "users", "buildings", "companies" IN ACCESS EXCLUSIVE MODE;
 
 DO $migration$

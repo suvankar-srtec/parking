@@ -23,11 +23,11 @@ export async function POST(request: Request) {
     if ("userId" in body) {
       return NextResponse.json({ ok: false, message: "Building User IDs are generated automatically and cannot be supplied." }, { status: 400 });
     }
-    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const username = name; // Display name only; authentication uses the generated User ID.
     const password = typeof body.password === "string" ? body.password : "";
     const reservationId = typeof body.reservationId === "string" ? body.reservationId : "";
-    if (!name || !username || !password.trim() || !reservationId) {
-      return NextResponse.json({ ok: false, message: "Building name, username, and password are required." }, { status: 400 });
+    if (!name || !password.trim() || !reservationId) {
+      return NextResponse.json({ ok: false, message: "Building name and password are required." }, { status: 400 });
     }
     const maximumGate = Number(body.maximumGate);
     if (!Number.isInteger(maximumGate) || maximumGate < 1 || maximumGate > 2147483647) {

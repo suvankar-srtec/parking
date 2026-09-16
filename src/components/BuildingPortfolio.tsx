@@ -61,7 +61,6 @@ export default function BuildingPortfolio({ buildings }: { buildings: Building[]
             <div><span className="tiny-label">Building</span><h3>{building.name}</h3></div>
             <span className="building-code">{account?.userId || "No login"}</span>
           </div>
-          <div className="credential-line">{account?.username || "No username"}</div>
           <div className="stats-grid">
             <div className="stat-box"><span>Total parking</span><strong>{building.totalParking}</strong></div>
             <div className="stat-box"><span>Owner reserve</span><strong>{building.ownerParking}</strong></div>

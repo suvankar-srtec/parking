@@ -34,7 +34,8 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
     prisma.user.findFirst({ where: { role: "EMPLOYEE", buildingId: id, companyId: null }, select: { userId: true } }),
     prisma.user.findFirst({
       where: { role: "BUILDING_ADMIN", buildingId: id },
-      select: { username: true, password: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { userId: true, username: true, password: true },
     }),
   ]);
   if (!building) notFound();
@@ -52,7 +53,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
           <SupervisorManager buildingId={building.id} currentUserId={supervisor?.userId} />
         </div>
         <div className="portfolio-divider" />
-        {buildingAdmin ? <BuildingCredentialsEditor buildingId={building.id} initialUsername={buildingAdmin.username} initialPassword={buildingAdmin.password} /> : null}
+        {buildingAdmin ? <BuildingCredentialsEditor buildingId={building.id} userId={buildingAdmin.userId} initialPassword={buildingAdmin.password} /> : null}
         <BuildingStatusControl buildingId={building.id} buildingName={building.name} enabled={building.enabled} />
         <BuildingParkingEditor buildingId={building.id} initialValues={{ totalParking: building.totalParking, ownerParking: building.ownerParking, companyParking: building.companyParking, maximumGate: building.maximumGate }} />
       </section>

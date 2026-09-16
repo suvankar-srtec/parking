@@ -139,11 +139,10 @@ export default function CreateEntityModal({
     const entityName = String(formData.get("name") ?? "").trim();
     const credentials = isBuilding || kind === "company" ? {
       name: entityName,
-      username: String(formData.get("username") ?? "").trim(),
       password: String(formData.get("password") ?? ""),
     } : { name: entityName };
-    if (!credentials.name || ("username" in credentials && (!credentials.username || !credentials.password.trim()))) {
-      notify(isBuilding || kind === "company" ? "Enter a name, username, and password." : "Enter a name.", "error"); return;
+    if (!credentials.name || ("password" in credentials && !credentials.password?.trim())) {
+      notify(isBuilding || kind === "company" ? "Enter a name and password." : "Enter a name.", "error"); return;
     }
     if (generatingUserId) { notify("Wait for the generated User ID.", "error"); return; }
     if (!generatedUserId || !reservationId) { notify(generationError || "Enter a name and wait for the generated User ID.", "error"); return; }
@@ -205,7 +204,6 @@ export default function CreateEntityModal({
                 </button>
               </div>
             </div>
-            {kind !== "employee" && <label>{isBuilding ? "Building username" : "Username"}<input name="username" required autoComplete="off" placeholder="Username" /></label>}
             {kind !== "employee" && <PasswordInput label={isBuilding ? "Building password" : "Password"} name="password" required autoComplete="new-password" placeholder="Password" disabled={pending} />}
             {isBuilding && <label>Maximum Gate<input name="maximumGate" type="number" min="1" step="1" defaultValue="1" required /></label>}
             {kind === "company" && <>

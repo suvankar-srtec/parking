@@ -43,7 +43,7 @@ export default function Sidebar({
   const isAccessPage = (href: string) => pathname === href;
 
   return <aside className={`sidebar ${roleClass}`}>
-    <div className="sidebar-brand"><div className="logo-box">S</div><div><strong>SRTEC Access Control</strong><span>{roleLabel(role)}</span></div></div>
+    <div className="sidebar-brand"><div className="logo-box" aria-hidden="true">S</div><div><strong>SRTEC Access Control</strong><span>{roleLabel(role)}</span></div></div>
     <div className="sidebar-line" />
     <nav aria-label="Main navigation">
       <div className="menu-group">
@@ -93,8 +93,9 @@ export default function Sidebar({
         padding:14px 12px 12px;
       }
       .sidebar .sidebar-brand{gap:10px;padding:0 7px 12px}
-      .sidebar .logo-box{width:38px;height:38px}
-      .sidebar .sidebar-brand strong{font-size:14px;line-height:1.15}
+      .sidebar .logo-box{width:38px;height:38px;flex-shrink:0}
+      .sidebar .sidebar-brand>div:last-child{min-width:0}
+      .sidebar .sidebar-brand strong{font-size:13px;line-height:1.3;white-space:normal}
       .sidebar .sidebar-brand span{font-size:10.5px;margin-top:2px}
       .sidebar .sidebar-line{margin-bottom:12px}
       .sidebar nav{

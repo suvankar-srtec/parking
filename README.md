@@ -1,4 +1,4 @@
-# ParkControl
+# SRTEC Access Control
 
 Next.js and Neon PostgreSQL parking management for buildings and companies.
 

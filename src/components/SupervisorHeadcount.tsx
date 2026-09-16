@@ -138,7 +138,7 @@ export default function SupervisorHeadcount() {
         <p>{popup.message}</p>
         <div className={styles.popupMeta}>
           <span><strong>Vehicle</strong>{popup.vehicle?.plateNumber || "Unknown"}</span>
-          <span><strong>Driver</strong>{popup.vehicle?.ownerName || "Unknown"}</span>
+          <span><strong>Rider</strong>{popup.vehicle?.ownerName || "Unknown"}</span>
           <span><strong>Company</strong>{popup.company?.name || "-"}</span>
           <span><strong>RFID</strong>{popup.cardNo}</span>
         </div>

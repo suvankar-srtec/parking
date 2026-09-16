@@ -1,0 +1,9 @@
+.row { gap: 24px; }
+.row > :first-child { flex: 1; }
+.row .metrics { display: grid; grid-template-columns: repeat(3, minmax(76px, 1fr)); gap: 20px; flex: 0 0 290px; min-width: 0; }
+.row .metrics > span { margin: 0; display: grid; gap: 5px; font-size: 11px; line-height: 1.3; font-weight: 600; color: #68766e; }
+.row .metrics strong { margin: 0; font-size: 17px; line-height: 1.2; font-weight: 700; color: #7040a2; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .row { flex-direction: column; align-items: stretch; gap: 12px; }
+  .row .metrics { flex: none; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 12px; border-top: 1px solid #e5ebe7; }
+}

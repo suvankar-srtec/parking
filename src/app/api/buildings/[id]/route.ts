@@ -42,19 +42,19 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const bodyRecord = body as Record<string, unknown>;
     const hasCredentialField = "username" in bodyRecord || "password" in bodyRecord;
     if (hasCredentialField) {
-      const allowedKeys = new Set(["username", "password"]);
+      const allowedKeys = new Set(["password"]);
       if (Object.keys(bodyRecord).some((key) => !allowedKeys.has(key))) {
-        return NextResponse.json({ ok: false, message: "Send only building username and password when updating login credentials." }, { status: 400 });
+        return NextResponse.json({ ok: false, message: "Send only the password. Sign-in uses the fixed User ID." }, { status: 400 });
       }
 
-      const username = typeof bodyRecord.username === "string" ? bodyRecord.username.trim() : "";
       const password = typeof bodyRecord.password === "string" ? bodyRecord.password : "";
-      if (!username || !password.trim()) {
-        return NextResponse.json({ ok: false, message: "Building username and password are required." }, { status: 400 });
+      if (!password.trim()) {
+        return NextResponse.json({ ok: false, message: "Building password is required." }, { status: 400 });
       }
 
       const account = await prisma.user.findFirst({
-        where: { role: "BUILDING_ADMIN", buildingId: id },
+        where: { role: "BUILDING_ADMIN", buildingId: id, ...(user.role === "BUILDING_ADMIN" ? { id: user.id } : {}) },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         select: { id: true, userId: true },
       });
       if (!account) {
@@ -67,13 +67,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
       const updatedAccount = await prisma.user.update({
         where: { id: account.id },
-        data: { username, password },
-        select: { userId: true, username: true },
+        data: { password },
+        select: { userId: true },
       });
 
       revalidatePath("/dashboard");
       revalidatePath(`/dashboard/buildings/${id}`);
-      return NextResponse.json({ ok: true, message: "Building login credentials updated.", account: updatedAccount });
+      return NextResponse.json({ ok: true, message: "Building password updated. Sign in with your User ID and the new password.", account: updatedAccount });
     }
 
     if ("enabled" in bodyRecord) {

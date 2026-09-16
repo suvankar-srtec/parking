@@ -26,12 +26,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const name = String(body.name ?? "").trim();
     const userId = String(body.userId ?? "").trim();
     const reservationId = String(body.reservationId ?? "");
-    const username = String(body.username ?? "").trim();
+    const username = name; // Display name only; authentication uses the generated User ID.
     const password = String(body.password ?? "");
     const parkingAllocation = Number(body.parkingAllocation ?? 0);
     const maximumDepartments = Number(body.maximumDepartments ?? 1);
-    if (!name || !userId || !reservationId || !username || !password) {
-      return NextResponse.json({ ok: false, message: "Company name and all login fields are required." }, { status: 400 });
+    if (!name || !userId || !reservationId || !password.trim()) {
+      return NextResponse.json({ ok: false, message: "Company name, generated User ID, and password are required." }, { status: 400 });
     }
     if (!Number.isInteger(parkingAllocation) || parkingAllocation < 0 || parkingAllocation > MAX_PARKING) {
       return NextResponse.json({ ok: false, message: "Parking allocation must be a valid whole number of 0 or greater." }, { status: 400 });
