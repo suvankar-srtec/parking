@@ -8,6 +8,21 @@ import styles from "./DepartmentPicker.module.css";
 
 type Department = { id: string; name: string };
 
+function isScrollbarPointer(event: PointerEvent) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return false;
+
+  const verticalScrollbar = target.scrollHeight > target.clientHeight
+    && target.offsetWidth > target.clientWidth
+    && event.clientX >= target.getBoundingClientRect().right - (target.offsetWidth - target.clientWidth);
+
+  const horizontalScrollbar = target.scrollWidth > target.clientWidth
+    && target.offsetHeight > target.clientHeight
+    && event.clientY >= target.getBoundingClientRect().bottom - (target.offsetHeight - target.clientHeight);
+
+  return verticalScrollbar || horizontalScrollbar;
+}
+
 export default function DepartmentPicker({ companyId, departments, value, onChange, disabled = false, onBusyChange, onRemoved }: {
   companyId: string;
   departments: Department[];
@@ -30,7 +45,9 @@ export default function DepartmentPicker({ companyId, departments, value, onChan
 
   useEffect(() => {
     function outside(event: PointerEvent) {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
+      if (root.current?.contains(event.target as Node)) return;
+      if (isScrollbarPointer(event)) return;
+      setOpen(false);
     }
     document.addEventListener("pointerdown", outside);
     return () => document.removeEventListener("pointerdown", outside);
@@ -64,7 +81,8 @@ export default function DepartmentPicker({ companyId, departments, value, onChan
       trigger.current?.focus();
     }
   }} onBlur={(event) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false);
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && !event.currentTarget.contains(nextTarget)) setOpen(false);
   }}>
     <label id={id + "-label"} htmlFor={id}>Department</label>
     <input type="hidden" name="department" value={selected?.name || ""} />
