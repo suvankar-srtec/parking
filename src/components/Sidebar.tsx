@@ -26,7 +26,8 @@ export default function Sidebar({
   const dashboardPageActive = pathname === dashboardHref || pathname.startsWith(`${dashboardHref}/`);
   const supervisorParkingActive = role === "EMPLOYEE" && (pathname === "/dashboard/employee-parking" || pathname.startsWith("/dashboard/employee-parking/"));
   const adminParkingActive = role === "BUILDING_ADMIN" && (pathname === "/dashboard/parking-allocation" || pathname.startsWith("/dashboard/parking-allocation/"));
-  const dashboardLinkActive = role === "EMPLOYEE" || role === "BUILDING_ADMIN" ? pathname === dashboardHref : dashboardPageActive;
+  const companyParkingActive = (role === "COMPANY_ADMIN" || role === "BUILDING_OWNER") && (pathname === "/dashboard/company-parking" || pathname.startsWith("/dashboard/company-parking/"));
+  const dashboardLinkActive = role === "EMPLOYEE" || role === "BUILDING_ADMIN" || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER" ? pathname === dashboardHref : dashboardPageActive;
   const superAdminsActive = pathname === "/super-admins" || pathname.startsWith("/super-admins/");
   const dashboardGroupActive = dashboardPageActive || superAdminsActive;
   const accessGroupActive = pathname === "/access-control" || pathname.startsWith("/access-control/");
@@ -45,6 +46,7 @@ export default function Sidebar({
   const showAccess = isSuperAdmin || (role === "BUILDING_ADMIN" && assigned.has("building.configureReaders"));
   const showSupervisorParking = role === "EMPLOYEE" && assigned.has("supervisor.employeeParking");
   const showAdminParking = role === "BUILDING_ADMIN" && assigned.has("building.allocateCompanyParking") && assigned.has("building.manageOwnerParking");
+  const showCompanyParking = (role === "COMPANY_ADMIN" || role === "BUILDING_OWNER") && assigned.has("company.allocateEmployeeParking");
   const showReports = isSuperAdmin ||
     (role === "BUILDING_ADMIN" && assigned.has("building.viewReports")) ||
     ((role === "COMPANY_ADMIN" || role === "BUILDING_OWNER") && assigned.has("company.viewReports")) ||
@@ -64,6 +66,7 @@ export default function Sidebar({
         <div id="dashboard-menu" className="menu-items" hidden={!expanded.dashboard}>
           <Link className={`menu-button menu-button-sub${dashboardLinkActive ? " active-menu" : " dark-menu"}`} href={dashboardHref}>{dashboardLabel(role)}</Link>
           {showAdminParking ? <Link className={`menu-button menu-button-sub${adminParkingActive ? " active-menu" : " dark-menu"}`} href="/dashboard/parking-allocation">Parking allocation</Link> : null}
+          {showCompanyParking ? <Link className={`menu-button menu-button-sub${companyParkingActive ? " active-menu" : " dark-menu"}`} href="/dashboard/company-parking">Parking allocation</Link> : null}
           {showSupervisorParking ? <Link className={`menu-button menu-button-sub${supervisorParkingActive ? " active-menu" : " dark-menu"}`} href="/dashboard/employee-parking">Employee Parking Allocation</Link> : null}
           {canCreateSuperAdmins ? <Link className={`menu-button menu-button-sub dark-menu${superAdminsActive ? " active-menu" : ""}`} href="/super-admins">Create Super Admin</Link> : null}
         </div>
