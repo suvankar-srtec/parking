@@ -1,0 +1,2 @@
+/* Employee and company-owner parking is fixed at one space per person. */
+.modal-form label:has(input[name="parkingLimit"]){display:none!important}
