@@ -24,13 +24,11 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(employee.name);
   const [category, setCategory] = useState(employee.category);
-  const [parkingLimit, setParkingLimit] = useState(employee.parkingLimit);
   const [department, setDepartment] = useState(employee.department);
 
   function show() {
     setName(employee.name);
     setCategory(employee.category);
-    setParkingLimit(employee.parkingLimit);
     setDepartment(employee.department);
     setOpen(true);
   }
@@ -47,16 +45,12 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
       notify("Select a department.", "error");
       return;
     }
-    if (!Number.isInteger(parkingLimit) || parkingLimit < 1) {
-      notify("Parking limit must be at least 1.", "error");
-      return;
-    }
 
     void execute(async () => {
       const result = await requestJson<{ ok: true; message: string }>(
         `/api/companies/${companyId}/employees/${employee.id}`,
         "PATCH",
-        { name: cleanName, category, parkingLimit, department },
+        { name: cleanName, category, department },
       );
       setOpen(false);
       notify(result.message || "Employee updated successfully.");
@@ -74,7 +68,7 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
           <div>
             <div className="section-kicker">EDIT EMPLOYEE</div>
             <h2 id={`edit-employee-${employee.id}`}>{employee.category === "OWNER" ? "Edit company owner" : "Edit employee"}</h2>
-            <p>User ID {employee.userId} remains unchanged.</p>
+            <p>User ID {employee.userId} remains unchanged. Each person has one parking space.</p>
           </div>
           <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={() => setOpen(false)}>×</button>
         </div>
@@ -84,7 +78,6 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
             <label>User ID<input value={employee.userId} readOnly /></label>
             <label>Type<select value={category} onChange={(event) => setCategory(event.target.value)} required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
             <DepartmentPicker companyId={companyId} departments={departments} value={department} onChange={setDepartment} disabled={pending} onBusyChange={setDepartmentBusy} />
-            <label>Parking lot limit<input type="number" min="1" step="1" value={parkingLimit} onChange={(event) => setParkingLimit(Number(event.target.value))} required /></label>
           </fieldset>
           <div className="modal-actions">
             <button type="button" className="secondary-button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button>
