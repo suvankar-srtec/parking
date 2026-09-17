@@ -10,12 +10,12 @@ import PermissionChecklist from "./PermissionChecklist";
 
 export default function SupervisorManager({
   buildingId,
-  buildingName,
+  buildingName = "Assigned building",
   currentUserId,
   currentPermissions,
 }: {
   buildingId: string;
-  buildingName: string;
+  buildingName?: string;
   currentUserId?: string | null;
   currentPermissions?: PermissionKey[];
 }) {
