@@ -39,7 +39,7 @@ export default function SupervisorManager({
       const result = await requestJson<{ ok: true; userId: string; reservationId: string }>("/api/user-ids", "POST", {
         kind: "supervisor",
         scopeId: buildingId,
-        name: `${buildingName} Supervisor`,
+        name: `Supervisor ${buildingId}`,
       });
       setGeneratedUserId(result.userId);
       setReservationId(result.reservationId);
