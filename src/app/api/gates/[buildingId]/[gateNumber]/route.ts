@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { hasPermission } from "@/lib/permissions";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 import { isGateDirection, parseGateConfig, serializeGateConfig } from "@/lib/gate-config";
 
 async function getAuthorizedBuilding(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>, buildingId: string) {
+  if (user.role === "BUILDING_ADMIN" && !hasPermission(user, "building.configureReaders")) {
+    return { error: NextResponse.json({ ok: false, message: "Gate and reader configuration is not assigned to this Admin account." }, { status: 403 }) };
+  }
   const building = await prisma.building.findUnique({
     where: { id: buildingId },
     select: { id: true, maximumGate: true, superAdminId: true },
@@ -22,27 +26,14 @@ async function getAuthorizedBuilding(user: NonNullable<Awaited<ReturnType<typeof
 
 async function validateReader(buildingId: string, readerId: string | null, label: "Entry" | "Exit") {
   if (!readerId) return null;
-
-  const reader = await prisma.rfidReader.findUnique({
-    where: { id: readerId },
-    select: { id: true, buildingId: true, enabled: true, mode: true },
-  });
-  if (!reader || reader.buildingId !== buildingId) {
-    return `${label} reader must be assigned to this building.`;
-  }
-  if (!reader.enabled) {
-    return `${label} reader is disabled and cannot be allotted to a gate.`;
-  }
-  if (reader.mode === "REGISTER") {
-    return `A Registration reader cannot be used as the ${label.toLowerCase()} reader.`;
-  }
+  const reader = await prisma.rfidReader.findUnique({ where: { id: readerId }, select: { id: true, buildingId: true, enabled: true, mode: true } });
+  if (!reader || reader.buildingId !== buildingId) return `${label} reader must be assigned to this building.`;
+  if (!reader.enabled) return `${label} reader is disabled and cannot be allotted to a gate.`;
+  if (reader.mode === "REGISTER") return `A Registration reader cannot be used as the ${label.toLowerCase()} reader.`;
   return null;
 }
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ buildingId: string; gateNumber: string }> },
-) {
+export async function PATCH(request: Request, context: { params: Promise<{ buildingId: string; gateNumber: string }> }) {
   const user = await getCurrentUser();
   if (!user || !["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) {
     return NextResponse.json({ ok: false, message: "Super Admin or Building Admin access required." }, { status: 403 });
@@ -50,58 +41,33 @@ export async function PATCH(
 
   const { buildingId, gateNumber: gateNumberText } = await context.params;
   const gateNumber = Number(gateNumberText);
-  if (!Number.isInteger(gateNumber) || gateNumber < 1) {
-    return NextResponse.json({ ok: false, message: "Invalid gate number." }, { status: 400 });
-  }
+  if (!Number.isInteger(gateNumber) || gateNumber < 1) return NextResponse.json({ ok: false, message: "Invalid gate number." }, { status: 400 });
 
   const auth = await getAuthorizedBuilding(user, buildingId);
   if (auth.error) return auth.error;
   const building = auth.building!;
-
-  if (gateNumber > building.maximumGate) {
-    return NextResponse.json({ ok: false, message: `This building supports a maximum of ${building.maximumGate} gate${building.maximumGate === 1 ? "" : "s"}.` }, { status: 400 });
-  }
+  if (gateNumber > building.maximumGate) return NextResponse.json({ ok: false, message: `This building supports a maximum of ${building.maximumGate} gate${building.maximumGate === 1 ? "" : "s"}.` }, { status: 400 });
 
   const body = await request.json().catch(() => null);
-  const existingGate = await prisma.gate.findUnique({
-    where: { buildingId_gateNumber: { buildingId, gateNumber } },
-    select: { direction: true },
-  });
+  const existingGate = await prisma.gate.findUnique({ where: { buildingId_gateNumber: { buildingId, gateNumber } }, select: { direction: true } });
   const current = parseGateConfig(existingGate?.direction);
+  const direction = body && Object.prototype.hasOwnProperty.call(body, "direction") ? String(body.direction ?? "") : current.direction;
+  if (!isGateDirection(direction)) return NextResponse.json({ ok: false, message: "Select Entry, Exit, Entry & Exit, or Select." }, { status: 400 });
 
-  const direction = body && Object.prototype.hasOwnProperty.call(body, "direction")
-    ? String(body.direction ?? "")
-    : current.direction;
-  if (!isGateDirection(direction)) {
-    return NextResponse.json({ ok: false, message: "Select Entry, Exit, Entry & Exit, or Select." }, { status: 400 });
-  }
+  let entryReaderId = body && Object.prototype.hasOwnProperty.call(body, "entryReaderId") ? String(body.entryReaderId ?? "").trim() || null : current.entryReaderId;
+  let exitReaderId = body && Object.prototype.hasOwnProperty.call(body, "exitReaderId") ? String(body.exitReaderId ?? "").trim() || null : current.exitReaderId;
 
-  let entryReaderId = body && Object.prototype.hasOwnProperty.call(body, "entryReaderId")
-    ? String(body.entryReaderId ?? "").trim() || null
-    : current.entryReaderId;
-  let exitReaderId = body && Object.prototype.hasOwnProperty.call(body, "exitReaderId")
-    ? String(body.exitReaderId ?? "").trim() || null
-    : current.exitReaderId;
-
-  // Backward compatibility for older clients that still send readerId.
   if (body && Object.prototype.hasOwnProperty.call(body, "readerId")) {
     const legacyReaderId = String(body.readerId ?? "").trim() || null;
     if (direction === "EXIT") exitReaderId = legacyReaderId;
     else entryReaderId = legacyReaderId;
   }
 
-  if (direction === "SELECT") {
-    entryReaderId = null;
-    exitReaderId = null;
-  } else if (direction === "ENTRY") {
-    exitReaderId = null;
-  } else if (direction === "EXIT") {
-    entryReaderId = null;
-  }
+  if (direction === "SELECT") { entryReaderId = null; exitReaderId = null; }
+  else if (direction === "ENTRY") exitReaderId = null;
+  else if (direction === "EXIT") entryReaderId = null;
 
-  if (entryReaderId && exitReaderId && entryReaderId === exitReaderId) {
-    return NextResponse.json({ ok: false, message: "Entry and Exit must use different readers." }, { status: 409 });
-  }
+  if (entryReaderId && exitReaderId && entryReaderId === exitReaderId) return NextResponse.json({ ok: false, message: "Entry and Exit must use different readers." }, { status: 409 });
 
   const entryError = await validateReader(buildingId, entryReaderId, "Entry");
   if (entryError) return NextResponse.json({ ok: false, message: entryError }, { status: 400 });
@@ -110,16 +76,13 @@ export async function PATCH(
 
   const allGates = await prisma.gate.findMany({ select: { buildingId: true, gateNumber: true, direction: true } });
   const requestedReaderIds = [entryReaderId, exitReaderId].filter((id): id is string => Boolean(id));
-
   for (const readerId of requestedReaderIds) {
     const usedElsewhere = allGates.find((gate) => {
       if (gate.buildingId === buildingId && gate.gateNumber === gateNumber) return false;
       const config = parseGateConfig(gate.direction);
       return config.entryReaderId === readerId || config.exitReaderId === readerId;
     });
-    if (usedElsewhere) {
-      return NextResponse.json({ ok: false, message: "This reader is already allotted to another gate. Remove that allocation first." }, { status: 409 });
-    }
+    if (usedElsewhere) return NextResponse.json({ ok: false, message: "This reader is already allotted to another gate. Remove that allocation first." }, { status: 409 });
   }
 
   const storedDirection = serializeGateConfig(direction, entryReaderId, exitReaderId);
@@ -131,17 +94,10 @@ export async function PATCH(
   });
 
   revalidatePath("/access-control/gate-details");
-  return NextResponse.json({
-    ok: true,
-    message: requestedReaderIds.length ? `Gate ${gateNumber} reader allocation updated.` : `Gate ${gateNumber} updated successfully.`,
-    gate: { ...gate, direction, entryReaderId, exitReaderId },
-  });
+  return NextResponse.json({ ok: true, message: requestedReaderIds.length ? `Gate ${gateNumber} reader allocation updated.` : `Gate ${gateNumber} updated successfully.`, gate: { ...gate, direction, entryReaderId, exitReaderId } });
 }
 
-export async function DELETE(
-  _request: Request,
-  context: { params: Promise<{ buildingId: string; gateNumber: string }> },
-) {
+export async function DELETE(_request: Request, context: { params: Promise<{ buildingId: string; gateNumber: string }> }) {
   const user = await getCurrentUser();
   if (!user || !["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) {
     return NextResponse.json({ ok: false, message: "Super Admin or Building Admin access required." }, { status: 403 });
@@ -149,17 +105,13 @@ export async function DELETE(
 
   const { buildingId, gateNumber: gateNumberText } = await context.params;
   const gateNumber = Number(gateNumberText);
-  if (!Number.isInteger(gateNumber) || gateNumber < 1) {
-    return NextResponse.json({ ok: false, message: "Invalid gate number." }, { status: 400 });
-  }
+  if (!Number.isInteger(gateNumber) || gateNumber < 1) return NextResponse.json({ ok: false, message: "Invalid gate number." }, { status: 400 });
 
   const auth = await getAuthorizedBuilding(user, buildingId);
   if (auth.error) return auth.error;
 
   const gateCount = await prisma.gate.count({ where: { buildingId } });
-  if (gateCount <= 1) {
-    return NextResponse.json({ ok: false, message: "At least one gate must remain. The Maximum Gate setting is not changed." }, { status: 409 });
-  }
+  if (gateCount <= 1) return NextResponse.json({ ok: false, message: "At least one gate must remain. The Maximum Gate setting is not changed." }, { status: 409 });
 
   await prisma.gate.deleteMany({ where: { buildingId, gateNumber } });
   revalidatePath("/access-control/gate-details");
