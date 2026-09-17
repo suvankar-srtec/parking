@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { hasPermission } from "@/lib/permissions";
 
 async function canManageCompany(companyId: string) {
   const user = await getCurrentUser();
@@ -37,6 +38,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { id: companyId } = await context.params;
     const user = await canManageCompany(companyId);
     if (!user) return NextResponse.json({ ok: false, message: "You do not have permission to add departments for this company." }, { status: 403 });
+    if ((user.role === "COMPANY_ADMIN" || user.role === "BUILDING_OWNER") && !hasPermission(user, "company.managePeople")) {
+      return NextResponse.json({ ok: false, message: "People management is not assigned to this Company/User account." }, { status: 403 });
+    }
 
     const body = await request.json().catch(() => null);
     const name = String(body?.name ?? "").trim().replace(/\s+/g, " ");
@@ -55,15 +59,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     revalidatePath("/dashboard");
     return NextResponse.json({ ok: true, message: `${result.department.name} department added. ${result.remaining} department slots remaining.`, department: result.department }, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "COMPANY_NOT_FOUND") {
-      return NextResponse.json({ ok: false, message: "Company not found." }, { status: 404 });
-    }
-    if (error instanceof Error && error.message === "DEPARTMENT_LIMIT") {
-      return NextResponse.json({ ok: false, message: "This company has reached its department limit." }, { status: 409 });
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ ok: false, message: "This department already exists for the company." }, { status: 409 });
-    }
+    if (error instanceof Error && error.message === "COMPANY_NOT_FOUND") return NextResponse.json({ ok: false, message: "Company not found." }, { status: 404 });
+    if (error instanceof Error && error.message === "DEPARTMENT_LIMIT") return NextResponse.json({ ok: false, message: "This company has reached its department limit." }, { status: 409 });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ ok: false, message: "This department already exists for the company." }, { status: 409 });
     console.error("CREATE_COMPANY_DEPARTMENT_FAILED", error);
     return NextResponse.json({ ok: false, message: "Unable to add department." }, { status: 500 });
   }
