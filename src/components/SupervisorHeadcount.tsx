@@ -55,6 +55,15 @@ function eventResult(event: ScanEvent) {
   return event.message || "Denied";
 }
 
+function mergeEvents(current: ScanEvent[], incoming: ScanEvent[]) {
+  const byId = new Map<string, ScanEvent>();
+  for (const event of current) byId.set(event.id, event);
+  for (const event of incoming) byId.set(event.id, event);
+  return Array.from(byId.values())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || b.id.localeCompare(a.id))
+    .slice(0, 5000);
+}
+
 export default function SupervisorHeadcount() {
   const [data, setData] = useState<Headcount | null>(null);
   const [error, setError] = useState("");
@@ -78,7 +87,8 @@ export default function SupervisorHeadcount() {
       const next = await response.json();
       if (!response.ok) throw new Error(next.message || "Unable to load real time monitor.");
 
-      const newestEvent = Array.isArray(next.recentEvents) ? next.recentEvents[0] as ScanEvent | undefined : undefined;
+      const incomingEvents = Array.isArray(next.recentEvents) ? next.recentEvents as ScanEvent[] : [];
+      const newestEvent = incomingEvents[0];
       if (!initialized.current) {
         initialized.current = true;
         seenEventId.current = newestEvent?.id || null;
@@ -87,7 +97,10 @@ export default function SupervisorHeadcount() {
         setPopup({ ...newestEvent, tone: popupTone(newestEvent) });
       }
 
-      setData(next);
+      setData((current) => ({
+        ...next,
+        recentEvents: mergeEvents(current?.recentEvents || [], incomingEvents),
+      }));
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load real time monitor.");
@@ -179,7 +192,7 @@ export default function SupervisorHeadcount() {
           <thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Rider</th><th>Company</th><th>Action</th><th>Result</th></tr></thead>
           <tbody>
             {data?.recentEvents.length ? data.recentEvents.map((event) => <tr key={event.id}>
-              <td>{new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
+              <td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td>
               <td>{event.deviceNumber || "-"}</td>
               <td>{event.cardNo || "-"}</td>
               <td>{event.vehicle?.plateNumber || "-"}</td>
@@ -187,7 +200,7 @@ export default function SupervisorHeadcount() {
               <td>{event.company?.name || "-"}</td>
               <td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td>
               <td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{eventResult(event)}</td>
-            </tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No RFID scans recorded today.</td></tr>}
+            </tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No ENTRY, EXIT, or IGNORED RFID activity has been recorded yet.</td></tr>}
           </tbody>
         </table>
       </div>
