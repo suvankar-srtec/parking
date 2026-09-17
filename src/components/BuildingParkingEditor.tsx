@@ -9,8 +9,14 @@ import ParkingInputs from "./ParkingInputs";
 
 type BuildingSettingsValues = ParkingValues & { maximumGate: number };
 
-export default function BuildingParkingEditor({ buildingId, initialValues }: {
-  buildingId: string; initialValues: BuildingSettingsValues;
+export default function BuildingParkingEditor({
+  buildingId,
+  initialValues,
+  canEditMaximumGate = true,
+}: {
+  buildingId: string;
+  initialValues: BuildingSettingsValues;
+  canEditMaximumGate?: boolean;
 }) {
   const { notify, refresh } = useFeedback();
   const { pending, execute } = useMutation();
@@ -18,7 +24,7 @@ export default function BuildingParkingEditor({ buildingId, initialValues }: {
   const [maximumGate, setMaximumGate] = useState(String(initialValues.maximumGate));
   const [saved, setSaved] = useState(initialValues);
   const parkingChanged = (Object.keys(fields) as Array<keyof ParkingValues>).some((field) => fields[field] !== String(saved[field]));
-  const gateChanged = maximumGate !== String(saved.maximumGate);
+  const gateChanged = canEditMaximumGate && maximumGate !== String(saved.maximumGate);
   const changed = parkingChanged || gateChanged;
 
   function save(event: FormEvent<HTMLFormElement>) {
@@ -32,27 +38,33 @@ export default function BuildingParkingEditor({ buildingId, initialValues }: {
     });
     if (!parsed.ok) { notify(parsed.message, "error"); return; }
 
-    const parsedMaximumGate = Number(maximumGate);
-    if (!Number.isInteger(parsedMaximumGate) || parsedMaximumGate < 1 || parsedMaximumGate > 2147483647) {
-      notify("Maximum Gate must be a whole number of at least 1.", "error");
-      return;
+    let parsedMaximumGate = saved.maximumGate;
+    if (canEditMaximumGate) {
+      parsedMaximumGate = Number(maximumGate);
+      if (!Number.isInteger(parsedMaximumGate) || parsedMaximumGate < 1 || parsedMaximumGate > 2147483647) {
+        notify("Maximum Gate must be a whole number of at least 1.", "error");
+        return;
+      }
     }
 
     void execute(async () => {
+      const payload = canEditMaximumGate
+        ? { ...parsed.values, maximumGate: parsedMaximumGate }
+        : parsed.values;
       const data = await requestJson<{ ok: boolean; message: string; building: BuildingSettingsValues }>(
-        `/api/buildings/${buildingId}`, "PATCH", { ...parsed.values, maximumGate: parsedMaximumGate },
+        `/api/buildings/${buildingId}`, "PATCH", payload,
       );
       setSaved(data.building);
       setFields(parkingFields(data.building));
       setMaximumGate(String(data.building.maximumGate));
-      notify("Building settings updated successfully.");
+      notify(canEditMaximumGate ? "Building settings updated successfully." : "Parking allocation updated successfully.");
       refresh();
     });
   }
 
-  return <form className="parking-editor" aria-label="Building parking and gate settings" aria-busy={pending} noValidate onSubmit={save}>
+  return <form className="parking-editor" aria-label={canEditMaximumGate ? "Building parking and gate settings" : "Building parking allocation"} aria-busy={pending} noValidate onSubmit={save}>
     <ParkingInputs fields={fields} onChange={setFields} disabled={pending} />
-    <div className="maximum-gate-editor">
+    {canEditMaximumGate ? <div className="maximum-gate-editor">
       <label className="parking-input-card">
         <span>Maximum Gate</span>
         <div className="parking-input-wrap">
@@ -71,7 +83,7 @@ export default function BuildingParkingEditor({ buildingId, initialValues }: {
           <span aria-hidden="true">gates</span>
         </div>
       </label>
-    </div>
+    </div> : null}
     <div className="parking-editor-footer">
       <div className="parking-edit-actions">
         <button type="button" className="secondary-button" disabled={pending || !changed} onClick={() => {
@@ -79,7 +91,7 @@ export default function BuildingParkingEditor({ buildingId, initialValues }: {
           setMaximumGate(String(saved.maximumGate));
           notify("Unsaved changes discarded.");
         }}>Discard changes</button>
-        <ActionButton type="submit" className="primary-button" disabled={!changed} pending={pending} pendingText="Updating settings…">Update settings</ActionButton>
+        <ActionButton type="submit" className="primary-button" disabled={!changed} pending={pending} pendingText={canEditMaximumGate ? "Updating settings…" : "Updating parking…"}>{canEditMaximumGate ? "Update settings" : "Update parking"}</ActionButton>
       </div>
     </div>
   </form>;
