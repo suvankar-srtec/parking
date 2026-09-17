@@ -1,5 +1,5 @@
-import CreateEntityModal from "./CreateEntityModal";
+import AdminCompanyModal from "./AdminCompanyModal";
 
 export default function BuildingAdminPanel({ buildingId }: { buildingId: string }) {
-  return <div className="detail-actions"><CreateEntityModal kind="company" buildingId={buildingId} /></div>;
+  return <div className="detail-actions"><AdminCompanyModal buildingId={buildingId} /></div>;
 }
