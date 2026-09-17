@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { hasPermission, sanitizePermissions } from "@/lib/permissions";
+import { claimUserId, UserIdError } from "@/lib/user-id-reservations";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -16,37 +17,49 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     const body = await request.json().catch(() => null);
-    const userId = String(body?.userId ?? "").trim();
     const password = String(body?.password ?? "");
+    const reservationId = String(body?.reservationId ?? "").trim();
     const permissions = sanitizePermissions("EMPLOYEE", body?.permissions);
-    if (!userId || !password.trim()) {
-      return NextResponse.json({ ok: false, message: "Supervisor User ID and password are required." }, { status: 400 });
+    if (!password.trim()) {
+      return NextResponse.json({ ok: false, message: "Supervisor password is required." }, { status: 400 });
     }
 
     const building = await prisma.building.findUnique({ where: { id: buildingId }, select: { id: true, name: true } });
     if (!building) return NextResponse.json({ ok: false, message: "Building not found." }, { status: 404 });
 
     const current = await prisma.user.findFirst({ where: { role: "EMPLOYEE", buildingId, companyId: null }, orderBy: { createdAt: "asc" } });
-    const conflict = await prisma.user.findUnique({ where: { userId }, select: { id: true } });
-    if (conflict && conflict.id !== current?.id) {
-      return NextResponse.json({ ok: false, message: "This User ID is already in use." }, { status: 409 });
-    }
+    let supervisor;
 
-    const supervisor = current
-      ? await prisma.user.update({
-          where: { id: current.id },
-          data: { userId, username: userId, password, role: "EMPLOYEE", buildingId, companyId: null, permissions, permissionsCustomized: true },
-          select: { id: true, userId: true, username: true, permissions: true, permissionsCustomized: true },
-        })
-      : await prisma.user.create({
-          data: { userId, username: userId, password, role: "EMPLOYEE", buildingId, permissions, permissionsCustomized: true },
+    if (current) {
+      supervisor = await prisma.user.update({
+        where: { id: current.id },
+        data: { password, role: "EMPLOYEE", buildingId, companyId: null, permissions, permissionsCustomized: true },
+        select: { id: true, userId: true, username: true, permissions: true, permissionsCustomized: true },
+      });
+    } else {
+      if (!reservationId) {
+        return NextResponse.json({ ok: false, message: "Generate the Supervisor User ID before saving." }, { status: 400 });
+      }
+      supervisor = await prisma.$transaction(async (tx) => {
+        const userId = await claimUserId(tx, {
+          ownerId: user.id,
+          reservationId,
+          kind: "supervisor",
+          scopeId: buildingId,
+          name: `${building.name} Supervisor`,
+        });
+        return tx.user.create({
+          data: { userId, username: `${building.name} Supervisor`, password, role: "EMPLOYEE", buildingId, permissions, permissionsCustomized: true },
           select: { id: true, userId: true, username: true, permissions: true, permissionsCustomized: true },
         });
+      }, { maxWait: 10000, timeout: 15000 });
+    }
 
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/buildings/${buildingId}`);
-    return NextResponse.json({ ok: true, message: `Supervisor account saved for ${building.name}.`, supervisor });
+    return NextResponse.json({ ok: true, message: `Supervisor account saved for ${building.name}. User ID: ${supervisor.userId}.`, supervisor });
   } catch (error) {
+    if (error instanceof UserIdError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
     console.error("SAVE_SUPERVISOR_FAILED", error);
     return NextResponse.json({ ok: false, message: "Unable to save supervisor account." }, { status: 500 });
   }
