@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { hasPermission } from "@/lib/permissions";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
 import { consumeCardEnrollment, lockRfid, RFID_TRANSACTION } from "@/lib/rfid-access";
 
@@ -12,8 +13,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const { id: companyId, employeeId } = await context.params;
     const user = await getCurrentUser();
-    if (!user || user.role !== "COMPANY_ADMIN" || user.companyId !== companyId) {
-      return NextResponse.json({ ok: false, message: "Only this company's user can register vehicles." }, { status: 403 });
+    if (!user || user.role !== "COMPANY_ADMIN" || user.companyId !== companyId || !hasPermission(user, "company.manageVehicles")) {
+      return NextResponse.json({ ok: false, message: "Vehicle management is not assigned to this Company/User account." }, { status: 403 });
     }
     const body = await request.json().catch(() => null);
     const ownerName = String(body?.ownerName ?? "").trim();
@@ -21,6 +22,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const vehicleType = String(body?.vehicleType ?? "").trim();
     const department = String(body?.department ?? "").trim();
     const enrollmentId = String(body?.enrollmentId ?? "").trim();
+    if (enrollmentId && !hasPermission(user, "company.registerRfid")) throw new ParkingError("RFID registration is not assigned to this Company/User account.", 403);
     if (body?.rfidCardNo) throw new ParkingError("Scan the card using a registration reader before saving.");
     const workerType = String(body?.workerType ?? "").trim();
     const isStaff = workerType === "Staff";
@@ -36,16 +38,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const companyDepartment = await tx.companyDepartment.findFirst({ where: { companyId, name: department }, select: { id: true } });
       if (!companyDepartment) throw new ParkingError("Select a valid department for this company.", 400);
       await lockBuildingParking(tx, company.buildingId);
-
       const employeeUsed = await tx.vehicle.count({ where: { employeeId } });
-      if (employeeUsed >= employee.parkingLimit) {
-        throw new ParkingError(`This person has reached the assigned parking limit of ${employee.parkingLimit}.`, 400);
-      }
+      if (employeeUsed >= employee.parkingLimit) throw new ParkingError(`This person has reached the assigned parking limit of ${employee.parkingLimit}.`, 400);
       const companyUsed = await tx.vehicle.count({ where: { companyId } });
-      if (companyUsed >= company.parkingAllocation) {
-        throw new ParkingError("No unallotted parking spaces remain for this company.", 400);
-      }
-
+      if (companyUsed >= company.parkingAllocation) throw new ParkingError("No unallotted parking spaces remain for this company.", 400);
       const enrollment = enrollmentId ? await consumeCardEnrollment(tx, { enrollmentId, ownerId: user.id, companyId, employeeId, buildingId: company.buildingId }) : null;
       const vehicle = await tx.vehicle.create({ data: { ownerName, plateNumber, vehicleType, isStaff, department, rfidCardNo: enrollment?.cardNo || null, companyId, employeeId } });
       if (enrollment) await tx.rfidEvent.create({ data: { readerId: enrollment.readerId, buildingId: company.buildingId, companyId, vehicleId: vehicle.id, deviceNumber: enrollment.reader.deviceNumber, cardNo: enrollment.cardNo!, action: "REGISTER", code: "0000", message: "Card registered to vehicle." } });
@@ -55,9 +51,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ ok: true, message: `Vehicle registered successfully. ${result.available} company parking spaces remain.`, vehicle: result.vehicle }, { status: 201 });
   } catch (error) {
     if (error instanceof ParkingError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({ ok: false, message: "This plate number or RFID card is already registered." }, { status: 409 });
-    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ ok: false, message: "This plate number or RFID card is already registered." }, { status: 409 });
     console.error("CREATE_VEHICLE_FAILED", error);
     return NextResponse.json({ ok: false, message: "Unable to register vehicle." }, { status: 500 });
   }
