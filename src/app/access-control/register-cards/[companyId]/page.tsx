@@ -3,6 +3,7 @@ import AppLink from "@/components/AppLink";
 import Sidebar from "@/components/Sidebar";
 import SignOutButton from "@/components/SignOutButton";
 import RegisterEmployeeCard from "@/components/RegisterEmployeeCard";
+import EmployeeCreateModal from "@/components/EmployeeCreateModal";
 import { getCurrentUser } from "@/lib/session";
 import { effectivePermissions, hasPermission } from "@/lib/permissions";
 import { companyCardScope } from "@/lib/company-card-access";
@@ -17,7 +18,7 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
   const company = await prisma.company.findFirst({
     where: { AND: [{ id: companyId }, companyCardScope(user)] },
     select: {
-      id: true, name: true, buildingId: true,
+      id: true, name: true, buildingId: true, maximumDepartments: true,
       building: { select: { name: true, enabled: true } },
       departments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
       employees: {
@@ -41,7 +42,7 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
       </header>
       <section className="portfolio-card building-management">
         <div className="portfolio-header">
-          <div><div className="section-kicker">COMPANY EMPLOYEES</div><h2>Employees &amp; RFID cards</h2><p>View card numbers or register a card for an employee.</p></div>
+          <div><div className="section-kicker">COMPANY EMPLOYEES</div><h2>Employees &amp; RFID cards</h2><p>Use Register card to open the employee/company-owner setup flow and continue to vehicle and RFID registration.</p></div>
           <div className={styles.summary}><span><strong>{company.employees.length}</strong> Employees</span><span><strong>{registered}</strong> With cards</span></div>
         </div>
         <div className="portfolio-divider" />
@@ -58,14 +59,35 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
                 </th>}
                 <td>{vehicle?.plateNumber || <span className={styles.muted}>No vehicle added</span>}</td>
                 <td>{vehicle?.rfidCardNo ? <code className={styles.cardNumber}>{vehicle.rfidCardNo}</code> : <span className={styles.missing}>Not registered</span>}</td>
-                <td>{vehicle?.rfidCardNo ? <span className={styles.registered}>Registered</span> : <RegisterEmployeeCard
+                <td>{vehicle?.rfidCardNo ? <span className={styles.registered}>Registered</span> : vehicle ? <RegisterEmployeeCard
                   companyId={company.id} buildingId={company.buildingId} employee={employee}
-                  vehicle={vehicle || undefined} departments={company.departments} disabled={!company.building.enabled}
+                  vehicle={vehicle} departments={company.departments} disabled={!company.building.enabled}
+                /> : <EmployeeCreateModal
+                  companyId={company.id}
+                  departments={company.departments}
+                  maximumDepartments={company.maximumDepartments}
+                  canManageVehicles
+                  canRegisterRfid
+                  triggerLabel="Register card"
+                  triggerClassName="primary-button"
+                  showTriggerIcon={false}
                 />}</td>
               </tr>);
             })}</tbody>
           </table>
-        </div> : <div className={styles.empty}>No employees have been added to this company yet.</div>}
+        </div> : <div className={styles.empty}>
+          <p>No employees have been added to this company yet.</p>
+          <EmployeeCreateModal
+            companyId={company.id}
+            departments={company.departments}
+            maximumDepartments={company.maximumDepartments}
+            canManageVehicles
+            canRegisterRfid
+            triggerLabel="Add Employee / Company Owner"
+            triggerClassName="primary-button"
+            showTriggerIcon={false}
+          />
+        </div>}
       </section>
     </section>
   </main>;
