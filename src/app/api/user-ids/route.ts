@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     try { body = await request.json(); }
     catch { return NextResponse.json({ ok: false, message: "Invalid request body." }, { status: 400 }); }
     const kind = body?.kind as EntityKind;
-    if (!["building", "company", "employee"].includes(kind)) {
+    if (!["building", "company", "employee", "supervisor"].includes(kind)) {
       return NextResponse.json({ ok: false, message: "Choose a valid account type." }, { status: 400 });
     }
     const scopeId = typeof body.scopeId === "string" ? body.scopeId : "";
