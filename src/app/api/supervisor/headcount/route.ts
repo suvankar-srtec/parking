@@ -64,7 +64,7 @@ export async function GET(request: Request) {
   const companyFilter = companyId ? { companyId } : {};
   const vehicleCompanyFilter = companyId ? { id: companyId } : { buildingId };
 
-  const [building, company, totalIn, totalOut, insideVehicles, recentEvents, parkingCompanies] = await Promise.all([
+  const [building, company, totalIn, totalOut, insideVehicles, ownerVehiclesInside, recentEvents, parkingCompanies] = await Promise.all([
     prisma.building.findUnique({ where: { id: buildingId }, select: { name: true } }),
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
     prisma.rfidEvent.count({ where: { buildingId, ...companyFilter, action: "ENTRY", createdAt: { gte: start, lt: end } } }),
@@ -73,6 +73,9 @@ export async function GET(request: Request) {
       where: { isInside: true, company: vehicleCompanyFilter },
       select: { department: true },
     }),
+    companyId
+      ? Promise.resolve(0)
+      : prisma.buildingOwnerVehicle.count({ where: { buildingId, isInside: true } }),
     prisma.rfidEvent.findMany({
       where: { buildingId, ...companyFilter, createdAt: { gte: start, lt: end } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -85,6 +88,7 @@ export async function GET(request: Request) {
         deviceNumber: true,
         createdAt: true,
         vehicle: { select: { plateNumber: true, ownerName: true, department: true } },
+        ownerVehicle: { select: { plateNumber: true, ownerName: true } },
         company: { select: { name: true } },
       },
     }),
@@ -124,18 +128,28 @@ export async function GET(request: Request) {
   const employeeSpacesAllotted = employeeParkingByCompany.reduce((sum, item) => sum + item.spacesAllotted, 0);
   const employeeVehiclesInside = employeeParkingByCompany.reduce((sum, item) => sum + item.vehiclesInside, 0);
 
+  const normalizedRecentEvents = recentEvents.map(({ ownerVehicle, ...event }) => ({
+    ...event,
+    vehicle: event.vehicle || (ownerVehicle ? {
+      plateNumber: ownerVehicle.plateNumber,
+      ownerName: ownerVehicle.ownerName,
+      department: "-",
+    } : null),
+    company: event.company || (ownerVehicle ? { name: "Building owner" } : null),
+  }));
+
   return NextResponse.json({
     ok: true,
     buildingName: building?.name || "Assigned building",
     companyName: company?.name || null,
     totalIn,
     totalOut,
-    totalOnSite: insideVehicles.length,
+    totalOnSite: insideVehicles.length + ownerVehiclesInside,
     employeeSpacesAllotted,
     employeeVehiclesInside,
     employeeParkingByCompany,
     departments,
-    recentEvents,
+    recentEvents: normalizedRecentEvents,
     updatedAt: new Date().toISOString(),
   }, { headers: { "Cache-Control": "no-store" } });
 }
