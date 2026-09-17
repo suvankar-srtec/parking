@@ -133,14 +133,16 @@ model CompanyDepartment {
 }
 
 model Employee {
-  id           String @id @default(cuid())
-  name         String
-  userId       String @unique
-  companyId    String
-  accountId    String? @unique
-  category     String @default("EMPLOYEE")
-  parkingLimit Int    @default(1)
-  department   String @default("Unassigned")
+  id            String @id @default(cuid())
+  name          String
+  userId        String @unique
+  companyId     String
+  accountId     String? @unique
+  category      String @default("EMPLOYEE")
+  parkingLimit  Int    @default(1)
+  department    String @default("Unassigned")
+  isPlaceholder Boolean @default(false)
+  slotNumber    Int?
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   account User? @relation("EmployeeAccount", fields: [accountId], references: [id], onDelete: SetNull)
@@ -151,6 +153,8 @@ model Employee {
   updatedAt DateTime @updatedAt
 
   @@index([companyId])
+  @@index([companyId, isPlaceholder])
+  @@unique([companyId, slotNumber])
   @@map("employees")
 }
 
