@@ -77,8 +77,13 @@ export async function GET(request: Request) {
       ? Promise.resolve(0)
       : prisma.buildingOwnerVehicle.count({ where: { buildingId, isInside: true } }),
     prisma.rfidEvent.findMany({
-      where: { buildingId, ...companyFilter, createdAt: { gte: start, lt: end } },
+      where: {
+        buildingId,
+        ...companyFilter,
+        action: { in: ["ENTRY", "EXIT", "IGNORED"] },
+      },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 5000,
       select: {
         id: true,
         action: true,
