@@ -30,6 +30,7 @@ export async function GET() {
   try {
     const user = await rfidUser();
     const primarySuperAdmin = user.role === "SUPER_ADMIN" && isPrimarySuperAdmin(user);
+    const canAddReaders = user.role === "SUPER_ADMIN" || user.role === "BUILDING_ADMIN";
 
     const configuredReaderWhere = user.role === "SUPER_ADMIN"
       ? (primarySuperAdmin
@@ -47,7 +48,7 @@ export async function GET() {
         include: { building: { select: { name: true } } },
         orderBy: { deviceNumber: "asc" },
       }),
-      user.role === "SUPER_ADMIN"
+      canAddReaders
         ? prisma.rfidReader.findMany({
             where: { enabled: false, buildingId: null, lastSeenAt: { not: null } },
             orderBy: [{ lastSeenAt: "desc" }, { deviceNumber: "asc" }],
@@ -66,7 +67,8 @@ export async function GET() {
       availableReaders: availableReaders.map(readerSummary),
       buildings,
       canManage: user.role !== "COMPANY_ADMIN",
-      canAddReaders: user.role === "SUPER_ADMIN",
+      canAddReaders,
+      canRemoveReaders: user.role === "SUPER_ADMIN",
       serverTime: new Date().toISOString(),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return rfidApiError(error); }
@@ -131,8 +133,8 @@ export async function POST(request: Request) {
       await lockRfid(tx);
       const existing = await tx.rfidReader.findUnique({ where: { deviceNumber } });
 
-      if (user.role !== "SUPER_ADMIN" && existing && existing.buildingId !== user.buildingId) {
-        throw new ParkingError("This reader belongs to another building or needs Super Admin assignment.", 403);
+      if (user.role !== "SUPER_ADMIN" && existing?.buildingId && existing.buildingId !== user.buildingId) {
+        throw new ParkingError("This reader belongs to another building.", 403);
       }
 
       if (user.role === "SUPER_ADMIN" && !isPrimarySuperAdmin(user) && existing?.buildingId) {
@@ -148,6 +150,9 @@ export async function POST(request: Request) {
       if (buildingId) {
         const building = await tx.building.findUnique({ where: { id: buildingId }, select: { id: true, superAdminId: true } });
         if (!building) throw new ParkingError("Building not found.", 404);
+        if (user.role === "BUILDING_ADMIN" && building.id !== user.buildingId) {
+          throw new ParkingError("You can only assign readers to your own building.", 403);
+        }
         if (user.role === "SUPER_ADMIN" && !isPrimarySuperAdmin(user) && building.superAdminId !== user.id) {
           throw new ParkingError("This building belongs to another Super Admin.", 403);
         }
