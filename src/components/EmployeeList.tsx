@@ -1,4 +1,3 @@
-import VehicleModal from "./VehicleModal";
 import EditEmployeeModal from "./EditEmployeeModal";
 import RemoveParkingAllocationButton from "./RemoveParkingAllocationButton";
 import { getCurrentUser } from "@/lib/session";
@@ -14,27 +13,23 @@ export default async function EmployeeList({
   departments,
   canManagePeople,
   canManageVehicles,
-  canRegisterRfid,
 }: {
   companyId: string;
   employees: EmployeeSummary[];
   departments: DepartmentOption[];
   canManagePeople?: boolean;
   canManageVehicles?: boolean;
-  canRegisterRfid?: boolean;
 }) {
   const user = await getCurrentUser();
   const companyScoped = user?.role === "COMPANY_ADMIN" || user?.role === "BUILDING_OWNER";
   const managePeople = canManagePeople ?? (companyScoped && user ? hasPermission(user, "company.managePeople") : true);
   const manageVehicles = canManageVehicles ?? (companyScoped && user ? hasPermission(user, "company.manageVehicles") : true);
-  const registerRfid = canRegisterRfid ?? (companyScoped && user ? hasPermission(user, "company.registerRfid") : true);
 
   if (employees.length === 0) return <p className="muted">No employees or company owners created yet.</p>;
   return <div className="entity-list">
     {employees.map((employee) => {
       const used = employee.vehicles.length;
       const available = Math.max(employee.parkingLimit - used, 0);
-      const parkingFull = used >= employee.parkingLimit;
       return <article className="entity-row employee-row" key={employee.id}>
         <div>
           <strong>{employee.name} <span className="tiny-label">{employee.category === "OWNER" ? "Company Owner" : "Employee"}</span></strong>
@@ -44,9 +39,8 @@ export default async function EmployeeList({
             {manageVehicles ? <RemoveParkingAllocationButton endpoint={`/api/companies/${companyId}/employees/${employee.id}/vehicles/${vehicle.id}`} vehicleLabel={vehicle.plateNumber} disabled={vehicle.isInside === true} /> : null}
           </div>)}
         </div>
-        {(managePeople || manageVehicles) ? <div className="employee-row-actions">
-          {managePeople ? <EditEmployeeModal companyId={companyId} employee={employee} departments={departments} /> : null}
-          {manageVehicles ? (parkingFull ? <button type="button" className="secondary-button vehicle-add-button" disabled>Vehicle Added</button> : <VehicleModal companyId={companyId} employeeId={employee.id} ownerName={employee.name} departments={departments} defaultDepartment={employee.department} canRegisterRfid={registerRfid} />) : null}
+        {managePeople ? <div className="employee-row-actions">
+          <EditEmployeeModal companyId={companyId} employee={employee} departments={departments} />
         </div> : null}
       </article>;
     })}
