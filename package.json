@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma db execute --file prisma/add-reader-setup-qrs.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-building-maximum-gate.sql --schema prisma/schema.prisma && prisma db execute --file prisma/rename-super-admin-0909-to-sa03.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-gate-directions.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-company-departments.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-company-department-limit.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-building-enabled.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-building-owner-vehicles.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-user-permissions.sql --schema prisma/schema.prisma && prisma generate && next build",
+    "build": "prisma db execute --file prisma/add-reader-setup-qrs.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-building-maximum-gate.sql --schema prisma/schema.prisma && prisma db execute --file prisma/rename-super-admin-0909-to-sa03.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-gate-directions.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-company-departments.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-company-department-limit.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-building-enabled.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-building-owner-vehicles.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-user-permissions.sql --schema prisma/schema.prisma && prisma db execute --file prisma/add-company-person-parking-split.sql --schema prisma/schema.prisma && prisma generate && next build",
     "start": "next start",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -32,7 +32,8 @@
     "test:rfid:database": "node --test tests/rfid-database.test.mjs",
     "db:building-status": "prisma db execute --file prisma/add-building-enabled.sql --schema prisma/schema.prisma",
     "db:owner-vehicles": "prisma db execute --file prisma/add-building-owner-vehicles.sql --schema prisma/schema.prisma",
-    "db:user-permissions": "prisma db execute --file prisma/add-user-permissions.sql --schema prisma/schema.prisma"
+    "db:user-permissions": "prisma db execute --file prisma/add-user-permissions.sql --schema prisma/schema.prisma",
+    "db:company-capacity": "prisma db execute --file prisma/add-company-person-parking-split.sql --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
