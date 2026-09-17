@@ -17,11 +17,54 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
     const readerId = String(body?.readerId ?? "");
     const employeeId = String(body?.employeeId ?? "");
+    const buildingId = String(body?.buildingId ?? "");
+    const ownerParking = body?.ownerParking === true;
     const vehicleId = typeof body?.vehicleId === "string" ? body.vehicleId : null;
 
     const enrollment = await prisma.$transaction(async (tx) => {
       await lockRfid(tx);
       await expireEnrollments(tx);
+
+      if (ownerParking) {
+        if (user.role !== "BUILDING_ADMIN" || !user.buildingId || user.buildingId !== buildingId) {
+          throw new ParkingError("Only the assigned building Admin can register Owner Parking vehicles.", 403);
+        }
+
+        const building = await tx.building.findUnique({ where: { id: buildingId }, select: { id: true, enabled: true } });
+        if (!building) throw new ParkingError("Building not found.", 404);
+        if (!building.enabled) throw new ParkingError("Building is disabled. Card registration is unavailable.", 403);
+
+        const reader = await tx.rfidReader.findUnique({ where: { id: readerId } });
+        if (!reader || reader.buildingId !== buildingId || !reader.enabled || reader.mode !== "REGISTER") {
+          throw new ParkingError("Select an enabled registration reader for this building.");
+        }
+
+        await tx.rfidEnrollment.updateMany({
+          where: { readerId, ownerId: user.id, status: { in: ["WAITING", "CAPTURED"] } },
+          data: { status: "CANCELLED" },
+        });
+
+        const otherRegistration = await tx.rfidEnrollment.findFirst({
+          where: {
+            readerId,
+            ownerId: { not: user.id },
+            status: { in: ["WAITING", "CAPTURED"] },
+            expiresAt: { gt: new Date() },
+          },
+          select: { id: true },
+        });
+        if (otherRegistration) throw new ParkingError("This reader is being used by another card registration. Try again when it finishes.", 409);
+
+        return tx.rfidEnrollment.create({
+          data: {
+            readerId,
+            ownerId: user.id,
+            buildingId,
+            ownerParking: true,
+            expiresAt: new Date(Date.now() + REGISTRATION_WINDOW_MS),
+          },
+        });
+      }
 
       const employee = await tx.employee.findUnique({
         where: { id: employeeId },
@@ -43,9 +86,6 @@ export async function POST(request: Request) {
         if (vehicle.isInside) throw new ParkingError("Record the vehicle's exit before replacing its card.", 409);
       }
 
-      // Closing/reopening a modal can leave a prior browser session behind. Re-selecting
-      // a reader should always replace this user's own unfinished registration instead
-      // of leaving the reader permanently busy.
       await tx.rfidEnrollment.updateMany({
         where: { readerId, ownerId: user.id, status: { in: ["WAITING", "CAPTURED"] } },
         data: { status: "CANCELLED" },
@@ -71,6 +111,7 @@ export async function POST(request: Request) {
           vehicleId,
           ownerId: user.id,
           companyId: employee.companyId,
+          buildingId: employee.company.buildingId,
           expiresAt: new Date(Date.now() + REGISTRATION_WINDOW_MS),
         },
       });
