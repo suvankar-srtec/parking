@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { hasPermission, sanitizePermissions } from "@/lib/permissions";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -10,13 +11,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!user || !["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) {
       return NextResponse.json({ ok: false, message: "Only Super Admin or Admin can manage a supervisor." }, { status: 403 });
     }
-    if (user.role === "BUILDING_ADMIN" && user.buildingId !== buildingId) {
-      return NextResponse.json({ ok: false, message: "You can only manage your own building supervisor." }, { status: 403 });
+    if (user.role === "BUILDING_ADMIN" && (user.buildingId !== buildingId || !hasPermission(user, "building.manageSupervisor"))) {
+      return NextResponse.json({ ok: false, message: "You do not have permission to manage this building's Supervisor." }, { status: 403 });
     }
 
     const body = await request.json().catch(() => null);
     const userId = String(body?.userId ?? "").trim();
     const password = String(body?.password ?? "");
+    const permissions = sanitizePermissions("EMPLOYEE", body?.permissions);
     if (!userId || !password.trim()) {
       return NextResponse.json({ ok: false, message: "Supervisor User ID and password are required." }, { status: 400 });
     }
@@ -33,12 +35,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const supervisor = current
       ? await prisma.user.update({
           where: { id: current.id },
-          data: { userId, username: userId, password, role: "EMPLOYEE", buildingId, companyId: null },
-          select: { id: true, userId: true, username: true },
+          data: { userId, username: userId, password, role: "EMPLOYEE", buildingId, companyId: null, permissions, permissionsCustomized: true },
+          select: { id: true, userId: true, username: true, permissions: true, permissionsCustomized: true },
         })
       : await prisma.user.create({
-          data: { userId, username: userId, password, role: "EMPLOYEE", buildingId },
-          select: { id: true, userId: true, username: true },
+          data: { userId, username: userId, password, role: "EMPLOYEE", buildingId, permissions, permissionsCustomized: true },
+          select: { id: true, userId: true, username: true, permissions: true, permissionsCustomized: true },
         });
 
     revalidatePath("/dashboard");
