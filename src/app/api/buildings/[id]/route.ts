@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { validateParking } from "@/lib/parking";
+import { hasPermission } from "@/lib/permissions";
 import { lockBuildingParking, ParkingError, updateBuildingParking } from "@/lib/building-parking";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
@@ -117,6 +118,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ ok: true, message: enabled ? "Building enabled." : "Building disabled. Existing vehicles can still exit.", building: updated });
     }
 
+    if (user.role === "BUILDING_ADMIN" && (!hasPermission(user, "building.allocateCompanyParking") || !hasPermission(user, "building.manageOwnerParking"))) {
+      return NextResponse.json({ ok: false, message: "Parking allocation management is not assigned to this Admin account." }, { status: 403 });
+    }
+
     const parsed = validateParking(bodyRecord);
     if (!parsed.ok) {
       return NextResponse.json({ ok: false, message: parsed.message }, { status: 400 });
@@ -136,6 +141,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const updated = await updateBuildingParking(id, parsed.values, maximumGate);
     revalidatePath("/account");
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/parking-allocation");
     revalidatePath(`/dashboard/buildings/${id}`);
     revalidatePath("/access-control/gate-details");
     return NextResponse.json({ ok: true, message: "Building settings saved.", building: updated });
