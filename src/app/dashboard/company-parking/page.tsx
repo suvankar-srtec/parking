@@ -9,7 +9,8 @@ import { effectivePermissions, hasPermission } from "@/lib/permissions";
 export default async function CompanyParkingPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
-  if (user.role !== "COMPANY_ADMIN" || !user.companyId) redirect("/dashboard");
+  const companyScopedRole = user.role === "COMPANY_ADMIN" || user.role === "BUILDING_OWNER";
+  if (!companyScopedRole || !user.companyId) redirect("/dashboard");
   if (!hasPermission(user, "company.allocateEmployeeParking")) redirect("/dashboard");
 
   const company = await prisma.company.findUnique({
