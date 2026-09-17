@@ -19,9 +19,9 @@ type ScanEvent = {
 type Headcount = {
   ok: true;
   buildingName: string;
-  totalIn: number;
-  totalOut: number;
-  totalOnSite: number;
+  totalIn: number | null;
+  totalOut: number | null;
+  totalOnSite: number | null;
   recentEvents: ScanEvent[];
   updatedAt: string;
 };
@@ -64,7 +64,19 @@ function mergeEvents(current: ScanEvent[], incoming: ScanEvent[]) {
     .slice(0, 5000);
 }
 
-export default function SupervisorHeadcount() {
+export default function SupervisorHeadcount({
+  showTotalOnSite = true,
+  showTotalIn = true,
+  showTotalOut = true,
+  showLiveDashboard = true,
+  showActivity = true,
+}: {
+  showTotalOnSite?: boolean;
+  showTotalIn?: boolean;
+  showTotalOut?: boolean;
+  showLiveDashboard?: boolean;
+  showActivity?: boolean;
+}) {
   const [data, setData] = useState<Headcount | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -74,16 +86,14 @@ export default function SupervisorHeadcount() {
   const seenEventId = useRef<string | null>(null);
   const initialized = useRef(false);
   const requestInFlight = useRef(false);
+  const metricCount = [showTotalOnSite, showTotalIn, showTotalOut].filter(Boolean).length;
 
   const load = useCallback(async () => {
     if (requestInFlight.current || document.visibilityState !== "visible") return;
     requestInFlight.current = true;
     try {
       const params = new URLSearchParams(range);
-      const response = await fetch(`/api/supervisor/headcount?${params.toString()}`, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(8000),
-      });
+      const response = await fetch(`/api/supervisor/headcount?${params.toString()}`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
       const next = await response.json();
       if (!response.ok) throw new Error(next.message || "Unable to load real time monitor.");
 
@@ -92,15 +102,12 @@ export default function SupervisorHeadcount() {
       if (!initialized.current) {
         initialized.current = true;
         seenEventId.current = newestEvent?.id || null;
-      } else if (newestEvent?.id && newestEvent.id !== seenEventId.current) {
+      } else if (showLiveDashboard && showActivity && newestEvent?.id && newestEvent.id !== seenEventId.current) {
         seenEventId.current = newestEvent.id;
         setPopup({ ...newestEvent, tone: popupTone(newestEvent) });
       }
 
-      setData((current) => ({
-        ...next,
-        recentEvents: mergeEvents(current?.recentEvents || [], incomingEvents),
-      }));
+      setData((current) => ({ ...next, recentEvents: mergeEvents(current?.recentEvents || [], incomingEvents) }));
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load real time monitor.");
@@ -108,31 +115,17 @@ export default function SupervisorHeadcount() {
       requestInFlight.current = false;
       setLoading(false);
     }
-  }, [range]);
+  }, [range, showLiveDashboard, showActivity]);
 
   useEffect(() => {
     let stopped = false;
     let pollTimer: number | undefined;
-
-    async function poll() {
-      if (stopped) return;
-      await load();
-      if (!stopped) pollTimer = window.setTimeout(poll, 3000);
-    }
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") void load();
-    };
-
+    async function poll() { if (stopped) return; await load(); if (!stopped) pollTimer = window.setTimeout(poll, 3000); }
+    const onVisibility = () => { if (document.visibilityState === "visible") void load(); };
     void poll();
     document.addEventListener("visibilitychange", onVisibility);
     const timer = window.setInterval(() => setClock(new Date()), 1000);
-    return () => {
-      stopped = true;
-      if (pollTimer !== undefined) window.clearTimeout(pollTimer);
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    return () => { stopped = true; if (pollTimer !== undefined) window.clearTimeout(pollTimer); window.clearInterval(timer); document.removeEventListener("visibilitychange", onVisibility); };
   }, [load]);
 
   useEffect(() => {
@@ -141,69 +134,35 @@ export default function SupervisorHeadcount() {
     return () => window.clearTimeout(timer);
   }, [popup]);
 
-  if (loading && !data) {
-    return <section className={`portfolio-card ${styles.headcount}`}><p><Spinner /> Loading Real Time Monitor…</p></section>;
+  if (!showTotalOnSite && !showTotalIn && !showTotalOut && !showLiveDashboard) {
+    return <section className={`portfolio-card ${styles.headcount}`}><div className="section-kicker">SUPERVISOR</div><h2>No monitoring features assigned</h2><p className="muted">Ask the building Admin or Super Admin to enable the required Supervisor features.</p></section>;
   }
 
+  if (loading && !data) return <section className={`portfolio-card ${styles.headcount}`}><p><Spinner /> Loading Real Time Monitor…</p></section>;
+
   return <>
-    {popup ? <div className={`${styles.scanPopup} ${styles[popup.tone]}`} role="status" aria-live="polite">
+    {popup && showLiveDashboard && showActivity ? <div className={`${styles.scanPopup} ${styles[popup.tone]}`} role="status" aria-live="polite">
       <button type="button" className={styles.popupClose} aria-label="Close notification" onClick={() => setPopup(null)}>×</button>
       <div className={styles.popupIcon} aria-hidden="true">{popup.tone === "entry" ? "IN" : popup.tone === "exit" ? "OUT" : popup.tone === "denied" ? "!" : "RF"}</div>
-      <div className={styles.popupBody}>
-        <span className={styles.popupEyebrow}>LIVE RFID EVENT</span>
-        <h3>{popupTitle(popup)}</h3>
-        <p>{popup.message}</p>
-        <div className={styles.popupMeta}>
-          <span><strong>Vehicle</strong>{popup.vehicle?.plateNumber || "Unknown"}</span>
-          <span><strong>Rider</strong>{popup.vehicle?.ownerName || "Unknown"}</span>
-          <span><strong>Company</strong>{popup.company?.name || "-"}</span>
-          <span><strong>RFID</strong>{popup.cardNo}</span>
-        </div>
-      </div>
+      <div className={styles.popupBody}><span className={styles.popupEyebrow}>LIVE RFID EVENT</span><h3>{popupTitle(popup)}</h3><p>{popup.message}</p><div className={styles.popupMeta}><span><strong>Vehicle</strong>{popup.vehicle?.plateNumber || "Unknown"}</span><span><strong>Rider</strong>{popup.vehicle?.ownerName || "Unknown"}</span><span><strong>Company</strong>{popup.company?.name || "-"}</span><span><strong>RFID</strong>{popup.cardNo}</span></div></div>
     </div> : null}
 
-    <section className={`portfolio-card ${styles.headcount}`}>
-      <div className={styles.titleRow}>
-        <div>
-          <div className="section-kicker"><span className={styles.liveDot} />REAL TIME MONITOR</div>
-          <h2>Real Time Monitor</h2>
-          <p>{data?.buildingName || "Assigned building"} · updates every 3 seconds</p>
-        </div>
-        <div className={styles.clock}><strong>{clock.toLocaleDateString()}</strong><span>{clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div>
-      </div>
+    {metricCount > 0 ? <section className={`portfolio-card ${styles.headcount}`}>
+      <div className={styles.titleRow}><div><div className="section-kicker"><span className={styles.liveDot} />REAL TIME MONITOR</div><h2>Real Time Monitor</h2><p>{data?.buildingName || "Assigned building"} · updates every 3 seconds</p></div><div className={styles.clock}><strong>{clock.toLocaleDateString()}</strong><span>{clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div></div>
       <div className="portfolio-divider" />
       {error ? <div className={`parking-feedback parking-feedback-error ${styles.error}`}>{error}</div> : null}
-      <div className={styles.totals} style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
-        <article className={`${styles.totalCard} ${styles.onsite}`}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article>
-        <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article>
-        <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article>
+      <div className={styles.totals} style={{ gridTemplateColumns: `repeat(${metricCount}, minmax(0, 1fr))` }}>
+        {showTotalOnSite ? <article className={`${styles.totalCard} ${styles.onsite}`}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article> : null}
+        {showTotalIn ? <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article> : null}
+        {showTotalOut ? <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article> : null}
       </div>
-    </section>
+    </section> : null}
 
-    <section className={`portfolio-card ${styles.scanTableCard}`}>
-      <div className={styles.scanTableHeader}>
-        <div>
-          <div className="section-kicker">RFID ACTIVITY</div>
-          <h2>Live Dashboard</h2>
-        </div>
-      </div>
-      <div className={styles.tableWrap}>
-        <table className={styles.scanTable}>
-          <thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Rider</th><th>Company</th><th>Action</th><th>Result</th></tr></thead>
-          <tbody>
-            {data?.recentEvents.length ? data.recentEvents.map((event) => <tr key={event.id}>
-              <td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td>
-              <td>{event.deviceNumber || "-"}</td>
-              <td>{event.cardNo || "-"}</td>
-              <td>{event.vehicle?.plateNumber || "-"}</td>
-              <td>{event.vehicle?.ownerName || "-"}</td>
-              <td>{event.company?.name || "-"}</td>
-              <td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td>
-              <td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{eventResult(event)}</td>
-            </tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No ENTRY, EXIT, or IGNORED RFID activity has been recorded yet.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    {showLiveDashboard ? <section className={`portfolio-card ${styles.scanTableCard}`}>
+      <div className={styles.scanTableHeader}><div><div className="section-kicker">RFID ACTIVITY</div><h2>Live Dashboard</h2></div></div>
+      {showActivity ? <div className={styles.tableWrap}><table className={styles.scanTable}><thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Rider</th><th>Company</th><th>Action</th><th>Result</th></tr></thead><tbody>
+        {data?.recentEvents.length ? data.recentEvents.map((event) => <tr key={event.id}><td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td><td>{event.deviceNumber || "-"}</td><td>{event.cardNo || "-"}</td><td>{event.vehicle?.plateNumber || "-"}</td><td>{event.vehicle?.ownerName || "-"}</td><td>{event.company?.name || "-"}</td><td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td><td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{eventResult(event)}</td></tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No ENTRY, EXIT, or IGNORED RFID activity has been recorded yet.</td></tr>}
+      </tbody></table></div> : <p className="muted">RFID activity access is not assigned to this Supervisor.</p>}
+    </section> : null}
   </>;
 }
