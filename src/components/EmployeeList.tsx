@@ -1,8 +1,9 @@
 import VehicleModal from "./VehicleModal";
 import EditEmployeeModal from "./EditEmployeeModal";
+import RemoveParkingAllocationButton from "./RemoveParkingAllocationButton";
 
 type DepartmentOption = { id: string; name: string };
-type VehicleSummary = { id: string; plateNumber: string; vehicleType: string; department: string; rfidCardNo: string | null };
+type VehicleSummary = { id: string; plateNumber: string; vehicleType: string; department: string; rfidCardNo: string | null; isInside?: boolean };
 type EmployeeSummary = { id: string; name: string; userId: string; category: string; parkingLimit: number; department: string; vehicles: VehicleSummary[] };
 
 export default function EmployeeList({ companyId, employees, departments }: { companyId: string; employees: EmployeeSummary[]; departments: DepartmentOption[] }) {
@@ -16,8 +17,13 @@ export default function EmployeeList({ companyId, employees, departments }: { co
         <div>
           <strong>{employee.name} <span className="tiny-label">{employee.category === "OWNER" ? "Company Owner" : "Employee"}</span></strong>
           <span>User ID: {employee.userId} · Department: {employee.department} · Parking limit: {employee.parkingLimit} · Used: {used} · Available: {available}</span>
-          {employee.vehicles.map((vehicle) => <div className="employee-vehicle" key={vehicle.id}>
-            <small>{vehicle.plateNumber} · {vehicle.vehicleType} · {vehicle.department}{vehicle.rfidCardNo ? ` · RFID ${vehicle.rfidCardNo}` : ""}</small>
+          {employee.vehicles.map((vehicle) => <div className="employee-vehicle" key={vehicle.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <small>{vehicle.plateNumber} · {vehicle.vehicleType} · {vehicle.department}{vehicle.rfidCardNo ? ` · RFID ${vehicle.rfidCardNo}` : ""}{vehicle.isInside ? " · Inside" : " · Outside"}</small>
+            <RemoveParkingAllocationButton
+              endpoint={`/api/companies/${companyId}/employees/${employee.id}/vehicles/${vehicle.id}`}
+              vehicleLabel={vehicle.plateNumber}
+              disabled={vehicle.isInside === true}
+            />
           </div>)}
         </div>
         <div className="employee-row-actions">
