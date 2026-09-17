@@ -1,0 +1,56 @@
+import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
+import { hasPermission } from "@/lib/permissions";
+
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await context.params;
+    const user = await getCurrentUser();
+    if (!user || user.role !== "COMPANY_ADMIN" || user.companyId !== id || !hasPermission(user, "company.allocateEmployeeParking")) {
+      return NextResponse.json({ ok: false, message: "Parking split management is not assigned to this Company/User account." }, { status: 403 });
+    }
+
+    const body = await request.json().catch(() => null);
+    const ownerParkingAllocation = Number(body?.ownerParkingAllocation);
+    const employeeParkingAllocation = Number(body?.employeeParkingAllocation);
+    if (!Number.isInteger(ownerParkingAllocation) || ownerParkingAllocation < 0 || !Number.isInteger(employeeParkingAllocation) || employeeParkingAllocation < 0) {
+      return NextResponse.json({ ok: false, message: "Owner and Employee parking must be whole numbers of 0 or greater." }, { status: 400 });
+    }
+
+    const company = await prisma.company.findUnique({
+      where: { id },
+      select: {
+        parkingAllocation: true,
+        employees: { select: { category: true } },
+      },
+    });
+    if (!company) return NextResponse.json({ ok: false, message: "Company not found." }, { status: 404 });
+    if (ownerParkingAllocation + employeeParkingAllocation !== company.parkingAllocation) {
+      return NextResponse.json({ ok: false, message: `Owner parking + Employee parking must equal the company parking allocation of ${company.parkingAllocation}.` }, { status: 400 });
+    }
+
+    const currentOwners = company.employees.filter((person) => person.category === "OWNER").length;
+    const currentEmployees = company.employees.filter((person) => person.category !== "OWNER").length;
+    if (ownerParkingAllocation < currentOwners) {
+      return NextResponse.json({ ok: false, message: `${currentOwners} Company Owners are already assigned. Owner parking cannot be lower than ${currentOwners}.` }, { status: 400 });
+    }
+    if (employeeParkingAllocation < currentEmployees) {
+      return NextResponse.json({ ok: false, message: `${currentEmployees} Employees are already assigned. Employee parking cannot be lower than ${currentEmployees}.` }, { status: 400 });
+    }
+
+    const updated = await prisma.company.update({
+      where: { id },
+      data: { ownerParkingAllocation, employeeParkingAllocation },
+      select: { id: true, parkingAllocation: true, ownerParkingAllocation: true, employeeParkingAllocation: true, totalPersons: true },
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/company-parking");
+    return NextResponse.json({ ok: true, message: "Company parking split updated successfully.", company: updated });
+  } catch (error) {
+    console.error("UPDATE_COMPANY_PARKING_SPLIT_FAILED", error);
+    return NextResponse.json({ ok: false, message: "Unable to update company parking split." }, { status: 500 });
+  }
+}
