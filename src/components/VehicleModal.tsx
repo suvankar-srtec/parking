@@ -16,12 +16,14 @@ export default function VehicleModal({
   ownerName,
   departments,
   defaultDepartment,
+  canRegisterRfid = true,
 }: {
   companyId: string;
   employeeId: string;
   ownerName: string;
   departments: DepartmentOption[];
   defaultDepartment?: string;
+  canRegisterRfid?: boolean;
 }) {
   const { notify, refresh } = useFeedback();
   const { pending: saving, execute } = useMutation();
@@ -43,7 +45,7 @@ export default function VehicleModal({
       vehicleType: String(data.get("vehicleType") ?? ""),
       department: String(data.get("department") ?? "").trim(),
       workerType: String(data.get("workerType") ?? ""),
-      enrollmentId: card?.enrollmentId,
+      enrollmentId: canRegisterRfid ? card?.enrollmentId : undefined,
     };
     if (pending) return;
     if (!body.department) { notify("Select a department.", "error"); return; }
@@ -68,7 +70,7 @@ export default function VehicleModal({
             <DepartmentPicker companyId={companyId} departments={departments} value={department} onChange={setDepartment} disabled={pending} onBusyChange={setDepartmentBusy} />
             <label>Staff or Employee<select name="workerType" defaultValue="" required><option value="" disabled>Select type</option><option>Staff</option><option>Employee</option></select></label>
             {departments.length === 0 ? <p className="muted">Add a department from Add Employee before registering a vehicle.</p> : null}
-            <CardCapture employeeId={employeeId} onCaptured={setCard} />
+            {canRegisterRfid ? <CardCapture employeeId={employeeId} onCaptured={setCard} /> : <p className="muted">RFID card registration is not assigned to this account. The vehicle can still be saved without an RFID card.</p>}
           </fieldset>
           <div className="modal-actions"><button type="button" className="secondary-button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button><ActionButton type="submit" className="primary-button" pending={pending} pendingText="Registering...">Register vehicle</ActionButton></div>
         </form>
