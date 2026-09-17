@@ -4,6 +4,7 @@ import "./globals.css";
 import "./sidebar-fixed.css";
 import "./reader-qr-size.css";
 import "./reader-card-assignment.css";
+import "./employee-fixed-parking.css";
 
 export const metadata: Metadata = {
   title: "SRTEC Access Control",
