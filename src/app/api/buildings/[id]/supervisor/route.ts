@@ -46,7 +46,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
           reservationId,
           kind: "supervisor",
           scopeId: buildingId,
-          name: `${building.name} Supervisor`,
+          name: `Supervisor ${buildingId}`,
         });
         return tx.user.create({
           data: { userId, username: `${building.name} Supervisor`, password, role: "EMPLOYEE", buildingId, permissions, permissionsCustomized: true },
