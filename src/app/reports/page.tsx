@@ -61,6 +61,13 @@ export default async function ReportsPage() {
             employee: { select: { name: true } },
           },
         },
+        ownerVehicle: {
+          select: {
+            id: true,
+            plateNumber: true,
+            ownerName: true,
+          },
+        },
       },
     }),
     prisma.building.findMany({
@@ -93,8 +100,33 @@ export default async function ReportsPage() {
     status: "Inside" | "Exited";
   }> = [];
 
+  function eventKey(event: (typeof events)[number]) {
+    if (event.ownerVehicleId) return `owner:${event.ownerVehicleId}`;
+    if (event.vehicleId) return `company:${event.vehicleId}`;
+    return `card:${event.cardNo}`;
+  }
+
+  function reportVehicle(entry: (typeof events)[number], exit?: (typeof events)[number]) {
+    const vehicle = entry.vehicle || exit?.vehicle;
+    const ownerVehicle = entry.ownerVehicle || exit?.ownerVehicle;
+
+    if (ownerVehicle) {
+      return {
+        vehicleNumber: ownerVehicle.plateNumber || "-",
+        rider: ownerVehicle.ownerName || "-",
+        department: "-",
+      };
+    }
+
+    return {
+      vehicleNumber: vehicle?.plateNumber || "-",
+      rider: vehicle?.employee?.name || vehicle?.ownerName || "-",
+      department: vehicle?.department || "-",
+    };
+  }
+
   for (const event of events) {
-    const key = event.vehicleId || event.cardNo;
+    const key = eventKey(event);
     if (event.action === "ENTRY") {
       openEntries.set(key, event);
       continue;
@@ -103,19 +135,21 @@ export default async function ReportsPage() {
     const entry = openEntries.get(key);
     if (!entry) continue;
     openEntries.delete(key);
-    const vehicle = entry.vehicle || event.vehicle;
+
     const building = entry.building || event.building;
     const company = entry.company || event.company;
+    const report = reportVehicle(entry, event);
+
     rows.push({
       id: `${entry.id}-${event.id}`,
       buildingId: entry.buildingId || event.buildingId,
       buildingName: building?.name || "-",
       companyId: entry.companyId || event.companyId,
       companyName: company?.name || "Building owner",
-      vehicleNumber: vehicle?.plateNumber || "-",
+      vehicleNumber: report.vehicleNumber,
       rfidUid: entry.cardNo,
-      rider: vehicle?.employee?.name || vehicle?.ownerName || "-",
-      department: vehicle?.department || "-",
+      rider: report.rider,
+      department: report.department,
       inTime: entry.createdAt.toISOString(),
       outTime: event.createdAt.toISOString(),
       parkedFor: parkedFor(entry.createdAt, event.createdAt),
@@ -124,17 +158,17 @@ export default async function ReportsPage() {
   }
 
   for (const entry of openEntries.values()) {
-    const vehicle = entry.vehicle;
+    const report = reportVehicle(entry);
     rows.push({
       id: `${entry.id}-inside`,
       buildingId: entry.buildingId,
       buildingName: entry.building?.name || "-",
       companyId: entry.companyId,
       companyName: entry.company?.name || "Building owner",
-      vehicleNumber: vehicle?.plateNumber || "-",
+      vehicleNumber: report.vehicleNumber,
       rfidUid: entry.cardNo,
-      rider: vehicle?.employee?.name || vehicle?.ownerName || "-",
-      department: vehicle?.department || "-",
+      rider: report.rider,
+      department: report.department,
       inTime: entry.createdAt.toISOString(),
       outTime: null,
       parkedFor: parkedFor(entry.createdAt, null),
