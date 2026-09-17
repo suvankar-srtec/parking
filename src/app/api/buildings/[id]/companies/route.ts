@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { hasPermission, sanitizePermissions } from "@/lib/permissions";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
 import { MAX_PARKING } from "@/lib/parking";
 import { claimUserId, UserIdError } from "@/lib/user-id-reservations";
@@ -11,9 +12,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const { id: buildingId } = await context.params;
     const user = await getCurrentUser();
-    const authorized = user && (user.role === "SUPER_ADMIN" || (user.role === "BUILDING_ADMIN" && user.buildingId === buildingId));
+    const authorized = user && (user.role === "SUPER_ADMIN" || (user.role === "BUILDING_ADMIN" && user.buildingId === buildingId && hasPermission(user, "building.createCompanies")));
     if (!authorized || !user) {
-      return NextResponse.json({ ok: false, message: "Only a Super Admin or this building's Admin can create companies." }, { status: 403 });
+      return NextResponse.json({ ok: false, message: "You do not have permission to create companies in this building." }, { status: 403 });
     }
 
     let body;
@@ -26,15 +27,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const name = String(body.name ?? "").trim();
     const userId = String(body.userId ?? "").trim();
     const reservationId = String(body.reservationId ?? "");
-    const username = name; // Display name only; authentication uses the generated User ID.
+    const username = name;
     const password = String(body.password ?? "");
     const parkingAllocation = Number(body.parkingAllocation ?? 0);
     const maximumDepartments = Number(body.maximumDepartments ?? 1);
+    const permissions = sanitizePermissions("COMPANY_ADMIN", body.permissions);
     if (!name || !userId || !reservationId || !password.trim()) {
       return NextResponse.json({ ok: false, message: "Company name, generated User ID, and password are required." }, { status: 400 });
     }
     if (!Number.isInteger(parkingAllocation) || parkingAllocation < 0 || parkingAllocation > MAX_PARKING) {
       return NextResponse.json({ ok: false, message: "Parking allocation must be a valid whole number of 0 or greater." }, { status: 400 });
+    }
+    if (user.role === "BUILDING_ADMIN" && parkingAllocation > 0 && !hasPermission(user, "building.allocateCompanyParking")) {
+      return NextResponse.json({ ok: false, message: "Your account cannot allocate company parking." }, { status: 403 });
     }
     if (!Number.isInteger(maximumDepartments) || maximumDepartments < 1 || maximumDepartments > 500) {
       return NextResponse.json({ ok: false, message: "Department limit must be between 1 and 500." }, { status: 400 });
@@ -55,7 +60,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const claimedUserId = await claimUserId(tx, { ownerId: user.id, reservationId, kind: "company", scopeId: buildingId, name });
       if (claimedUserId !== userId) throw new ParkingError("The generated User ID changed. Refresh the form and try again.", 409);
       const account = await tx.user.create({
-        data: { userId: claimedUserId, username, password, role: "COMPANY_ADMIN", buildingId, companyId: company.id },
+        data: {
+          userId: claimedUserId,
+          username,
+          password,
+          role: "COMPANY_ADMIN",
+          buildingId,
+          companyId: company.id,
+          permissions,
+          permissionsCustomized: true,
+        },
       });
       await tx.entityIdentity.create({ data: { entityType: "company", entityId: company.id, userId: claimedUserId } });
       return { company, account };
