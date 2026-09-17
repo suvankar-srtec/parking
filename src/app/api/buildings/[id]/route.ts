@@ -128,14 +128,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     const requestedMaximumGate = Number(bodyRecord.maximumGate);
-    const maximumGate = user.role === "SUPER_ADMIN" ? requestedMaximumGate : building.maximumGate;
+    const maximumGate = "maximumGate" in bodyRecord ? requestedMaximumGate : building.maximumGate;
 
-    if (user.role === "SUPER_ADMIN") {
-      if (!Number.isInteger(maximumGate) || maximumGate < 1 || maximumGate > 2147483647) {
-        return NextResponse.json({ ok: false, message: "Maximum Gate must be a whole number of at least 1." }, { status: 400 });
-      }
-    } else if ("maximumGate" in bodyRecord && requestedMaximumGate !== building.maximumGate) {
-      return NextResponse.json({ ok: false, message: "Only a Super Admin can change Maximum Gate." }, { status: 403 });
+    if (!Number.isInteger(maximumGate) || maximumGate < 1 || maximumGate > 2147483647) {
+      return NextResponse.json({ ok: false, message: "Maximum Gate must be a whole number of at least 1." }, { status: 400 });
     }
 
     const updated = await updateBuildingParking(id, parsed.values, maximumGate);
