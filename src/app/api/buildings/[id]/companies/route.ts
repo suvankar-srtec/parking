@@ -30,6 +30,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const username = name;
     const password = String(body.password ?? "");
     const parkingAllocation = Number(body.parkingAllocation ?? 0);
+    const totalPersons = Number(body.totalPersons ?? 0);
     const maximumDepartments = Number(body.maximumDepartments ?? 1);
     const permissions = sanitizePermissions("COMPANY_ADMIN", body.permissions);
     if (!name || !userId || !reservationId || !password.trim()) {
@@ -37,6 +38,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     if (!Number.isInteger(parkingAllocation) || parkingAllocation < 0 || parkingAllocation > MAX_PARKING) {
       return NextResponse.json({ ok: false, message: "Parking allocation must be a valid whole number of 0 or greater." }, { status: 400 });
+    }
+    if (!Number.isInteger(totalPersons) || totalPersons < 1 || totalPersons > 1000000) {
+      return NextResponse.json({ ok: false, message: "Total persons must be a whole number of at least 1." }, { status: 400 });
+    }
+    if (parkingAllocation > totalPersons) {
+      return NextResponse.json({ ok: false, message: "Company parking cannot be greater than Total Persons." }, { status: 400 });
     }
     if (user.role === "BUILDING_ADMIN" && parkingAllocation > 0 && !hasPermission(user, "building.allocateCompanyParking")) {
       return NextResponse.json({ ok: false, message: "Your account cannot allocate company parking." }, { status: 403 });
@@ -56,7 +63,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         throw new ParkingError("This company already exists in the building.", 409);
       }
 
-      const company = await tx.company.create({ data: { name, parkingAllocation, maximumDepartments, buildingId } });
+      const company = await tx.company.create({
+        data: {
+          name,
+          parkingAllocation,
+          totalPersons,
+          ownerParkingAllocation: 0,
+          employeeParkingAllocation: parkingAllocation,
+          maximumDepartments,
+          buildingId,
+        },
+      });
       const claimedUserId = await claimUserId(tx, { ownerId: user.id, reservationId, kind: "company", scopeId: buildingId, name });
       if (claimedUserId !== userId) throw new ParkingError("The generated User ID changed. Refresh the form and try again.", 409);
       const account = await tx.user.create({
