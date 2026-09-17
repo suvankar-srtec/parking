@@ -36,15 +36,18 @@ export async function PATCH(
     catch { return NextResponse.json({ ok: false, message: "Invalid request body." }, { status: 400 }); }
 
     const name = String(body?.name ?? "").trim();
-    const category = String(body?.category ?? "EMPLOYEE").toUpperCase();
-    const parkingLimit = 1;
     const department = String(body?.department ?? "").trim();
-    if (!name) return NextResponse.json({ ok: false, message: "Enter the employee or company owner name." }, { status: 400 });
-    if (!["EMPLOYEE", "OWNER"].includes(category)) return NextResponse.json({ ok: false, message: "Choose Employee or Company Owner." }, { status: 400 });
+    if (!name) return NextResponse.json({ ok: false, message: "Enter the employee name." }, { status: 400 });
     if (!department) return NextResponse.json({ ok: false, message: "Select a department." }, { status: 400 });
 
     const result = await prisma.$transaction(async (tx) => {
-      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId }, include: { company: { include: { building: { select: { superAdminId: true } } } }, _count: { select: { vehicles: true } } } });
+      const employee = await tx.employee.findFirst({
+        where: { id: employeeId, companyId },
+        include: {
+          company: { include: { building: { select: { superAdminId: true } } } },
+          _count: { select: { vehicles: true } },
+        },
+      });
       if (!employee) throw new EmployeeUpdateError("Employee or company owner not found.", 404);
       if (!canEditEmployee(user, employee)) throw new EmployeeUpdateError("You do not have permission to edit this person.", 403);
 
@@ -52,20 +55,38 @@ export async function PATCH(
       if (!departmentExists) throw new EmployeeUpdateError("Select a department created for this company.");
       if (employee._count.vehicles > 1) throw new EmployeeUpdateError("This person has more than one registered vehicle. Remove the extra vehicle allocation before editing this person.");
 
-      const otherTotals = await tx.employee.aggregate({ where: { companyId, id: { not: employeeId } }, _sum: { parkingLimit: true } });
-      const otherAssigned = otherTotals._sum.parkingLimit ?? 0;
-      if (otherAssigned + parkingLimit > employee.company.parkingAllocation) throw new EmployeeUpdateError("No parking space remains for this employee or company owner.");
-
-      const updated = await tx.employee.update({ where: { id: employeeId }, data: { name, category, parkingLimit, department } });
-      if (name !== employee.name || department !== employee.department) await tx.vehicle.updateMany({ where: { employeeId }, data: { ownerName: name, department } });
+      const updated = await tx.employee.update({
+        where: { id: employeeId },
+        data: {
+          name,
+          department,
+          isPlaceholder: false,
+        },
+      });
+      if (name !== employee.name || department !== employee.department) {
+        await tx.vehicle.updateMany({ where: { employeeId }, data: { ownerName: name, department } });
+      }
       return updated;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 15000 });
 
     revalidatePath("/dashboard");
-    return NextResponse.json({ ok: true, message: `${result.category === "OWNER" ? "Company owner" : "Employee"} updated successfully.`, employee: { id: result.id, name: result.name, userId: result.userId, category: result.category, parkingLimit: result.parkingLimit, department: result.department } });
+    return NextResponse.json({
+      ok: true,
+      message: "Employee name and department updated successfully.",
+      employee: {
+        id: result.id,
+        name: result.name,
+        userId: result.userId,
+        category: result.category,
+        parkingLimit: result.parkingLimit,
+        department: result.department,
+        isPlaceholder: result.isPlaceholder,
+        slotNumber: result.slotNumber,
+      },
+    });
   } catch (error) {
     if (error instanceof EmployeeUpdateError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
     console.error("UPDATE_EMPLOYEE_FAILED", error);
-    return NextResponse.json({ ok: false, message: "Unable to update employee or company owner." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: "Unable to update employee." }, { status: 500 });
   }
 }
