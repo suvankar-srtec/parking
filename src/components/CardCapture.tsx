@@ -16,10 +16,14 @@ const cancel = (id: string) =>
 
 export default function CardCapture({
   employeeId,
+  buildingId,
+  ownerParking = false,
   vehicleId,
   onCaptured,
 }: {
-  employeeId: string;
+  employeeId?: string;
+  buildingId?: string;
+  ownerParking?: boolean;
   vehicleId?: string;
   onCaptured: (card: CapturedCard | null) => void;
 }) {
@@ -88,7 +92,7 @@ export default function CardCapture({
         const data = await requestJson<{ ok: true; enrollment: Enrollment }>(
           "/api/rfid/enrollments",
           "POST",
-          { readerId, employeeId, vehicleId },
+          { readerId, employeeId, buildingId, ownerParking, vehicleId },
         );
         if (stopped || !alive.current) {
           void cancel(data.enrollment.id);
@@ -109,7 +113,7 @@ export default function CardCapture({
 
     void prepareReader();
     return () => { stopped = true; };
-  }, [employeeId, loading, readerId, vehicleId]);
+  }, [buildingId, employeeId, loading, ownerParking, readerId, vehicleId]);
 
   useEffect(() => {
     if (!enrollment || enrollment.status !== "WAITING" || secondsLeft <= 0) return;
