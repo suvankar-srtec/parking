@@ -21,6 +21,8 @@ model User {
   username String
   password String   @default("")
   role     UserRole
+  permissions String[] @default([])
+  permissionsCustomized Boolean @default(false)
 
   buildingId String?
   companyId  String?
