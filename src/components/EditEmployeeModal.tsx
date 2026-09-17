@@ -14,6 +14,8 @@ type EmployeeSummary = {
   category: string;
   parkingLimit: number;
   department: string;
+  isPlaceholder?: boolean;
+  slotNumber?: number | null;
 };
 
 export default function EditEmployeeModal({ companyId, employee, departments }: { companyId: string; employee: EmployeeSummary; departments: DepartmentOption[] }) {
@@ -23,13 +25,11 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
   const pending = saving || departmentBusy;
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(employee.name);
-  const [category, setCategory] = useState(employee.category);
-  const [department, setDepartment] = useState(employee.department);
+  const [department, setDepartment] = useState(employee.department === "Unassigned" ? "" : employee.department);
 
   function show() {
-    setName(employee.name);
-    setCategory(employee.category);
-    setDepartment(employee.department);
+    setName(employee.isPlaceholder ? "" : employee.name);
+    setDepartment(employee.department === "Unassigned" ? "" : employee.department);
     setOpen(true);
   }
 
@@ -38,7 +38,7 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
     if (pending) return;
     const cleanName = name.trim();
     if (!cleanName) {
-      notify("Enter the employee or company owner name.", "error");
+      notify("Enter the employee name.", "error");
       return;
     }
     if (!department) {
@@ -50,7 +50,7 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
       const result = await requestJson<{ ok: true; message: string }>(
         `/api/companies/${companyId}/employees/${employee.id}`,
         "PATCH",
-        { name: cleanName, category, department },
+        { name: cleanName, department },
       );
       setOpen(false);
       notify(result.message || "Employee updated successfully.");
@@ -66,17 +66,16 @@ export default function EditEmployeeModal({ companyId, employee, departments }: 
       <section className="modal-card small-modal" role="dialog" aria-modal="true" aria-labelledby={`edit-employee-${employee.id}`}>
         <div className="modal-head">
           <div>
-            <div className="section-kicker">EDIT EMPLOYEE</div>
-            <h2 id={`edit-employee-${employee.id}`}>{employee.category === "OWNER" ? "Edit company owner" : "Edit employee"}</h2>
-            <p>User ID {employee.userId} remains unchanged. Each person has one parking space.</p>
+            <div className="section-kicker">EMPLOYEE ROSTER</div>
+            <h2 id={`edit-employee-${employee.id}`}>Edit employee</h2>
+            <p>{employee.slotNumber ? `Employee slot EMP-${employee.slotNumber}.` : `User ID ${employee.userId}.`} Update the employee name and department.</p>
           </div>
           <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={() => setOpen(false)}>×</button>
         </div>
         <form className="modal-form entity-form" aria-busy={pending} onSubmit={submit}>
           <fieldset className="entity-fields" disabled={pending}>
-            <label>Name<input value={name} onChange={(event) => setName(event.target.value)} required autoFocus /></label>
-            <label>User ID<input value={employee.userId} readOnly /></label>
-            <label>Type<select value={category} onChange={(event) => setCategory(event.target.value)} required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
+            <label>Name<input value={name} onChange={(event) => setName(event.target.value)} required autoFocus placeholder="Employee name" /></label>
+            <label>Employee Slot<input value={employee.slotNumber ? `EMP-${employee.slotNumber}` : employee.userId} readOnly /></label>
             <DepartmentPicker companyId={companyId} departments={departments} value={department} onChange={setDepartment} disabled={pending} onBusyChange={setDepartmentBusy} />
           </fieldset>
           <div className="modal-actions">
