@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/session";
 import { validateParking } from "@/lib/parking";
+import { sanitizePermissions } from "@/lib/permissions";
 import { createBuildingWithAccount } from "@/lib/create-building";
 import { UserIdError } from "@/lib/user-id-reservations";
 
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     if ("userId" in body) {
       return NextResponse.json({ ok: false, message: "Building User IDs are generated automatically and cannot be supplied." }, { status: 400 });
     }
-    const username = name; // Display name only; authentication uses the generated User ID.
+    const username = name;
     const password = typeof body.password === "string" ? body.password : "";
     const reservationId = typeof body.reservationId === "string" ? body.reservationId : "";
     if (!name || !password.trim() || !reservationId) {
@@ -43,7 +44,8 @@ export async function POST(request: Request) {
     if (await prisma.building.findUnique({ where: { name }, select: { id: true } })) {
       return NextResponse.json({ ok: false, message: "A building with this name already exists." }, { status: 409 });
     }
-    const result = await createBuildingWithAccount({ name, username, password, maximumGate, ownerId: admin.id, reservationId, ...parking.values });
+    const permissions = sanitizePermissions("BUILDING_ADMIN", body.permissions);
+    const result = await createBuildingWithAccount({ name, username, password, maximumGate, ownerId: admin.id, reservationId, permissions, ...parking.values });
     revalidatePath("/dashboard");
     return NextResponse.json({
       ok: true, message: `Building created successfully. User ID: ${result.account.userId}.`,
