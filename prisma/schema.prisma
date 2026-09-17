@@ -91,10 +91,13 @@ model Gate {
 }
 
 model Company {
-  id                 String @id @default(cuid())
-  name               String
-  parkingAllocation  Int    @default(0)
-  maximumDepartments Int    @default(10)
+  id                        String @id @default(cuid())
+  name                      String
+  parkingAllocation         Int    @default(0)
+  totalPersons              Int    @default(0)
+  ownerParkingAllocation    Int    @default(0)
+  employeeParkingAllocation Int    @default(0)
+  maximumDepartments        Int    @default(10)
 
   buildingId String
   building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
