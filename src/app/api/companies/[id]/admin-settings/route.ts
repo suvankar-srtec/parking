@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { hasPermission } from "@/lib/permissions";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
+import { CompanyRosterError, syncCompanyRoster } from "@/lib/company-roster";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -22,10 +23,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const updated = await prisma.$transaction(async (tx) => {
       const company = await tx.company.findUnique({
         where: { id },
-        select: { id: true, buildingId: true, parkingAllocation: true, ownerParkingAllocation: true, employeeParkingAllocation: true, _count: { select: { employees: true } } },
+        select: {
+          id: true,
+          buildingId: true,
+          parkingAllocation: true,
+          ownerParkingAllocation: true,
+          employeeParkingAllocation: true,
+          employees: { select: { id: true, isPlaceholder: true } },
+          users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true }, take: 1 },
+        },
       });
       if (!company || company.buildingId !== user.buildingId) throw new ParkingError("Company not found in your building.", 404);
-      if (totalPersons < company._count.employees) throw new ParkingError(`${company._count.employees} people are already created. Total Persons cannot be lower than ${company._count.employees}.`);
+
+      const namedPeople = company.employees.filter((person) => !person.isPlaceholder).length;
+      if (totalPersons < namedPeople) throw new ParkingError(`${namedPeople} named employees already exist. Total Persons cannot be lower than ${namedPeople}.`);
       const splitAssigned = company.ownerParkingAllocation + company.employeeParkingAllocation;
       if (parkingAllocation < splitAssigned) throw new ParkingError(`${splitAssigned} parking spaces are already divided between Company Owners and Employees. Company parking cannot be lower than ${splitAssigned}.`);
 
@@ -34,18 +45,23 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       const availableForThisCompany = building.companyParking - (others._sum.parkingAllocation ?? 0);
       if (parkingAllocation > availableForThisCompany) throw new ParkingError(`Only ${availableForThisCompany} parking spaces are available for this company.`);
 
-      return tx.company.update({
+      const companyUserId = company.users[0]?.userId;
+      if (!companyUserId) throw new ParkingError("Company/User account not found.", 404);
+
+      const result = await tx.company.update({
         where: { id },
         data: { totalPersons, parkingAllocation },
         select: { id: true, totalPersons: true, parkingAllocation: true, ownerParkingAllocation: true, employeeParkingAllocation: true },
       });
+      await syncCompanyRoster(tx, id, companyUserId, totalPersons);
+      return result;
     });
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/company-parking");
-    return NextResponse.json({ ok: true, message: "Company capacity updated successfully.", company: updated });
+    return NextResponse.json({ ok: true, message: `Company capacity updated. Employee roster now contains ${updated.totalPersons} slots.`, company: updated });
   } catch (error) {
-    if (error instanceof ParkingError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
+    if (error instanceof ParkingError || error instanceof CompanyRosterError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
     console.error("UPDATE_COMPANY_ADMIN_SETTINGS_FAILED", error);
     return NextResponse.json({ ok: false, message: "Unable to update company capacity." }, { status: 500 });
   }
