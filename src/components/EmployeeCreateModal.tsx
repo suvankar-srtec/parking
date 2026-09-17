@@ -25,12 +25,18 @@ export default function EmployeeCreateModal({
   maximumDepartments,
   canManageVehicles = true,
   canRegisterRfid = true,
+  triggerLabel = "Add Employee",
+  triggerClassName = "add-building-button",
+  showTriggerIcon = true,
 }: {
   companyId: string;
   departments: DepartmentOption[];
   maximumDepartments: number;
   canManageVehicles?: boolean;
   canRegisterRfid?: boolean;
+  triggerLabel?: string;
+  triggerClassName?: string;
+  showTriggerIcon?: boolean;
 }) {
   const { notify, refresh } = useFeedback();
   const { pending: saving, execute } = useMutation();
@@ -234,8 +240,8 @@ export default function EmployeeCreateModal({
   }
 
   return <>
-    <button type="button" className="add-building-button" onClick={show}>
-      <span className="plus-icon" aria-hidden="true">+</span>Add Employee
+    <button type="button" className={triggerClassName} onClick={show}>
+      {showTriggerIcon ? <span className="plus-icon" aria-hidden="true">+</span> : null}{triggerLabel}
     </button>
 
     {open ? <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) close(); }}>
