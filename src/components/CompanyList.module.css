@@ -1,20 +1,21 @@
 .row {
-  display: grid;
-  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.7fr);
-  gap: 18px;
-  align-items: stretch;
-  padding: 14px;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 14px !important;
+  width: 100%;
+  padding: 15px !important;
 }
 
 .companyIdentity {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "details action"
-    "userid password";
-  align-content: start;
-  gap: 10px 12px;
+  grid-template-columns: minmax(190px, 1.2fr) 150px minmax(230px, 280px) auto;
+  grid-template-areas: "details userid password action";
+  align-items: center;
+  gap: 12px;
   min-width: 0;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #e2e8e4;
 }
 
 .companyIdentity > :global(.entity-company-details) {
@@ -24,21 +25,19 @@
 
 .companyIdentity > :global(.entity-company-details) strong {
   display: block;
+  margin: 0;
   font-size: 15px;
+  line-height: 1.25;
   color: #1e2f26;
+  overflow-wrap: anywhere;
 }
 
 .companyIdentity > :global(.entity-company-details) span {
   display: block;
-  margin-top: 3px;
+  margin-top: 4px;
   font-size: 9px;
+  line-height: 1.35;
   color: #78857e;
-}
-
-.companyIdentity > :global(.secondary-button) {
-  grid-area: action;
-  align-self: start;
-  white-space: nowrap;
 }
 
 .companyUserId {
@@ -47,45 +46,58 @@
   display: grid;
   align-content: center;
   gap: 4px;
+  min-height: 58px;
   padding: 9px 11px;
-  border: 1px solid #d9e6f5;
+  border: 1px solid #d8e5f3;
   border-radius: 9px;
   background: #f7fbff;
 }
 
 .companyUserId > span {
   margin: 0;
-  font-size: 8.5px;
+  font-size: 8px;
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: .06em;
   color: #68829f;
 }
 
 .companyUserId > strong {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: 900;
   color: #1769c2;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
-.companyIdentity > :global(.company-password-field) {
+.companyIdentity > :global(.company-password-box) {
   grid-area: password;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex: none !important;
+}
+
+.companyIdentity > :global(.secondary-button) {
+  grid-area: action;
+  align-self: center;
+  min-width: 126px;
+  white-space: nowrap;
 }
 
 .summaryPanel {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
   gap: 12px;
   min-width: 0;
 }
 
 .summaryGroup {
   min-width: 0;
-  padding: 10px;
+  padding: 11px;
   border: 1px solid #dfe7e3;
   border-radius: 10px;
   background: #fbfcfb;
@@ -93,21 +105,21 @@
 
 .groupTitle {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 9px;
 }
 
 .groupTitle > span {
-  font-size: 8px;
+  font-size: 8.5px;
   font-weight: 900;
-  letter-spacing: .7px;
+  letter-spacing: .75px;
   color: #7645a0;
 }
 
 .groupTitle > small {
-  font-size: 7.5px;
+  font-size: 8px;
   color: #7a8780;
   text-align: right;
 }
@@ -115,7 +127,7 @@
 .peopleGrid,
 .parkingGrid {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
 .peopleGrid {
@@ -128,9 +140,12 @@
 
 .metricCard {
   min-width: 0;
-  display: grid;
-  gap: 3px;
-  padding: 9px 10px;
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px;
   border: 1px solid #e2e8e5;
   border-radius: 8px;
   background: #fff;
@@ -142,14 +157,14 @@
 }
 
 .metricCard > span {
-  font-size: 8px;
+  font-size: 8.5px;
   line-height: 1.25;
-  font-weight: 700;
+  font-weight: 800;
   color: #637169;
 }
 
 .metricCard > strong {
-  font-size: 17px;
+  font-size: 18px;
   line-height: 1.05;
   color: #713da1;
   font-variant-numeric: tabular-nums;
@@ -161,9 +176,16 @@
   color: #7b8780;
 }
 
-@media (max-width: 1080px) {
-  .row {
-    grid-template-columns: 1fr;
+@media (max-width: 1120px) {
+  .companyIdentity {
+    grid-template-columns: minmax(180px, 1fr) 145px minmax(210px, 250px);
+    grid-template-areas:
+      "details userid password"
+      "action action action";
+  }
+
+  .companyIdentity > :global(.secondary-button) {
+    justify-self: end;
   }
 
   .summaryPanel {
@@ -171,14 +193,13 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .companyIdentity {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     grid-template-areas:
-      "details"
-      "userid"
-      "password"
-      "action";
+      "details details"
+      "userid password"
+      "action action";
   }
 
   .peopleGrid,
@@ -188,10 +209,24 @@
 
   .companyIdentity > :global(.secondary-button) {
     width: 100%;
+    justify-self: stretch;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 520px) {
+  .row {
+    padding: 12px !important;
+  }
+
+  .companyIdentity {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "details"
+      "userid"
+      "password"
+      "action";
+  }
+
   .peopleGrid,
   .parkingGrid {
     grid-template-columns: 1fr;
