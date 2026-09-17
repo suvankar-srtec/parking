@@ -14,6 +14,7 @@ import SupervisorManager from "@/components/SupervisorManager";
 import SupervisorHeadcount from "@/components/SupervisorHeadcount";
 import BuildingCredentialsEditor from "@/components/BuildingCredentialsEditor";
 import CompanyCredentialsEditor from "@/components/CompanyCredentialsEditor";
+import OwnerParkingVehicleModal from "@/components/OwnerParkingVehicleModal";
 
 function AssignmentRequired({ title, message }: { title: string; message: string }) {
   return <section className="portfolio-card building-management">
@@ -49,6 +50,7 @@ export default async function DashboardPage() {
       prisma.building.findUnique({
         where: { id: user.buildingId },
         include: {
+          ownerVehicles: { select: { id: true, ownerName: true, plateNumber: true, vehicleType: true, rfidCardNo: true, isInside: true }, orderBy: { createdAt: "desc" } },
           companies: {
             orderBy: { createdAt: "asc" },
             include: {
@@ -64,6 +66,9 @@ export default async function DashboardPage() {
     if (!building) redirect("/");
     const allocated = building.companies.reduce((total, company) => total + company.parkingAllocation, 0);
     const available = Math.max(building.companyParking - allocated, 0);
+    const ownerRegistered = building.ownerVehicles.length;
+    const ownerAvailable = Math.max(building.ownerParking - ownerRegistered, 0);
+    const ownerInside = building.ownerVehicles.filter((vehicle) => vehicle.isInside).length;
 
     return <main className="dashboard-page"><Sidebar role={user.role} /><section className="dashboard-main">
       <header className="topbar"><div><div className="section-kicker">ADMIN</div><h1>{building.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
@@ -88,11 +93,42 @@ export default async function DashboardPage() {
           .building-parking-row-primary{grid-template-columns:repeat(2,minmax(0,1fr))}
           .building-parking-row-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}
           .building-parking-summary .large-stat{min-width:0}
+          .owner-parking-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px}
+          .owner-parking-stats{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:10px;flex:1}
+          .owner-vehicle-list{display:grid;gap:8px;margin-top:14px}
+          .owner-vehicle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #dbe3df;border-radius:10px;background:#fafcfb}
+          .owner-vehicle-row span{font-size:12px;color:#647168}
+          .owner-vehicle-row strong{font-size:13px}
           @media(max-width:760px){
             .building-parking-row-primary,.building-parking-row-secondary{grid-template-columns:1fr}
+            .owner-parking-toolbar{align-items:stretch;flex-direction:column}
+            .owner-parking-stats{grid-template-columns:1fr}
           }
         `}</style>
       </section>
+
+      <section className="portfolio-card building-management">
+        <div className="portfolio-header">
+          <div><div className="section-kicker">OWNER PARKING</div><h2>Owner Parking Vehicles</h2><p>Register vehicles against the building&apos;s allotted Owner Parking spaces.</p></div>
+          <OwnerParkingVehicleModal buildingId={building.id} ownerParking={building.ownerParking} registeredVehicles={ownerRegistered} />
+        </div>
+        <div className="portfolio-divider" />
+        <div className="owner-parking-toolbar">
+          <div className="owner-parking-stats">
+            <div className="large-stat"><span>Allotted</span><strong>{building.ownerParking}</strong></div>
+            <div className="large-stat"><span>Registered</span><strong>{ownerRegistered}</strong></div>
+            <div className="large-stat"><span>Available</span><strong>{ownerAvailable}</strong></div>
+          </div>
+          <div className="large-stat"><span>Vehicles In</span><strong>{ownerInside}</strong></div>
+        </div>
+        {building.ownerVehicles.length ? <div className="owner-vehicle-list">
+          {building.ownerVehicles.map((vehicle) => <div className="owner-vehicle-row" key={vehicle.id}>
+            <div><strong>{vehicle.ownerName}</strong><span> · {vehicle.plateNumber} · {vehicle.vehicleType}{vehicle.rfidCardNo ? ` · RFID ${vehicle.rfidCardNo}` : ""}</span></div>
+            <span>{vehicle.isInside ? "Inside" : "Outside"}</span>
+          </div>)}
+        </div> : <p className="muted">No Owner Parking vehicles registered yet.</p>}
+      </section>
+
       <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div><div className="portfolio-divider" /><CompanyList companies={building.companies} companyParking={building.companyParking} showUserId showPassword /></section>
     </section></main>;
   }
