@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rfidUser, rfidApiError, lockRfid, expireEnrollments, RFID_TRANSACTION } from "@/lib/rfid-access";
 import { ParkingError } from "@/lib/building-parking";
+import { hasPermission } from "@/lib/permissions";
 
 const REGISTRATION_WINDOW_MS = 30_000;
 
-function canManageCompany(user: { role: string; buildingId: string | null; companyId: string | null }, companyId: string, buildingId: string) {
+function canManageCompany(user: Awaited<ReturnType<typeof rfidUser>>, companyId: string, buildingId: string) {
   if (user.role === "SUPER_ADMIN") return true;
   if (user.role === "BUILDING_ADMIN") return user.buildingId === buildingId;
-  return user.role === "COMPANY_ADMIN" && user.companyId === companyId;
+  return user.role === "COMPANY_ADMIN" && user.companyId === companyId && hasPermission(user, "company.registerRfid");
 }
 
 export async function POST(request: Request) {
@@ -26,95 +27,37 @@ export async function POST(request: Request) {
       await expireEnrollments(tx);
 
       if (ownerParking) {
-        if (user.role !== "BUILDING_ADMIN" || !user.buildingId || user.buildingId !== buildingId) {
-          throw new ParkingError("Only the assigned building Admin can register Owner Parking vehicles.", 403);
+        if (user.role !== "BUILDING_ADMIN" || !user.buildingId || user.buildingId !== buildingId || !hasPermission(user, "building.registerOwnerParking")) {
+          throw new ParkingError("Owner Parking RFID registration is not assigned to this Admin account.", 403);
         }
-
         const building = await tx.building.findUnique({ where: { id: buildingId }, select: { id: true, enabled: true } });
         if (!building) throw new ParkingError("Building not found.", 404);
         if (!building.enabled) throw new ParkingError("Building is disabled. Card registration is unavailable.", 403);
-
         const reader = await tx.rfidReader.findUnique({ where: { id: readerId } });
-        if (!reader || reader.buildingId !== buildingId || !reader.enabled || reader.mode !== "REGISTER") {
-          throw new ParkingError("Select an enabled registration reader for this building.");
-        }
-
-        await tx.rfidEnrollment.updateMany({
-          where: { readerId, ownerId: user.id, status: { in: ["WAITING", "CAPTURED"] } },
-          data: { status: "CANCELLED" },
-        });
-
-        const otherRegistration = await tx.rfidEnrollment.findFirst({
-          where: {
-            readerId,
-            ownerId: { not: user.id },
-            status: { in: ["WAITING", "CAPTURED"] },
-            expiresAt: { gt: new Date() },
-          },
-          select: { id: true },
-        });
+        if (!reader || reader.buildingId !== buildingId || !reader.enabled || reader.mode !== "REGISTER") throw new ParkingError("Select an enabled registration reader for this building.");
+        await tx.rfidEnrollment.updateMany({ where: { readerId, ownerId: user.id, status: { in: ["WAITING", "CAPTURED"] } }, data: { status: "CANCELLED" } });
+        const otherRegistration = await tx.rfidEnrollment.findFirst({ where: { readerId, ownerId: { not: user.id }, status: { in: ["WAITING", "CAPTURED"] }, expiresAt: { gt: new Date() } }, select: { id: true } });
         if (otherRegistration) throw new ParkingError("This reader is being used by another card registration. Try again when it finishes.", 409);
-
-        return tx.rfidEnrollment.create({
-          data: {
-            readerId,
-            ownerId: user.id,
-            buildingId,
-            ownerParking: true,
-            expiresAt: new Date(Date.now() + REGISTRATION_WINDOW_MS),
-          },
-        });
+        return tx.rfidEnrollment.create({ data: { readerId, ownerId: user.id, buildingId, ownerParking: true, expiresAt: new Date(Date.now() + REGISTRATION_WINDOW_MS) } });
       }
 
-      const employee = await tx.employee.findUnique({
-        where: { id: employeeId },
-        include: { company: { select: { id: true, buildingId: true } } },
-      });
+      if (user.role === "COMPANY_ADMIN" && !hasPermission(user, "company.registerRfid")) {
+        throw new ParkingError("RFID registration is not assigned to this Company/User account.", 403);
+      }
+      const employee = await tx.employee.findUnique({ where: { id: employeeId }, include: { company: { select: { id: true, buildingId: true } } } });
       if (!employee) throw new ParkingError("Employee or company owner not found.", 404);
-      if (!canManageCompany(user, employee.companyId, employee.company.buildingId)) {
-        throw new ParkingError("You cannot register cards for this company.", 403);
-      }
-
+      if (!canManageCompany(user, employee.companyId, employee.company.buildingId)) throw new ParkingError("You cannot register cards for this company.", 403);
       const reader = await tx.rfidReader.findUnique({ where: { id: readerId } });
-      if (!reader || reader.buildingId !== employee.company.buildingId || !reader.enabled || reader.mode !== "REGISTER") {
-        throw new ParkingError("Select an enabled registration reader for this building.");
-      }
-
+      if (!reader || reader.buildingId !== employee.company.buildingId || !reader.enabled || reader.mode !== "REGISTER") throw new ParkingError("Select an enabled registration reader for this building.");
       if (vehicleId) {
         const vehicle = await tx.vehicle.findFirst({ where: { id: vehicleId, employeeId, companyId: employee.companyId } });
         if (!vehicle) throw new ParkingError("Vehicle not found.", 404);
         if (vehicle.isInside) throw new ParkingError("Record the vehicle's exit before replacing its card.", 409);
       }
-
-      await tx.rfidEnrollment.updateMany({
-        where: { readerId, ownerId: user.id, status: { in: ["WAITING", "CAPTURED"] } },
-        data: { status: "CANCELLED" },
-      });
-
-      const otherRegistration = await tx.rfidEnrollment.findFirst({
-        where: {
-          readerId,
-          ownerId: { not: user.id },
-          status: { in: ["WAITING", "CAPTURED"] },
-          expiresAt: { gt: new Date() },
-        },
-        select: { id: true },
-      });
-      if (otherRegistration) {
-        throw new ParkingError("This reader is being used by another card registration. Try again when it finishes.", 409);
-      }
-
-      return tx.rfidEnrollment.create({
-        data: {
-          readerId,
-          employeeId,
-          vehicleId,
-          ownerId: user.id,
-          companyId: employee.companyId,
-          buildingId: employee.company.buildingId,
-          expiresAt: new Date(Date.now() + REGISTRATION_WINDOW_MS),
-        },
-      });
+      await tx.rfidEnrollment.updateMany({ where: { readerId, ownerId: user.id, status: { in: ["WAITING", "CAPTURED"] } }, data: { status: "CANCELLED" } });
+      const otherRegistration = await tx.rfidEnrollment.findFirst({ where: { readerId, ownerId: { not: user.id }, status: { in: ["WAITING", "CAPTURED"] }, expiresAt: { gt: new Date() } }, select: { id: true } });
+      if (otherRegistration) throw new ParkingError("This reader is being used by another card registration. Try again when it finishes.", 409);
+      return tx.rfidEnrollment.create({ data: { readerId, employeeId, vehicleId, ownerId: user.id, companyId: employee.companyId, buildingId: employee.company.buildingId, expiresAt: new Date(Date.now() + REGISTRATION_WINDOW_MS) } });
     }, RFID_TRANSACTION);
 
     return NextResponse.json({ ok: true, enrollment, message: "Reader ready. Scan the new card within 30 seconds." }, { status: 201 });
