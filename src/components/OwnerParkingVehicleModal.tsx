@@ -18,6 +18,12 @@ type OwnerVehicle = {
   isInside: boolean;
 };
 
+type OwnerVehicleResponse = {
+  ok: true;
+  message?: string;
+  vehicles: OwnerVehicle[];
+};
+
 export default function OwnerParkingVehicleModal({
   buildingId,
   ownerParking,
@@ -40,7 +46,7 @@ export default function OwnerParkingVehicleModal({
     setManageOpen(true);
     setLoadingAllocations(true);
     try {
-      const result = await requestJson<{ vehicles: OwnerVehicle[] }>(`/api/buildings/${buildingId}/owner-vehicles`, "GET");
+      const result = await requestJson<OwnerVehicleResponse>(`/api/buildings/${buildingId}/owner-vehicles`, "GET");
       setVehicles(Array.isArray(result.vehicles) ? result.vehicles : []);
     } catch (error) {
       notify(error instanceof Error ? error.message : "Unable to load Owner Parking allocations.", "error");
