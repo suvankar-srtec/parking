@@ -8,6 +8,34 @@ import { lockRfid, RFID_TRANSACTION } from "@/lib/rfid-access";
 
 const vehicleTypes = ["Two wheeler", "Four wheeler"];
 
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const { id: buildingId } = await context.params;
+    const user = await getCurrentUser();
+    if (!user || user.role !== "BUILDING_ADMIN" || user.buildingId !== buildingId) {
+      return NextResponse.json({ ok: false, message: "Only this building's Admin can view Owner Parking allocations." }, { status: 403 });
+    }
+
+    const vehicles = await prisma.buildingOwnerVehicle.findMany({
+      where: { buildingId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        ownerName: true,
+        plateNumber: true,
+        vehicleType: true,
+        rfidCardNo: true,
+        isInside: true,
+      },
+    });
+
+    return NextResponse.json({ ok: true, vehicles }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("LIST_OWNER_PARKING_VEHICLES_FAILED", error);
+    return NextResponse.json({ ok: false, message: "Unable to load Owner Parking allocations." }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id: buildingId } = await context.params;
