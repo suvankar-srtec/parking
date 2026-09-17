@@ -177,18 +177,36 @@ export default function CreateEntityModal({
       {isBuilding ? "Create building" : kind === "company" ? "New company" : "Add Employee"}
     </button>
     {open && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) setOpen(false); }} onKeyDown={(event) => { if (event.key === "Escape" && !pending) setOpen(false); }}>
-      <section className={creationRole ? "modal-card permission-modal" : "modal-card small-modal"} role="dialog" aria-modal="true" aria-labelledby="entity-modal-title">
-        <div className="modal-head">
-          <div><div className="section-kicker">ACCOUNT SETUP</div><h2 id="entity-modal-title">{title}</h2><p>{isBuilding ? "Set up the building and choose the Admin features this account can access." : kind === "company" ? "Add a company and choose the Company/User features this account can access." : "Create an employee or company owner and assign their department and parking limit."}</p></div>
+      <section className={creationRole ? `modal-card permission-modal${isBuilding ? " building-permission-modal" : ""}` : "modal-card small-modal"} role="dialog" aria-modal="true" aria-labelledby="entity-modal-title">
+        <div className="modal-head permission-modal-head">
+          <div>
+            <div className="section-kicker">ACCOUNT SETUP</div>
+            <h2 id="entity-modal-title">{title}</h2>
+            <p>{isBuilding ? "Create the building account, define parking capacity, and control exactly which features the Building Admin can use." : kind === "company" ? "Add a company and choose the Company/User features this account can access." : "Create an employee or company owner and assign their department and parking limit."}</p>
+          </div>
           <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={() => setOpen(false)}>×</button>
         </div>
         <form className={`modal-form entity-form${creationRole ? " permission-layout-form" : ""}`} aria-busy={pending} noValidate onSubmit={submit}>
           {creationRole ? <>
-            <div className="entity-main-column">
+            <div className="entity-main-column setup-card">
+              <div className="setup-card-head">
+                <div><span className="setup-step">01</span><strong>{isBuilding ? "Building & Admin details" : "Company account details"}</strong></div>
+                <small>{isBuilding ? "Account User ID is generated automatically" : "Company User ID is generated automatically"}</small>
+              </div>
               {accountFields}
-              {isBuilding && <ParkingInputs fields={parking} onChange={setParking} disabled={pending} />}
+              {isBuilding ? <div className="parking-section">
+                <div className="subsection-title"><span className="setup-step">02</span><strong>Parking allocation</strong><small>Total parking is split between Owner and Company parking.</small></div>
+                <ParkingInputs fields={parking} onChange={setParking} disabled={pending} />
+              </div> : null}
             </div>
-            <PermissionChecklist role={creationRole} value={permissions} onChange={setPermissions} disabled={pending} title={isBuilding ? "Admin / Building Admin" : "Company / User"} />
+            <aside className="permission-side-panel">
+              <div className="permission-side-head">
+                <div><span className="setup-step">{isBuilding ? "03" : "02"}</span><strong>Feature access</strong></div>
+                <span className="role-chip">{isBuilding ? "Admin / Building Admin" : "Company / User"}</span>
+              </div>
+              <p className="permission-side-copy">Uncheck any feature that this user should not be allowed to access.</p>
+              <PermissionChecklist role={creationRole} value={permissions} onChange={setPermissions} disabled={pending} title="Permissions Allowed" />
+            </aside>
           </> : <fieldset className="entity-fields" disabled={pending}>
             <label>Name<input name="name" autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Alex Smith" /></label>
             <div className="generated-id-field"><label htmlFor="generated-user-id">User ID</label><div className="generated-id-wrap"><input id="generated-user-id" readOnly value={generatedUserId || (generatingUserId ? "Generating..." : "Generated automatically")} aria-invalid={Boolean(generationError)} /><button type="button" className="id-refresh" aria-label="Refresh User ID" title="Refresh User ID" disabled={pending || generatingUserId || !name.trim()} onClick={() => setIdRefresh((value) => value + 1)}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.7 7A7 7 0 0 1 20 12M4 12a7 7 0 0 0 14.3 5" /></svg></button></div></div>
@@ -197,7 +215,7 @@ export default function CreateEntityModal({
             <DepartmentPicker companyId={companyId!} departments={departmentOptions} value={department} onChange={setDepartment} disabled={pending || addingDepartment} onBusyChange={setDepartmentBusy} onRemoved={(id) => setDepartmentOptions((current) => current.filter((item) => item.id !== id))} />
             <div className="generated-id-field"><label htmlFor="new-department">Add department <span className="department-count">{departmentOptions.length}/{maximumDepartments}</span></label><div className="generated-id-wrap"><input id="new-department" value={newDepartment} onChange={(event) => setNewDepartment(event.target.value)} placeholder="e.g. Marketing" /><button type="button" className="id-refresh" style={{ width: 68, borderRadius: 7, fontWeight: 800, fontSize: 11 }} disabled={addingDepartment || !newDepartment.trim() || departmentOptions.length >= maximumDepartments} onClick={() => void addDepartment()}>{addingDepartment ? "Adding…" : "+ Add"}</button></div></div>
           </fieldset>}
-          <div className="modal-actions">
+          <div className="modal-actions permission-modal-actions">
             <button type="button" className="secondary-button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button>
             <ActionButton type="submit" className="primary-button" pending={pending} pendingText={kind === "employee" ? "Adding employee…" : `Creating ${kind}…`}>{title}</ActionButton>
           </div>
@@ -205,18 +223,49 @@ export default function CreateEntityModal({
       </section>
     </div>}
     <style>{`
-      .permission-modal{width:min(980px,97vw);padding:17px 18px;max-height:92vh}
-      .permission-layout-form{grid-template-columns:minmax(0,1.15fr) minmax(330px,.85fr);align-items:start;gap:12px;margin-top:12px}
-      .entity-main-column{display:grid;gap:10px;min-width:0}
+      .permission-modal{width:min(1040px,calc(100vw - 34px));max-height:calc(100vh - 34px);padding:0;overflow:hidden;display:flex;flex-direction:column;border-radius:13px}
+      .permission-modal-head{padding:16px 20px 13px;margin:0;flex:0 0 auto;border-bottom:1px solid #e1e8e4;background:#fff}
+      .permission-modal-head h2{margin-top:2px;font-size:20px}
+      .permission-modal-head p{max-width:760px;margin-top:4px;font-size:11px;line-height:1.4}
+      .permission-layout-form{display:grid!important;grid-template-columns:minmax(0,1.12fr) minmax(365px,.88fr);grid-template-rows:minmax(0,1fr) auto;align-items:stretch;gap:0!important;margin:0!important;min-height:0;overflow:hidden}
+      .entity-main-column{display:flex;flex-direction:column;gap:13px;min-width:0;padding:15px 17px 17px;overflow:auto;background:#fff}
+      .setup-card{border-right:1px solid #e1e8e4}
+      .setup-card-head,.permission-side-head,.subsection-title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+      .setup-card-head>div,.permission-side-head>div,.subsection-title{min-width:0}
+      .setup-card-head>div,.permission-side-head>div{display:flex;align-items:center;gap:8px}
+      .setup-card-head strong,.permission-side-head strong,.subsection-title strong{color:#1d3026;font-size:12px}
+      .setup-card-head small,.subsection-title small{color:#7a8780;font-size:9px;font-weight:600}
+      .setup-step{display:inline-grid;place-items:center;min-width:25px;height:21px;padding:0 6px;border-radius:6px;background:#f2ebf8;color:#7444a1;font-size:9px;font-weight:900;letter-spacing:.3px}
       .compact-entity-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 10px;border:0;padding:0;margin:0}
-      .compact-entity-fields label{font-size:10.5px;gap:5px}
-      .compact-entity-fields input,.compact-entity-fields select{padding:8px 9px;min-height:36px}
-      .permission-layout-form .parking-editor-grid{gap:7px}
-      .permission-layout-form .parking-input-card{padding:8px}
-      .permission-layout-form .modal-actions{grid-column:1/-1}
+      .compact-entity-fields label{font-size:10.5px;gap:4px}
+      .compact-entity-fields input,.compact-entity-fields select{padding:7px 9px;min-height:35px;border-radius:7px}
+      .compact-entity-fields .generated-id-wrap input{background:#f7f4fa}
+      .parking-section{display:grid;gap:8px;padding-top:3px}
+      .subsection-title{justify-content:flex-start;border-top:1px solid #e6ece8;padding-top:11px}
+      .subsection-title small{margin-left:auto;text-align:right}
+      .permission-layout-form .parking-editor-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+      .permission-layout-form .parking-input-card{padding:8px!important;border-radius:8px!important}
+      .permission-layout-form .parking-input-card input{min-height:36px!important;padding:6px 8px!important;font-size:19px!important}
+      .permission-side-panel{min-width:0;padding:15px 17px 14px;overflow:hidden;background:#f9fbfa}
+      .role-chip{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid #ded2e9;border-radius:999px;background:#f6f1fa;color:#704099;font-size:9px;font-weight:800;white-space:nowrap}
+      .permission-side-copy{margin:7px 0 9px;color:#728078;font-size:9.5px;line-height:1.4}
+      .permission-side-panel .permission-panel{gap:5px}
+      .permission-side-panel .permission-title-row{padding:0 1px}
+      .permission-side-panel .permission-tree{height:252px;border-radius:7px;border-color:#cfd9d3}
+      .permission-side-panel .permission-scope-note{padding:7px 8px;margin-top:2px;border-radius:6px;background:#eef5f1;color:#52645a}
+      .permission-modal-actions{grid-column:1/-1!important;display:flex!important;justify-content:flex-end!important;gap:9px!important;margin:0!important;padding:11px 17px!important;border-top:1px solid #dfe7e2;background:#fff;position:relative;z-index:2}
+      .permission-modal-actions button{min-width:105px}
       .department-limit-field{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;color:#304238}.department-stepper{height:42px;border:1px solid #cad6cf;border-radius:8px;background:#fff;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;overflow:hidden}.department-stepper button{height:100%;border:0;background:#f6f8f7;color:#6f3da3;font-size:20px;font-weight:900;cursor:pointer}.department-stepper button:hover{background:#efe6f6}.department-stepper strong{text-align:center;font-size:15px;color:#2a3a31}.department-count{font-size:10px;color:#7d8982;font-weight:700}
-      @media(max-width:820px){.permission-layout-form{grid-template-columns:1fr}.permission-layout-form .modal-actions{grid-column:auto}.compact-entity-fields{grid-template-columns:1fr 1fr}}
-      @media(max-width:560px){.permission-modal{padding:14px}.compact-entity-fields{grid-template-columns:1fr}}
+      @media(max-height:700px) and (min-width:821px){
+        .permission-modal-head{padding-top:12px;padding-bottom:10px}.permission-modal-head p{margin-top:2px}.entity-main-column,.permission-side-panel{padding-top:11px;padding-bottom:11px}.permission-side-panel .permission-tree{height:220px}.permission-layout-form .parking-input-card{padding:6px!important}.permission-modal-actions{padding-top:9px!important;padding-bottom:9px!important}
+      }
+      @media(max-width:820px){
+        .permission-modal{width:min(720px,calc(100vw - 22px));max-height:calc(100vh - 22px);overflow:auto}
+        .permission-layout-form{grid-template-columns:1fr;overflow:visible}.setup-card{border-right:0;border-bottom:1px solid #e1e8e4}.entity-main-column,.permission-side-panel{overflow:visible}.permission-modal-actions{grid-column:auto!important;position:sticky;bottom:0}.compact-entity-fields{grid-template-columns:1fr 1fr}
+      }
+      @media(max-width:560px){
+        .permission-modal-head{padding:14px}.entity-main-column,.permission-side-panel{padding:13px}.compact-entity-fields{grid-template-columns:1fr}.permission-layout-form .parking-editor-grid{grid-template-columns:1fr!important}.setup-card-head,.subsection-title{align-items:flex-start;flex-direction:column}.subsection-title small{margin-left:0;text-align:left}
+      }
     `}</style>
   </>;
 }
