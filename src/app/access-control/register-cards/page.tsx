@@ -1,3 +1,5 @@
+import AppLink from "@/components/AppLink";
+import { companyCardScope } from "@/lib/company-card-access";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import SignOutButton from "@/components/SignOutButton";
@@ -11,7 +13,7 @@ export default async function RegisterCardsPage() {
   if (user.role === "BUILDING_ADMIN" && !hasPermission(user, "building.configureReaders")) redirect("/dashboard");
   const permissions = effectivePermissions(user);
 
-  const companyWhere = user.role === "SUPER_ADMIN" ? undefined : { buildingId: user.buildingId! };
+  const companyWhere = companyCardScope(user);
 
   const companies = await prisma.company.findMany({
     where: companyWhere,
@@ -59,7 +61,7 @@ export default async function RegisterCardsPage() {
         {companies.length ? <div className="rfid-company-grid">
           {companies.map((company) => {
             const companyRegistered = company.vehicles.filter((vehicle) => Boolean(vehicle.rfidCardNo)).length;
-            return <article className="rfid-company-card" key={company.id}>
+            return <AppLink className="rfid-company-card" key={company.id} href={`/access-control/register-cards/${company.id}`}>
               <div className="rfid-company-card-head">
                 <div>
                   <span>{company.building.name}</span>
@@ -72,7 +74,8 @@ export default async function RegisterCardsPage() {
                 <div><span>Vehicles</span><strong>{company.vehicles.length}</strong></div>
                 <div><span>RFID registered</span><strong>{companyRegistered}</strong></div>
               </div>
-            </article>;
+            <span className="rfid-company-open">View employees &amp; register cards <span aria-hidden="true">→</span></span>
+            </AppLink>;
           })}
         </div> : <div className="rfid-company-empty">No companies have been created for this building yet.</div>}
       </section>
@@ -86,7 +89,10 @@ export default async function RegisterCardsPage() {
       .rfid-register-summary span{display:block;color:#6b7770;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.35px}
       .rfid-register-summary strong{display:block;margin-top:5px;color:#7c46ac;font-size:19px}
       .rfid-company-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-      .rfid-company-card{min-width:0;padding:14px;border:1px solid #d7e1db;border-radius:10px;background:#fbfdfc}
+      .rfid-company-card{display:block;text-decoration:none;transition:border-color .15s,box-shadow .15s;min-width:0;padding:14px;border:1px solid #d7e1db;border-radius:10px;background:#fbfdfc}
+      .rfid-company-card:hover{border-color:#8a51b7;box-shadow:0 3px 12px #3520470d}
+      .rfid-company-card:focus-visible{outline:3px solid #8a51b7;outline-offset:3px}
+      .rfid-company-open{display:flex;justify-content:space-between;gap:8px;margin-top:14px;color:#7445a0;font-size:12px;font-weight:700}
       .rfid-company-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
       .rfid-company-card-head>div{min-width:0}
       .rfid-company-card-head>div>span{display:block;margin-bottom:4px;color:#7a867f;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px}

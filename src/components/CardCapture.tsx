@@ -52,7 +52,7 @@ export default function CardCapture({
         if (!response.ok) throw new Error(data.message);
         if (!alive.current) return;
         const available = data.readers.filter(
-          (reader: { enabled: boolean; mode: string }) => reader.enabled && reader.mode === "REGISTER",
+          (reader: { enabled: boolean; mode: string; buildingId: string | null }) => reader.enabled && reader.mode === "REGISTER" && (!buildingId || reader.buildingId === buildingId),
         ) as Reader[];
         setReaders(available);
       })
@@ -67,7 +67,7 @@ export default function CardCapture({
       alive.current = false;
       if (session.current) void cancel(session.current);
     };
-  }, [notify]);
+  }, [notify, buildingId]);
 
   useEffect(() => {
     if (!readerId || loading) return;

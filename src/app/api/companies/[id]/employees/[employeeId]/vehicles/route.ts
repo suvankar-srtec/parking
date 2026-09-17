@@ -1,3 +1,4 @@
+import { companyCardScope } from "@/lib/company-card-access";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -13,7 +14,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const { id: companyId, employeeId } = await context.params;
     const user = await getCurrentUser();
-    if (!user || user.role !== "COMPANY_ADMIN" || user.companyId !== companyId || !hasPermission(user, "company.manageVehicles")) {
+    const adminRegistration = user?.role === "SUPER_ADMIN" || (user?.role === "BUILDING_ADMIN" && hasPermission(user, "building.configureReaders"));
+    if (!user || (!adminRegistration && (user.role !== "COMPANY_ADMIN" || user.companyId !== companyId || !hasPermission(user, "company.manageVehicles")))) {
       return NextResponse.json({ ok: false, message: "Vehicle management is not assigned to this Company/User account." }, { status: 403 });
     }
     const body = await request.json().catch(() => null);
@@ -22,7 +24,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const vehicleType = String(body?.vehicleType ?? "").trim();
     const department = String(body?.department ?? "").trim();
     const enrollmentId = String(body?.enrollmentId ?? "").trim();
-    if (enrollmentId && !hasPermission(user, "company.registerRfid")) throw new ParkingError("RFID registration is not assigned to this Company/User account.", 403);
+    if (adminRegistration && !enrollmentId) throw new ParkingError("Scan a card using a registration reader before saving.");
+    if (!adminRegistration && enrollmentId && !hasPermission(user, "company.registerRfid")) throw new ParkingError("RFID registration is not assigned to this Company/User account.", 403);
     if (body?.rfidCardNo) throw new ParkingError("Scan the card using a registration reader before saving.");
     const workerType = String(body?.workerType ?? "").trim();
     const isStaff = workerType === "Staff";
@@ -31,8 +34,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     const result = await prisma.$transaction(async (tx) => {
       await lockRfid(tx);
-      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId }, select: { id: true, parkingLimit: true } });
+      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId, ...(adminRegistration ? { company: companyCardScope(user) } : {}) }, select: { id: true, parkingLimit: true, isPlaceholder: true } });
       if (!employee) throw new ParkingError("Employee or company owner was not found in this company.", 404);
+      if (employee.isPlaceholder) throw new ParkingError("Complete this employee roster slot before registering a vehicle.");
       const company = await tx.company.findUnique({ where: { id: companyId }, select: { buildingId: true, parkingAllocation: true } });
       if (!company) throw new ParkingError("Company was not found.", 404);
       const companyDepartment = await tx.companyDepartment.findFirst({ where: { companyId, name: department }, select: { id: true } });
@@ -48,6 +52,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return { vehicle, available: company.parkingAllocation - companyUsed - 1 };
     }, RFID_TRANSACTION);
     revalidatePath("/dashboard");
+    revalidatePath("/access-control/register-cards", "layout");
     return NextResponse.json({ ok: true, message: `Vehicle registered successfully. ${result.available} company parking spaces remain.`, vehicle: result.vehicle }, { status: 201 });
   } catch (error) {
     if (error instanceof ParkingError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });

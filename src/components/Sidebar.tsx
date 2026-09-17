@@ -53,7 +53,7 @@ export default function Sidebar({
     (role === "EMPLOYEE" && assigned.has("supervisor.viewReports"));
   const showReaderStatus = showAccess || (role === "EMPLOYEE" && assigned.has("supervisor.readerStatus"));
   const roleClass = `sidebar-${role.toLowerCase().replaceAll("_", "-")}`;
-  const isAccessPage = (href: string) => pathname === href;
+  const isAccessPage = (href: string) => pathname === href || (href !== "/access-control" && pathname.startsWith(href + "/"));
 
   return <aside className={`sidebar ${roleClass}`}>
     <div className="sidebar-brand"><div className="logo-box" aria-hidden="true">S</div><div><strong>SRTEC Access Control</strong><span>{roleLabel(role)}</span></div></div>

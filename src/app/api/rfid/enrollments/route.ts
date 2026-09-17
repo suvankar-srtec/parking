@@ -1,3 +1,4 @@
+import { companyCardScope } from "@/lib/company-card-access";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { rfidUser, rfidApiError, lockRfid, expireEnrollments, RFID_TRANSACTION } from "@/lib/rfid-access";
@@ -5,12 +6,6 @@ import { ParkingError } from "@/lib/building-parking";
 import { hasPermission } from "@/lib/permissions";
 
 const REGISTRATION_WINDOW_MS = 30_000;
-
-function canManageCompany(user: Awaited<ReturnType<typeof rfidUser>>, companyId: string, buildingId: string) {
-  if (user.role === "SUPER_ADMIN") return true;
-  if (user.role === "BUILDING_ADMIN") return user.buildingId === buildingId;
-  return user.role === "COMPANY_ADMIN" && user.companyId === companyId && hasPermission(user, "company.registerRfid");
-}
 
 export async function POST(request: Request) {
   try {
@@ -44,9 +39,11 @@ export async function POST(request: Request) {
       if (user.role === "COMPANY_ADMIN" && !hasPermission(user, "company.registerRfid")) {
         throw new ParkingError("RFID registration is not assigned to this Company/User account.", 403);
       }
-      const employee = await tx.employee.findUnique({ where: { id: employeeId }, include: { company: { select: { id: true, buildingId: true } } } });
+      const employee = await tx.employee.findFirst({ where: { id: employeeId, company: companyCardScope(user) }, include: { company: { select: { id: true, buildingId: true } } } });
       if (!employee) throw new ParkingError("Employee or company owner not found.", 404);
-      if (!canManageCompany(user, employee.companyId, employee.company.buildingId)) throw new ParkingError("You cannot register cards for this company.", 403);
+      if (employee.isPlaceholder) throw new ParkingError("Complete this employee roster slot before registering a card.");
+      const buildingStatus = await tx.building.findUnique({ where: { id: employee.company.buildingId }, select: { enabled: true } });
+      if (!buildingStatus?.enabled) throw new ParkingError("Building is disabled. Card registration is unavailable.", 403);
       const reader = await tx.rfidReader.findUnique({ where: { id: readerId } });
       if (!reader || reader.buildingId !== employee.company.buildingId || !reader.enabled || reader.mode !== "REGISTER") throw new ParkingError("Select an enabled registration reader for this building.");
       if (vehicleId) {
