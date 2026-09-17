@@ -7,6 +7,7 @@ import { hasPermission, sanitizePermissions } from "@/lib/permissions";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
 import { MAX_PARKING } from "@/lib/parking";
 import { claimUserId, UserIdError } from "@/lib/user-id-reservations";
+import { syncCompanyRoster } from "@/lib/company-roster";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -89,6 +90,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         },
       });
       await tx.entityIdentity.create({ data: { entityType: "company", entityId: company.id, userId: claimedUserId } });
+      await syncCompanyRoster(tx, company.id, claimedUserId, totalPersons);
       return { company, account };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 15000 });
 
@@ -97,7 +99,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     revalidatePath(`/dashboard/buildings/${buildingId}`);
     return NextResponse.json({
       ok: true,
-      message: "Company created successfully.",
+      message: `Company created successfully with ${totalPersons} employee roster slots.`,
       company: { id: result.company.id, name: result.company.name, userId: result.account.userId, username: result.account.username },
     }, { status: 201 });
   } catch (error) {
@@ -107,7 +109,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ ok: false, message: "Company name or User ID is already in use." }, { status: 409 });
     }
-    console.error("CREATE_COMPANY_FAILED");
+    console.error("CREATE_COMPANY_FAILED", error);
     return NextResponse.json({ ok: false, message: "Unable to create company." }, { status: 500 });
   }
 }
