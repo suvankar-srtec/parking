@@ -11,9 +11,12 @@ import DepartmentPicker from "./DepartmentPicker";
 import ParkingInputs from "./ParkingInputs";
 import PasswordInput from "./PasswordInput";
 import PermissionChecklist from "./PermissionChecklist";
+import CardCapture, { type CapturedCard } from "./CardCapture";
 
 type DepartmentOption = { id: string; name: string };
+type CreatedEmployee = { id: string; name: string; userId: string; category: string; parkingLimit: number; department: string };
 const emptyDepartments: DepartmentOption[] = [];
+const vehicleTypes = ["Two wheeler", "Four wheeler"];
 
 export default function CreateEntityModal({
   kind,
@@ -21,12 +24,16 @@ export default function CreateEntityModal({
   companyId,
   departments = emptyDepartments,
   maximumDepartments = 10,
+  canManageVehicles = true,
+  canRegisterRfid = true,
 }: {
   kind: "building" | "company" | "employee";
   buildingId?: string;
   companyId?: string;
   departments?: DepartmentOption[];
   maximumDepartments?: number;
+  canManageVehicles?: boolean;
+  canRegisterRfid?: boolean;
 }) {
   const { notify, refresh } = useFeedback();
   const { pending: saving, execute } = useMutation();
@@ -49,6 +56,8 @@ export default function CreateEntityModal({
   const [newDepartment, setNewDepartment] = useState("");
   const [addingDepartment, setAddingDepartment] = useState(false);
   const [departmentLimit, setDepartmentLimit] = useState(1);
+  const [createdEmployee, setCreatedEmployee] = useState<CreatedEmployee | null>(null);
+  const [vehicleCard, setVehicleCard] = useState<CapturedCard | null>(null);
   const requestVersion = useRef(0);
   const reservationRef = useRef("");
 
@@ -67,7 +76,16 @@ export default function CreateEntityModal({
     setNewDepartment("");
     setDepartmentLimit(1);
     setPermissions(creationRole ? defaultPermissionsForRole(creationRole) : []);
+    setCreatedEmployee(null);
+    setVehicleCard(null);
     setOpen(true);
+  }
+
+  function closeModal() {
+    setOpen(false);
+    setCreatedEmployee(null);
+    setVehicleCard(null);
+    refresh();
   }
 
   async function addDepartment() {
@@ -90,8 +108,11 @@ export default function CreateEntityModal({
   useEffect(() => {
     const version = ++requestVersion.current;
     const trimmedName = name.trim();
-    if (!open || !trimmedName) {
-      setGeneratedUserId(""); setReservationId(""); reservationRef.current = ""; setGeneratingUserId(false); setGenerationError(""); return;
+    if (!open || createdEmployee || !trimmedName) {
+      if (!createdEmployee) {
+        setGeneratedUserId(""); setReservationId(""); reservationRef.current = ""; setGeneratingUserId(false); setGenerationError("");
+      }
+      return;
     }
     const controller = new AbortController();
     const scopeId = isBuilding ? "" : kind === "company" ? buildingId : companyId;
@@ -109,7 +130,7 @@ export default function CreateEntityModal({
         });
     }, 250);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [open, name, kind, buildingId, companyId, isBuilding, idRefresh]);
+  }, [open, name, kind, buildingId, companyId, isBuilding, idRefresh, createdEmployee]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -146,10 +167,42 @@ export default function CreateEntityModal({
 
     void execute(async () => {
       const endpoint = isBuilding ? "/api/buildings" : kind === "company" ? `/api/buildings/${buildingId}/companies` : `/api/companies/${companyId}/employees`;
+      if (kind === "employee") {
+        const result = await requestJson<{ ok: true; message: string; employee: CreatedEmployee }>(endpoint, "POST", body);
+        notify(result.message || "Employee created successfully.");
+        if (canManageVehicles) {
+          setCreatedEmployee(result.employee);
+          setVehicleCard(null);
+        } else {
+          closeModal();
+        }
+        return;
+      }
       const result = await requestJson(endpoint, "POST", body);
       setOpen(false);
       notify(result.message || `${title} created successfully.`);
       refresh();
+    });
+  }
+
+  function submitVehicle(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!createdEmployee || !companyId || pending) return;
+    const formError = checkForm(event.currentTarget);
+    if (formError) { notify(formError, "error"); return; }
+    const data = new FormData(event.currentTarget);
+    const body = {
+      ownerName: createdEmployee.name,
+      plateNumber: String(data.get("plateNumber") ?? "").trim(),
+      vehicleType: String(data.get("vehicleType") ?? ""),
+      department: createdEmployee.department,
+      workerType: String(data.get("workerType") ?? ""),
+      enrollmentId: canRegisterRfid ? vehicleCard?.enrollmentId : undefined,
+    };
+    void execute(async () => {
+      const result = await requestJson(`/api/companies/${companyId}/employees/${createdEmployee.id}/vehicles`, "POST", body);
+      notify(result.message || "Vehicle registered successfully.");
+      closeModal();
     });
   }
 
@@ -171,22 +224,41 @@ export default function CreateEntityModal({
     </>}
   </fieldset>;
 
+  const employeeVehicleStep = createdEmployee ? <form className="modal-form entity-form employee-vehicle-form" noValidate onSubmit={submitVehicle}>
+    <div className="employee-created-banner">
+      <div><span>EMPLOYEE CREATED</span><strong>{createdEmployee.name}</strong><small>{createdEmployee.userId} · {createdEmployee.department} · Parking limit {createdEmployee.parkingLimit}</small></div>
+      <span className="success-check">✓</span>
+    </div>
+    <fieldset className="entity-fields" disabled={pending}>
+      <label>Owner Name<input value={createdEmployee.name} readOnly /></label>
+      <label>Plate Number<input name="plateNumber" required autoFocus placeholder="e.g. KA 01 AB 1234" /></label>
+      <label>Vehicle Type<select name="vehicleType" defaultValue="" required><option value="" disabled>Select vehicle type</option>{vehicleTypes.map((vehicleType) => <option key={vehicleType}>{vehicleType}</option>)}</select></label>
+      <label>Department<input value={createdEmployee.department} readOnly /></label>
+      <label>Staff or Employee<select name="workerType" defaultValue={createdEmployee.category === "EMPLOYEE" ? "Employee" : "Staff"} required><option>Staff</option><option>Employee</option></select></label>
+      {canRegisterRfid ? <div className="integrated-card-capture"><CardCapture employeeId={createdEmployee.id} onCaptured={setVehicleCard} /></div> : <p className="muted integrated-card-note">RFID registration is not assigned to this account. The vehicle can still be saved without an RFID card.</p>}
+    </fieldset>
+    <div className="modal-actions">
+      <button type="button" className="secondary-button" disabled={pending} onClick={closeModal}>Finish without vehicle</button>
+      <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Registering…">Register vehicle</ActionButton>
+    </div>
+  </form> : null;
+
   return <>
     <button type="button" className={isBuilding ? "create-building-card" : "add-building-button"} onClick={show}>
       <span className={isBuilding ? "create-building-icon" : "plus-icon"} aria-hidden="true">+</span>
       {isBuilding ? "Create building" : kind === "company" ? "New company" : "Add Employee"}
     </button>
-    {open && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) setOpen(false); }} onKeyDown={(event) => { if (event.key === "Escape" && !pending) setOpen(false); }}>
+    {open && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) closeModal(); }} onKeyDown={(event) => { if (event.key === "Escape" && !pending) closeModal(); }}>
       <section className={creationRole ? `modal-card permission-modal${isBuilding ? " building-permission-modal" : ""}` : "modal-card small-modal"} role="dialog" aria-modal="true" aria-labelledby="entity-modal-title">
         <div className="modal-head permission-modal-head">
           <div>
-            <div className="section-kicker">ACCOUNT SETUP</div>
-            <h2 id="entity-modal-title">{title}</h2>
-            <p>{isBuilding ? "Create the building account, define parking capacity, and control exactly which features the Building Admin can use." : kind === "company" ? "Add a company and choose the Company/User features this account can access." : "Create an employee or company owner and assign their department and parking limit."}</p>
+            <div className="section-kicker">{createdEmployee ? "VEHICLE REGISTRATION" : "ACCOUNT SETUP"}</div>
+            <h2 id="entity-modal-title">{createdEmployee ? `Add vehicle for ${createdEmployee.name}` : title}</h2>
+            <p>{createdEmployee ? "The employee is saved. Register a vehicle and RFID card now, or finish without a vehicle." : isBuilding ? "Create the building account, define parking capacity, and control exactly which features the Building Admin can use." : kind === "company" ? "Add a company and choose the Company/User features this account can access." : "Create the employee or company owner first, then register their vehicle in the same window."}</p>
           </div>
-          <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={() => setOpen(false)}>×</button>
+          <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={closeModal}>×</button>
         </div>
-        <form className={`modal-form entity-form${creationRole ? " permission-layout-form" : ""}`} aria-busy={pending} noValidate onSubmit={submit}>
+        {createdEmployee ? employeeVehicleStep : <form className={`modal-form entity-form${creationRole ? " permission-layout-form" : ""}`} aria-busy={pending} noValidate onSubmit={submit}>
           {creationRole ? <>
             <div className="entity-main-column setup-card">
               <div className="setup-card-head">
@@ -216,10 +288,10 @@ export default function CreateEntityModal({
             <div className="generated-id-field"><label htmlFor="new-department">Add department <span className="department-count">{departmentOptions.length}/{maximumDepartments}</span></label><div className="generated-id-wrap"><input id="new-department" value={newDepartment} onChange={(event) => setNewDepartment(event.target.value)} placeholder="e.g. Marketing" /><button type="button" className="id-refresh" style={{ width: 68, borderRadius: 7, fontWeight: 800, fontSize: 11 }} disabled={addingDepartment || !newDepartment.trim() || departmentOptions.length >= maximumDepartments} onClick={() => void addDepartment()}>{addingDepartment ? "Adding…" : "+ Add"}</button></div></div>
           </fieldset>}
           <div className="modal-actions permission-modal-actions">
-            <button type="button" className="secondary-button" disabled={pending} onClick={() => setOpen(false)}>Cancel</button>
-            <ActionButton type="submit" className="primary-button" pending={pending} pendingText={kind === "employee" ? "Adding employee…" : `Creating ${kind}…`}>{title}</ActionButton>
+            <button type="button" className="secondary-button" disabled={pending} onClick={closeModal}>Cancel</button>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText={kind === "employee" ? "Adding employee…" : `Creating ${kind}…`}>{kind === "employee" ? (canManageVehicles ? "Add Employee & Continue" : "Add Employee") : title}</ActionButton>
           </div>
-        </form>
+        </form>}
       </section>
     </div>}
     <style>{`
@@ -256,16 +328,10 @@ export default function CreateEntityModal({
       .permission-modal-actions{grid-column:1/-1!important;display:flex!important;justify-content:flex-end!important;gap:9px!important;margin:0!important;padding:11px 17px!important;border-top:1px solid #dfe7e2;background:#fff;position:relative;z-index:2}
       .permission-modal-actions button{min-width:105px}
       .department-limit-field{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;color:#304238}.department-stepper{height:42px;border:1px solid #cad6cf;border-radius:8px;background:#fff;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;overflow:hidden}.department-stepper button{height:100%;border:0;background:#f6f8f7;color:#6f3da3;font-size:20px;font-weight:900;cursor:pointer}.department-stepper button:hover{background:#efe6f6}.department-stepper strong{text-align:center;font-size:15px;color:#2a3a31}.department-count{font-size:10px;color:#7d8982;font-weight:700}
-      @media(max-height:700px) and (min-width:821px){
-        .permission-modal-head{padding-top:12px;padding-bottom:10px}.permission-modal-head p{margin-top:2px}.entity-main-column,.permission-side-panel{padding-top:11px;padding-bottom:11px}.permission-side-panel .permission-tree{height:220px}.permission-layout-form .parking-input-card{padding:6px!important}.permission-modal-actions{padding-top:9px!important;padding-bottom:9px!important}
-      }
-      @media(max-width:820px){
-        .permission-modal{width:min(720px,calc(100vw - 22px));max-height:calc(100vh - 22px);overflow:auto}
-        .permission-layout-form{grid-template-columns:1fr;overflow:visible}.setup-card{border-right:0;border-bottom:1px solid #e1e8e4}.entity-main-column,.permission-side-panel{overflow:visible}.permission-modal-actions{grid-column:auto!important;position:sticky;bottom:0}.compact-entity-fields{grid-template-columns:1fr 1fr}
-      }
-      @media(max-width:560px){
-        .permission-modal-head{padding:14px}.entity-main-column,.permission-side-panel{padding:13px}.compact-entity-fields{grid-template-columns:1fr}.permission-layout-form .parking-editor-grid{grid-template-columns:1fr!important}.setup-card-head,.subsection-title{align-items:flex-start;flex-direction:column}.subsection-title small{margin-left:0;text-align:left}
-      }
+      .employee-vehicle-form{margin-top:12px}.employee-created-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 12px;border:1px solid #cfe6d9;border-radius:9px;background:#f2faf5}.employee-created-banner>div{display:grid;gap:2px}.employee-created-banner span:first-child{font-size:9px;font-weight:900;color:#31865a;letter-spacing:.5px}.employee-created-banner strong{font-size:14px;color:#20362a}.employee-created-banner small{font-size:10px;color:#6d7b73}.success-check{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#dff3e7;color:#1c8b51;font-size:16px;font-weight:900}.employee-vehicle-form .entity-fields{margin-top:0}.employee-vehicle-form input[readonly]{background:#f6f8f7;color:#58655e}.integrated-card-capture{grid-column:1/-1}.integrated-card-note{grid-column:1/-1}
+      @media(max-height:700px) and (min-width:821px){.permission-modal-head{padding-top:12px;padding-bottom:10px}.permission-modal-head p{margin-top:2px}.entity-main-column,.permission-side-panel{padding-top:11px;padding-bottom:11px}.permission-side-panel .permission-tree{height:220px}.permission-layout-form .parking-input-card{padding:6px!important}.permission-modal-actions{padding-top:9px!important;padding-bottom:9px!important}}
+      @media(max-width:820px){.permission-modal{width:min(720px,calc(100vw - 22px));max-height:calc(100vh - 22px);overflow:auto}.permission-layout-form{grid-template-columns:1fr;overflow:visible}.setup-card{border-right:0;border-bottom:1px solid #e1e8e4}.entity-main-column,.permission-side-panel{overflow:visible}.permission-modal-actions{grid-column:auto!important;position:sticky;bottom:0}.compact-entity-fields{grid-template-columns:1fr 1fr}}
+      @media(max-width:560px){.permission-modal-head{padding:14px}.entity-main-column,.permission-side-panel{padding:13px}.compact-entity-fields{grid-template-columns:1fr}.permission-layout-form .parking-editor-grid{grid-template-columns:1fr!important}.setup-card-head,.subsection-title{align-items:flex-start;flex-direction:column}.subsection-title small{margin-left:0;text-align:left}.integrated-card-capture,.integrated-card-note{grid-column:auto}}
     `}</style>
   </>;
 }
