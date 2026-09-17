@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { hasPermission } from "@/lib/permissions";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
 export async function POST(
@@ -11,6 +12,9 @@ export async function POST(
   const user = await getCurrentUser();
   if (!user || !["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) {
     return NextResponse.json({ ok: false, message: "Super Admin or Building Admin access required." }, { status: 403 });
+  }
+  if (user.role === "BUILDING_ADMIN" && !hasPermission(user, "building.configureReaders")) {
+    return NextResponse.json({ ok: false, message: "Gate and reader configuration is not assigned to this Admin account." }, { status: 403 });
   }
 
   const { buildingId } = await context.params;
