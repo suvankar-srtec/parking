@@ -8,7 +8,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     const { id } = await context.params;
     const user = await getCurrentUser();
-    if (!user || user.role !== "COMPANY_ADMIN" || user.companyId !== id || !hasPermission(user, "company.allocateEmployeeParking")) {
+    const companyScopedRole = user?.role === "COMPANY_ADMIN" || user?.role === "BUILDING_OWNER";
+    if (!user || !companyScopedRole || user.companyId !== id || !hasPermission(user, "company.allocateEmployeeParking")) {
       return NextResponse.json({ ok: false, message: "Parking split management is not assigned to this Company/User account." }, { status: 403 });
     }
 
