@@ -5,17 +5,28 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { hasPermission } from "@/lib/permissions";
 import { claimUserId, UserIdError } from "@/lib/user-id-reservations";
+import { companyCardScope } from "@/lib/company-card-access";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id: companyId } = await context.params;
     const owner = await getCurrentUser();
-    if (!owner || owner.role !== "COMPANY_ADMIN" || owner.companyId !== companyId || !hasPermission(owner, "company.managePeople")) {
-      return NextResponse.json({ ok: false, message: "People management is not assigned to this Company/User account." }, { status: 403 });
+    if (!owner) {
+      return NextResponse.json({ ok: false, message: "Sign in required." }, { status: 403 });
     }
-    if (!hasPermission(owner, "company.allocateEmployeeParking")) {
+
+    const companyUser = owner.role === "COMPANY_ADMIN" && owner.companyId === companyId;
+    const adminRegistration = ["SUPER_ADMIN", "BUILDING_ADMIN"].includes(owner.role)
+      ? Boolean(await prisma.company.findFirst({ where: { AND: [{ id: companyId }, companyCardScope(owner)] }, select: { id: true } }))
+      : false;
+
+    if (!adminRegistration && (!companyUser || !hasPermission(owner, "company.managePeople"))) {
+      return NextResponse.json({ ok: false, message: "You do not have permission to add people to this company." }, { status: 403 });
+    }
+    if (!adminRegistration && !hasPermission(owner, "company.allocateEmployeeParking")) {
       return NextResponse.json({ ok: false, message: "Employee parking allocation is not assigned to this Company/User account." }, { status: 403 });
     }
+
     let body;
     try { body = await request.json(); }
     catch { return NextResponse.json({ ok: false, message: "Invalid request body." }, { status: 400 }); }
@@ -60,6 +71,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/company-parking");
+    revalidatePath(`/access-control/register-cards/${companyId}`);
     return NextResponse.json({ ok: true, message: `${result.category === "OWNER" ? "Company owner" : "Employee"} created with 1 parking space.`, employee: { id: result.id, name: result.name, userId: result.userId, category: result.category, parkingLimit: result.parkingLimit, department: result.department } }, { status: 201 });
   } catch (error) {
     if (error instanceof UserIdError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });

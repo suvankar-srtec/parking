@@ -27,6 +27,9 @@ export default function EmployeeCreateModal({
   canRegisterRfid = true,
   registration,
   disabled = false,
+  triggerLabel = "Add Employee",
+  triggerClassName = "add-building-button",
+  showTriggerIcon = true,
 }: {
   companyId: string;
   departments: DepartmentOption[];
@@ -35,6 +38,9 @@ export default function EmployeeCreateModal({
   canRegisterRfid?: boolean;
   registration?: { employee: CreatedEmployee; buildingId: string; vehicle?: { id: string; plateNumber: string; isInside: boolean } };
   disabled?: boolean;
+  triggerLabel?: string;
+  triggerClassName?: string;
+  showTriggerIcon?: boolean;
 }) {
   const modalId = useId();
   const existingEmployee = registration?.employee;
@@ -241,8 +247,8 @@ export default function EmployeeCreateModal({
   }
 
   return <>
-    <button type="button" className={registration ? "primary-button" : "add-building-button"} disabled={disabled} onClick={show}>
-      {registration ? "Register card" : <><span className="plus-icon" aria-hidden="true">+</span>Add Employee</>}
+    <button type="button" className={registration ? "primary-button" : triggerClassName} disabled={disabled} onClick={show}>
+      {registration ? "Register card" : <>{showTriggerIcon ? <span className="plus-icon" aria-hidden="true">+</span> : null}{triggerLabel}</>}
     </button>
 
     {open ? <div className="modal-backdrop" onKeyDown={event => { if (event.key === "Escape" && !pending) close(); }} onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) close(); }}>

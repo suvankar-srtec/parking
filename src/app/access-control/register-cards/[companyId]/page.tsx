@@ -3,6 +3,7 @@ import AppLink from "@/components/AppLink";
 import Sidebar from "@/components/Sidebar";
 import SignOutButton from "@/components/SignOutButton";
 import RegisterEmployeeCard from "@/components/RegisterEmployeeCard";
+import EmployeeCreateModal from "@/components/EmployeeCreateModal";
 import { getCurrentUser } from "@/lib/session";
 import { effectivePermissions, hasPermission } from "@/lib/permissions";
 import { companyCardScope } from "@/lib/company-card-access";
@@ -41,7 +42,7 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
       </header>
       <section className="portfolio-card building-management">
         <div className="portfolio-header">
-          <div><div className="section-kicker">COMPANY EMPLOYEES</div><h2>Employees &amp; RFID cards</h2><p>View card numbers or register a card for an employee.</p></div>
+          <div><div className="section-kicker">COMPANY EMPLOYEES</div><h2>Employees &amp; RFID cards</h2><p>Use Register card to open the employee/company-owner setup flow and continue to vehicle and RFID registration.</p></div>
           <div className={styles.summary}><span><strong>{company.employees.length}</strong> Employees</span><span><strong>{registered}</strong> With cards</span></div>
         </div>
         <div className="portfolio-divider" />
@@ -65,7 +66,20 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
               </tr>);
             })}</tbody>
           </table>
-        </div> : <div className={styles.empty}>No employees have been added to this company yet.</div>}
+        </div> : <div className={styles.empty}>
+          <p>No employees have been added to this company yet.</p>
+          <EmployeeCreateModal
+            companyId={company.id}
+            departments={company.departments}
+            maximumDepartments={company.maximumDepartments}
+            canManageVehicles
+            canRegisterRfid
+            disabled={!company.building.enabled}
+            triggerLabel="Add Employee / Company Owner"
+            triggerClassName="primary-button"
+            showTriggerIcon={false}
+          />
+        </div>}
       </section>
     </section>
   </main>;
