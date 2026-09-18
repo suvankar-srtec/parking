@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { checkForm, requestJson } from "@/lib/client-request";
 import { useFeedback, useMutation } from "./FeedbackProvider";
 import { ActionButton } from "./LoadingIndicator";
@@ -8,7 +8,7 @@ import DepartmentPicker from "./DepartmentPicker";
 import CardCapture, { type CapturedCard } from "./CardCapture";
 
 type DepartmentOption = { id: string; name: string };
-type CreatedEmployee = {
+export type CreatedEmployee = {
   id: string;
   name: string;
   userId: string;
@@ -25,13 +25,19 @@ export default function EmployeeCreateModal({
   maximumDepartments,
   canManageVehicles = true,
   canRegisterRfid = true,
+  registration,
+  disabled = false,
 }: {
   companyId: string;
   departments: DepartmentOption[];
   maximumDepartments: number;
   canManageVehicles?: boolean;
   canRegisterRfid?: boolean;
+  registration?: { employee: CreatedEmployee; buildingId: string; vehicle?: { id: string; plateNumber: string; isInside: boolean } };
+  disabled?: boolean;
 }) {
+  const modalId = useId();
+  const existingEmployee = registration?.employee;
   const { notify, refresh } = useFeedback();
   const { pending: saving, execute } = useMutation();
   const [open, setOpen] = useState(false);
@@ -54,18 +60,17 @@ export default function EmployeeCreateModal({
 
   useEffect(() => {
     setDepartmentOptions(departments);
-    if (!department && departments[0]?.name) setDepartment(departments[0].name);
-  }, [departments, department]);
+  }, [departments]);
 
   function show() {
-    setName("");
-    setGeneratedUserId("");
+    setName(existingEmployee?.name || "");
+    setGeneratedUserId(existingEmployee?.userId || "");
     setReservationId("");
     reservationRef.current = "";
     setGeneratingUserId(false);
     setGenerationError("");
     setDepartmentOptions(departments);
-    setDepartment(departments[0]?.name || "");
+    setDepartment(departments.some(item => item.name === existingEmployee?.department) ? existingEmployee!.department : departments[0]?.name || "");
     setNewDepartment("");
     setCreatedEmployee(null);
     setVehicleCard(null);
@@ -82,6 +87,7 @@ export default function EmployeeCreateModal({
   useEffect(() => {
     const version = ++requestVersion.current;
     const cleanName = name.trim();
+    if (existingEmployee) return;
     if (!open || createdEmployee || !cleanName) {
       if (!createdEmployee) {
         setGeneratedUserId("");
@@ -126,7 +132,7 @@ export default function EmployeeCreateModal({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [open, createdEmployee, name, companyId, idRefresh]);
+  }, [open, createdEmployee, name, companyId, idRefresh, existingEmployee]);
 
   async function addDepartment() {
     const clean = newDepartment.trim().replace(/\s+/g, " ");
@@ -170,7 +176,7 @@ export default function EmployeeCreateModal({
       notify("Wait for the generated User ID.", "error");
       return;
     }
-    if (!generatedUserId || !reservationId) {
+    if (!existingEmployee && (!generatedUserId || !reservationId)) {
       notify(generationError || "Enter a name and wait for the generated User ID.", "error");
       return;
     }
@@ -190,9 +196,9 @@ export default function EmployeeCreateModal({
 
     void execute(async () => {
       const result = await requestJson<{ ok: true; message: string; employee: CreatedEmployee }>(
-        `/api/companies/${companyId}/employees`,
-        "POST",
-        body,
+        existingEmployee ? `/api/companies/${companyId}/employees/${existingEmployee.id}` : `/api/companies/${companyId}/employees`,
+        existingEmployee ? "PATCH" : "POST",
+        existingEmployee ? { name: body.name, department } : body,
       );
       notify(result.message || "Employee created successfully.");
       if (canManageVehicles) {
@@ -212,6 +218,7 @@ export default function EmployeeCreateModal({
       notify(error, "error");
       return;
     }
+    if (registration && !vehicleCard) { notify("Scan a card using a registration reader first.", "error"); return; }
     const data = new FormData(event.currentTarget);
     const body = {
       ownerName: createdEmployee.name,
@@ -224,9 +231,9 @@ export default function EmployeeCreateModal({
 
     void execute(async () => {
       const result = await requestJson(
-        `/api/companies/${companyId}/employees/${createdEmployee.id}/vehicles`,
+        registration?.vehicle ? "/api/rfid/cards" : `/api/companies/${companyId}/employees/${createdEmployee.id}/vehicles`,
         "POST",
-        body,
+        registration?.vehicle ? { vehicleId: registration.vehicle.id, enrollmentId: vehicleCard?.enrollmentId } : body,
       );
       notify(result.message || "Vehicle registered successfully.");
       close();
@@ -234,36 +241,36 @@ export default function EmployeeCreateModal({
   }
 
   return <>
-    <button type="button" className="add-building-button" onClick={show}>
-      <span className="plus-icon" aria-hidden="true">+</span>Add Employee
+    <button type="button" className={registration ? "primary-button" : "add-building-button"} disabled={disabled} onClick={show}>
+      {registration ? "Register card" : <><span className="plus-icon" aria-hidden="true">+</span>Add Employee</>}
     </button>
 
-    {open ? <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) close(); }}>
-      <section className="modal-card employee-create-modal" role="dialog" aria-modal="true" aria-labelledby="employee-create-title">
+    {open ? <div className="modal-backdrop" onKeyDown={event => { if (event.key === "Escape" && !pending) close(); }} onMouseDown={(event) => { if (event.target === event.currentTarget && !pending) close(); }}>
+      <section className="modal-card employee-create-modal" role="dialog" aria-modal="true" aria-labelledby={modalId + "-title"}>
         <div className="employee-modal-head">
           <div>
             <div className="section-kicker">{createdEmployee ? "VEHICLE REGISTRATION" : "PEOPLE SETUP"}</div>
-            <h2 id="employee-create-title">{createdEmployee ? `Add vehicle for ${createdEmployee.name}` : "Add Employee / Company Owner"}</h2>
-            <p>{createdEmployee ? "The person has been created. You can register a vehicle now or finish without a vehicle." : "Create a person, assign their parking limit, and link them to a company department."}</p>
+            <h2 id={modalId + "-title"}>{createdEmployee ? (registration?.vehicle ? `Register card for ${createdEmployee.name}` : `Add vehicle for ${createdEmployee.name}`) : "Add Employee / Company Owner"}</h2>
+            <p>{registration ? (createdEmployee ? "Scan the card and save to complete registration for this person." : "Review this person and select or add a department, then continue to card registration.") : createdEmployee ? "The person has been created. You can register a vehicle now or finish without a vehicle." : "Create a person, assign their parking limit, and link them to a company department."}</p>
           </div>
           <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={close}>×</button>
         </div>
 
         {!createdEmployee ? <form className="employee-create-form" noValidate onSubmit={submitEmployee}>
           <fieldset disabled={pending} className="employee-details-card">
-            <div className="employee-card-title"><span>01</span><div><strong>Person details</strong><small>User ID is generated automatically</small></div></div>
+            <div className="employee-card-title"><span>01</span><div><strong>Person details</strong><small>{existingEmployee ? "Existing User ID and parking allocation are retained" : "User ID is generated automatically"}</small></div></div>
             <div className="employee-fields-grid">
               <label>Full Name<input name="name" autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Alex Smith" /></label>
               <div className="employee-generated-field">
-                <label htmlFor="employee-generated-id">User ID</label>
-                <div className="employee-generated-wrap">
-                  <input id="employee-generated-id" readOnly value={generatedUserId || (generatingUserId ? "Generating..." : "Generated automatically")} aria-invalid={Boolean(generationError)} />
-                  <button type="button" aria-label="Refresh User ID" title="Refresh User ID" disabled={pending || generatingUserId || !name.trim()} onClick={() => setIdRefresh((value) => value + 1)}>↻</button>
+                <label htmlFor={modalId + "-user-id"}>User ID</label>
+                <div className="employee-generated-wrap" style={existingEmployee ? { gridTemplateColumns: "minmax(0,1fr)" } : undefined}>
+                  <input id={modalId + "-user-id"} readOnly value={generatedUserId || (generatingUserId ? "Generating..." : "Generated automatically")} aria-invalid={Boolean(generationError)} />
+                  {!existingEmployee && <button type="button" aria-label="Refresh User ID" title="Refresh User ID" disabled={pending || generatingUserId || !name.trim()} onClick={() => setIdRefresh((value) => value + 1)}>↻</button>}
                 </div>
                 {generationError ? <small className="employee-id-error">{generationError}</small> : null}
               </div>
-              <label>Person Type<select name="category" defaultValue="EMPLOYEE" required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
-              <label>Parking Limit<input name="parkingLimit" type="number" min="1" step="1" defaultValue="1" required /></label>
+              <label>Person Type<select name="category" defaultValue={existingEmployee?.category || "EMPLOYEE"} disabled={Boolean(existingEmployee)} required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
+              <label>Parking Limit<input name="parkingLimit" type="number" min={existingEmployee ? "0" : "1"} step="1" defaultValue={existingEmployee?.parkingLimit ?? 1} readOnly={Boolean(existingEmployee)} required /></label>
             </div>
           </fieldset>
 
@@ -290,24 +297,27 @@ export default function EmployeeCreateModal({
 
           <div className="employee-modal-actions">
             <button type="button" className="secondary-button" disabled={pending} onClick={close}>Cancel</button>
-            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Adding employee…">{canManageVehicles ? "Add & Continue" : "Add Employee"}</ActionButton>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText={existingEmployee ? "Saving..." : "Adding employee..."}>{existingEmployee ? "Save & Continue" : canManageVehicles ? "Add & Continue" : "Add Employee"}</ActionButton>
           </div>
         </form> : <form className="employee-vehicle-step" noValidate onSubmit={submitVehicle}>
           <div className="employee-created-banner">
-            <div><span>PERSON CREATED</span><strong>{createdEmployee.name}</strong><small>{createdEmployee.userId} · {createdEmployee.department} · Parking limit {createdEmployee.parkingLimit}</small></div>
+            <div><span>{existingEmployee ? "PERSON DETAILS" : "PERSON CREATED"}</span><strong>{createdEmployee.name}</strong><small>{createdEmployee.userId} · {createdEmployee.department} · Parking limit {createdEmployee.parkingLimit}</small></div>
             <span className="employee-success-check">✓</span>
           </div>
           <fieldset disabled={pending} className="employee-vehicle-grid">
             <label>Owner Name<input value={createdEmployee.name} readOnly /></label>
+            {registration?.vehicle ? <label>Plate Number<input value={registration.vehicle.plateNumber} readOnly /></label> : <>
             <label>Plate Number<input name="plateNumber" required autoFocus placeholder="e.g. KA 01 AB 1234" /></label>
             <label>Vehicle Type<select name="vehicleType" defaultValue="" required><option value="" disabled>Select vehicle type</option>{vehicleTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
             <label>Department<input value={createdEmployee.department} readOnly /></label>
             <label>Staff or Employee<select name="workerType" defaultValue={createdEmployee.category === "EMPLOYEE" ? "Employee" : "Staff"} required><option>Staff</option><option>Employee</option></select></label>
-            {canRegisterRfid ? <div className="employee-card-capture"><CardCapture employeeId={createdEmployee.id} onCaptured={setVehicleCard} /></div> : <p className="muted employee-rfid-note">RFID registration is not assigned to this account. The vehicle can still be saved without an RFID card.</p>}
+            </>}
+            {registration?.vehicle?.isInside && <p className="employee-rfid-note">Record the vehicle’s exit before registering its card.</p>}
+            {canRegisterRfid ? <div className="employee-card-capture"><CardCapture buildingId={registration?.buildingId} employeeId={createdEmployee.id} vehicleId={registration?.vehicle?.id} onCaptured={setVehicleCard} /></div> : <p className="muted employee-rfid-note">RFID registration is not assigned to this account. The vehicle can still be saved without an RFID card.</p>}
           </fieldset>
           <div className="employee-modal-actions">
-            <button type="button" className="secondary-button" disabled={pending} onClick={close}>Finish without vehicle</button>
-            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Registering…">Register vehicle</ActionButton>
+            <button type="button" className="secondary-button" disabled={pending} onClick={close}>{registration ? "Cancel" : "Finish without vehicle"}</button>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Registering..." disabled={Boolean(registration && (!vehicleCard || registration.vehicle?.isInside))}>{registration ? "Save registration" : "Register vehicle"}</ActionButton>
           </div>
         </form>}
       </section>

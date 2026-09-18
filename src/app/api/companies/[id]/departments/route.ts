@@ -57,6 +57,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
 
     revalidatePath("/dashboard");
+    revalidatePath("/access-control/register-cards", "layout");
     return NextResponse.json({ ok: true, message: `${result.department.name} department added. ${result.remaining} department slots remaining.`, department: result.department }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "COMPANY_NOT_FOUND") return NextResponse.json({ ok: false, message: "Company not found." }, { status: 404 });

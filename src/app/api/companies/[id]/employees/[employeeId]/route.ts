@@ -70,6 +70,7 @@ export async function PATCH(
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 15000 });
 
     revalidatePath("/dashboard");
+    revalidatePath("/access-control/register-cards", "layout");
     return NextResponse.json({
       ok: true,
       message: "Employee name and department updated successfully.",

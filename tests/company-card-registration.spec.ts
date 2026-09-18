@@ -16,6 +16,8 @@ test("company employee cards: scoped navigation, reader capture, persistence and
   const tag = "CARD-UI-" + randomBytes(6).toString("hex");
   const userIds: string[] = [], buildingIds: string[] = [], readerIds: string[] = [];
   const errors: string[] = [];
+  let idRequests = 0;
+  page.on("request", request => { if (request.url().endsWith("/api/user-ids")) idRequests++; });
   page.on("pageerror", error => errors.push(error.message));
   const api = (path: string, userId: string, data: unknown) => fetch(baseURL + path, {
     method: "POST", headers: { Cookie: "parking_session=" + cookie(userId), "Content-Type": "application/json" }, body: JSON.stringify(data),
@@ -36,12 +38,13 @@ test("company employee cards: scoped navigation, reader capture, persistence and
     const outsider = await db.user.create({ data: { userId: tag + "-outsider", username: tag, role: "BUILDING_ADMIN", buildingId: outside.id } });
     userIds.push(outsider.id);
     const company = await db.company.create({ data: { name: "Test company " + tag, buildingId: building.id, parkingAllocation: 8 } });
+    const companyUser = await db.user.create({ data: { userId: tag + "-company", username: tag, role: "COMPANY_ADMIN", buildingId: building.id, companyId: company.id } });
+    userIds.push(companyUser.id);
     const otherCompany = await db.company.create({ data: { name: "Other company " + tag, buildingId: building.id, parkingAllocation: 2 } });
     const outsideCompany = await db.company.create({ data: { name: "Outside company " + tag, buildingId: outside.id, parkingAllocation: 2 } });
-    await db.companyDepartment.create({ data: { companyId: company.id, name: "Operations" } });
     const alice = await db.employee.create({ data: { name: "Alice Registered", userId: tag + "A", companyId: company.id, department: "Operations", parkingLimit: 2 } });
-    const bob = await db.employee.create({ data: { name: "Bob Missing Card", userId: tag + "B", companyId: company.id, department: "Operations" } });
-    const cara = await db.employee.create({ data: { name: "Cara No Vehicle", userId: tag + "C", companyId: company.id, department: "Operations" } });
+    const bob = await db.employee.create({ data: { name: "Bob Missing Card", userId: tag + "B", companyId: company.id, department: "Unassigned" } });
+    const cara = await db.employee.create({ data: { name: "Cara No Vehicle", userId: tag + "C", companyId: company.id, department: "Unassigned" } });
     const placeholder = await db.employee.create({ data: { name: "Empty roster slot", userId: tag + "P", companyId: company.id, isPlaceholder: true, parkingLimit: 0 } });
     await db.employee.create({ data: { name: "Other company employee", userId: tag + "O", companyId: otherCompany.id } });
     const aliceCard = randomBytes(6).toString("hex").toUpperCase();
@@ -83,6 +86,20 @@ test("company employee cards: scoped navigation, reader capture, persistence and
     const bobRow = page.getByRole("row").filter({ hasText: bob.name });
     await bobRow.getByRole("button", { name: "Register card", exact: true }).click();
     const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Add Employee / Company Owner" })).toBeVisible();
+    await expect(dialog.getByLabel("Full Name")).toHaveValue(bob.name);
+    await expect(dialog.getByLabel("User ID", { exact: true })).toHaveValue(bob.userId);
+    await expect(dialog.getByLabel("User ID", { exact: true })).toHaveAttribute("readonly", "");
+    await expect(dialog.getByRole("button", { name: "Refresh User ID" })).toHaveCount(0);
+    await expect(dialog.getByPlaceholder("e.g. Marketing")).toBeVisible();
+    await page.screenshot({ path: "test-results/register-card-person-popup.png", fullPage: true });
+    await dialog.getByPlaceholder("e.g. Marketing").fill("Operations");
+    await dialog.getByRole("button", { name: "+ Add", exact: true }).click();
+    await expect(dialog.getByRole("button", { name: "Department", exact: true })).toContainText("Operations");
+    await dialog.getByRole("button", { name: "Save & Continue" }).click();
+    await expect(dialog.getByRole("heading", { name: "Register card for " + bob.name })).toBeVisible();
+    expect(await db.employee.count({ where: { companyId: company.id } })).toBe(4);
+    expect((await db.employee.findUniqueOrThrow({ where: { id: bob.id } })).department).toBe("Operations");
     await dialog.getByLabel("Registration reader").selectOption(reader.id);
     await expect(dialog.getByText(/Scan the RFID card on/)).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Save registration" })).toBeDisabled();
@@ -97,8 +114,14 @@ test("company employee cards: scoped navigation, reader capture, persistence and
     await expect(bobRow).toContainText(bobCard);
 
     await page.getByRole("row").filter({ hasText: cara.name }).getByRole("button", { name: "Register card", exact: true }).click();
-    await dialog.getByLabel("Plate number").fill(tag + "C");
-    await dialog.getByLabel("Vehicle type").selectOption("Four wheeler");
+    await expect(dialog.getByRole("heading", { name: "Add Employee / Company Owner" })).toBeVisible();
+    await expect(dialog.getByLabel("User ID", { exact: true })).toHaveValue(cara.userId);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: "test-results/register-card-person-popup-mobile.png", fullPage: true });
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await dialog.getByRole("button", { name: "Save & Continue" }).click();
+    await dialog.getByLabel("Plate Number").fill(tag + "C");
+    await dialog.getByLabel("Vehicle Type").selectOption("Four wheeler");
     await dialog.getByLabel("Registration reader").selectOption(reader.id);
     await expect(dialog.getByText(/Scan the RFID card on/)).toBeVisible();
     const caraCard = randomBytes(6).toString("hex").toUpperCase();
@@ -130,6 +153,17 @@ test("company employee cards: scoped navigation, reader capture, persistence and
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: "test-results/company-employee-cards-mobile.png", fullPage: true });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(await db.employee.count({ where: { companyId: company.id } })).toBe(4);
+    expect(idRequests).toBe(0);
+    await page.context().addCookies([{ name: "parking_session", value: cookie(companyUser.id), url: baseURL!, httpOnly: true }]);
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Add Employee", exact: true }).click();
+    await expect(dialog.getByRole("heading", { name: "Add Employee / Company Owner" })).toBeVisible();
+    await expect(dialog.getByLabel("Full Name")).toHaveValue("");
+    await expect(dialog.getByRole("button", { name: "Refresh User ID" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Add & Continue" })).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     expect(errors).toEqual([]);
   } finally {
     await page.goto("about:blank");

@@ -17,7 +17,7 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
   const company = await prisma.company.findFirst({
     where: { AND: [{ id: companyId }, companyCardScope(user)] },
     select: {
-      id: true, name: true, buildingId: true,
+      id: true, name: true, buildingId: true, maximumDepartments: true,
       building: { select: { name: true, enabled: true } },
       departments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
       employees: {
@@ -60,7 +60,7 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
                 <td>{vehicle?.rfidCardNo ? <code className={styles.cardNumber}>{vehicle.rfidCardNo}</code> : <span className={styles.missing}>Not registered</span>}</td>
                 <td>{vehicle?.rfidCardNo ? <span className={styles.registered}>Registered</span> : <RegisterEmployeeCard
                   companyId={company.id} buildingId={company.buildingId} employee={employee}
-                  vehicle={vehicle || undefined} departments={company.departments} disabled={!company.building.enabled}
+                  vehicle={vehicle || undefined} departments={company.departments} maximumDepartments={company.maximumDepartments} disabled={!company.building.enabled}
                 />}</td>
               </tr>);
             })}</tbody>

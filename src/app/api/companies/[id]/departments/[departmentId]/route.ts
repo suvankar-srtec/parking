@@ -37,6 +37,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
 
     if (!result) return NextResponse.json({ ok: false, message: "Department not found." }, { status: 404 });
     revalidatePath("/dashboard");
+    revalidatePath("/access-control/register-cards", "layout");
     return NextResponse.json({ ok: true, message: `${result.name} department deleted.` });
   } catch (error) {
     console.error("DELETE_COMPANY_DEPARTMENT_FAILED", error);
