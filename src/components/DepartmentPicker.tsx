@@ -59,7 +59,8 @@ export default function DepartmentPicker({ companyId, departments, value, onChan
       onBusyChange(true);
       try {
         const result = await requestJson(
-          "/api/companies/" + encodeURIComponent(companyId) + "/departments/" + encodeURIComponent(item.id), "DELETE",
+          "/api/companies/" + encodeURIComponent(companyId) + "/departments/" + encodeURIComponent(item.id),
+          "DELETE",
         );
         setRemoved((current) => [...current, item.id]);
         if (value === item.name) onChange("");
@@ -91,21 +92,16 @@ export default function DepartmentPicker({ companyId, departments, value, onChan
     </button>
     {open && <div id={id + "-options"} className={styles.options} role="group" aria-labelledby={id + "-label"} aria-busy={pending}>
       {options.length === 0 && <p className={styles.empty}>No departments available.</p>}
-      {options.map((item) => <button type="button" className={styles.option} key={item.id} aria-pressed={selected?.id === item.id} disabled={disabled || pending} onClick={() => {
-        onChange(item.name);
-        setOpen(false);
-        trigger.current?.focus();
-      }}>{item.name}</button>)}
-    </div>}
-    <div className={styles.departmentList} aria-label="Company departments">
-      {options.map((item) => <div className={styles.departmentItem} key={item.id}>
-        <button type="button" className={styles.departmentName} aria-pressed={selected?.id === item.id} disabled={disabled || pending} onClick={() => onChange(item.name)}>
-          {item.name}
-        </button>
+      {options.map((item) => <div className={styles.row} key={item.id}>
+        <button type="button" className={styles.option} aria-pressed={selected?.id === item.id} disabled={disabled || pending} onClick={() => {
+          onChange(item.name);
+          setOpen(false);
+          trigger.current?.focus();
+        }}>{item.name}</button>
         <button type="button" className={styles.remove} aria-label={"Remove " + item.name + " department"} title={"Remove " + item.name + " department"} disabled={disabled || pending} onClick={() => remove(item)}>
           {deletingId === item.id ? <Spinner /> : <span aria-hidden="true">−</span>}
         </button>
       </div>)}
-    </div>
+    </div>}
   </div>;
 }
