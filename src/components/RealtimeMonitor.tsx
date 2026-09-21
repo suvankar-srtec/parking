@@ -5,6 +5,19 @@ import { Spinner } from "./LoadingIndicator";
 import styles from "./SupervisorHeadcount.module.css";
 
 type Option = { id: string; name: string; buildingId?: string };
+type ScanEvent = {
+  id: string;
+  action: string;
+  code: string;
+  message: string;
+  cardNo: string;
+  deviceNumber: string;
+  createdAt: string;
+  vehicle: { plateNumber: string; ownerName: string; department: string } | null;
+  personType: "OWNER" | "EMPLOYEE" | "UNKNOWN";
+  company: { name: string } | null;
+};
+
 type Headcount = {
   ok: true;
   buildingName: string;
@@ -12,6 +25,7 @@ type Headcount = {
   totalIn: number;
   totalOut: number;
   totalOnSite: number;
+  recentEvents: ScanEvent[];
   updatedAt: string;
 };
 
@@ -157,6 +171,26 @@ export default function RealtimeMonitor({
         <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article>
         <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article>
       </div>}
+    </section>
+
+    <section className={`portfolio-card ${styles.scanTableCard}`}>
+      <div className={styles.scanTableHeader}><div><div className="section-kicker">RFID ACTIVITY</div><h2>Live Dashboard</h2></div></div>
+      <div className={styles.tableWrap}>
+        <table className={styles.scanTable}>
+          <thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Owner</th><th>Employee</th><th>Company</th><th>Action</th><th>Result</th></tr></thead>
+          <tbody>{data?.recentEvents?.length ? data.recentEvents.map((event) => <tr key={event.id}>
+            <td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td>
+            <td>{event.deviceNumber || "-"}</td>
+            <td>{event.cardNo || "-"}</td>
+            <td>{event.vehicle?.plateNumber || "-"}</td>
+            <td className={event.personType === "OWNER" ? styles.ownerPerson : undefined}>{event.personType === "OWNER" ? event.vehicle?.ownerName || "-" : "-"}</td>
+            <td className={event.personType === "EMPLOYEE" ? styles.employeePerson : undefined}>{event.personType === "EMPLOYEE" ? event.vehicle?.ownerName || "-" : "-"}</td>
+            <td>{event.company?.name || "-"}</td>
+            <td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td>
+            <td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{event.code === "0000" ? event.action === "ENTRY" ? "Entry allowed" : event.action === "EXIT" ? "Exit allowed" : event.message : event.message || "Denied"}</td>
+          </tr>) : <tr><td colSpan={9} className={styles.emptyTable}>No RFID activity has been recorded yet.</td></tr>}</tbody>
+        </table>
+      </div>
     </section>
   </>;
 }
