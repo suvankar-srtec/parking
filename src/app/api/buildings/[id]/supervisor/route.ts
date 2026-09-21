@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { hasPermission, sanitizePermissions } from "@/lib/permissions";
-import { claimUserId, UserIdError } from "@/lib/user-id-reservations";
+import { nextSupervisorUserId } from "@/lib/supervisor-user-id";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -40,26 +40,26 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (!reservationId) {
         return NextResponse.json({ ok: false, message: "Generate the Supervisor User ID before saving." }, { status: 400 });
       }
-      supervisor = await prisma.$transaction(async (tx) => {
-        const userId = await claimUserId(tx, {
-          ownerId: user.id,
-          reservationId,
-          kind: "supervisor",
-          scopeId: buildingId,
-          name: `Supervisor ${buildingId}`,
-        });
-        return tx.user.create({
-          data: { userId, username: `${building.name} Supervisor`, password, role: "EMPLOYEE", buildingId, permissions, permissionsCustomized: true },
-          select: { id: true, userId: true, username: true, permissions: true, permissionsCustomized: true },
-        });
-      }, { maxWait: 10000, timeout: 15000 });
+
+      const userId = await nextSupervisorUserId();
+      supervisor = await prisma.user.create({
+        data: {
+          userId,
+          username: `${building.name} Supervisor`,
+          password,
+          role: "EMPLOYEE",
+          buildingId,
+          permissions,
+          permissionsCustomized: true,
+        },
+        select: { id: true, userId: true, username: true, permissions: true, permissionsCustomized: true },
+      });
     }
 
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/buildings/${buildingId}`);
     return NextResponse.json({ ok: true, message: `Supervisor account saved for ${building.name}. User ID: ${supervisor.userId}.`, supervisor });
   } catch (error) {
-    if (error instanceof UserIdError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
     console.error("SAVE_SUPERVISOR_FAILED", error);
     return NextResponse.json({ ok: false, message: "Unable to save supervisor account." }, { status: 500 });
   }
