@@ -66,6 +66,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
           buildingId,
         },
       });
+
+      await tx.companyDepartment.createMany({
+        data: ["DEFAULT", "OPERATIONS", "ADMINISTRATION"].map((departmentName) => ({
+          companyId: company.id,
+          name: departmentName,
+        })),
+        skipDuplicates: true,
+      });
+
       const claimedUserId = await claimUserId(tx, { ownerId: user.id, reservationId, kind: "company", scopeId: buildingId, name });
       if (claimedUserId !== userId) throw new ParkingError("The generated User ID changed. Refresh the form and try again.", 409);
       const account = await tx.user.create({
