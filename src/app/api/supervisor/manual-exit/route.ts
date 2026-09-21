@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { hasPermission } from "@/lib/permissions";
-import { parseGateConfig } from "@/lib/gate-config";
 
 function canManualExit(user: Awaited<ReturnType<typeof getCurrentUser>>) {
   if (!user) return false;
@@ -23,14 +22,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Invalid active-card selection." }, { status: 400 });
   }
 
-  const buildingId = user!.buildingId;
-  if (!buildingId && user!.role !== "SUPER_ADMIN") {
+  if (!user!.buildingId && user!.role !== "SUPER_ADMIN") {
     return NextResponse.json({ ok: false, message: "No building is assigned to this account." }, { status: 403 });
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      let targetBuildingId = buildingId;
+    await prisma.$transaction(async (tx) => {
+      let targetBuildingId: string;
       let companyId: string | null = null;
       let cardNo = "";
       let vehicleId: string | null = null;
@@ -49,6 +47,7 @@ export async function POST(request: Request) {
         });
         if (!vehicle) throw new Error("Vehicle not found.");
         if (!vehicle.isInside) throw new Error("This vehicle is already outside.");
+
         targetBuildingId = vehicle.company.buildingId;
         companyId = vehicle.companyId;
         cardNo = vehicle.rfidCardNo || "";
@@ -60,69 +59,16 @@ export async function POST(request: Request) {
         });
         if (!vehicle) throw new Error("Owner vehicle not found.");
         if (!vehicle.isInside) throw new Error("This vehicle is already outside.");
+
         targetBuildingId = vehicle.buildingId;
         cardNo = vehicle.rfidCardNo || "";
         ownerVehicleId = vehicle.id;
       }
 
-      if (!targetBuildingId) throw new Error("Building could not be resolved.");
-
       if (user!.role === "BUILDING_ADMIN" || user!.role === "EMPLOYEE") {
-        if (targetBuildingId !== user!.buildingId) throw new Error("This vehicle is outside your assigned building.");
-      } else if (user!.role === "SUPER_ADMIN") {
-        const building = await tx.building.findUnique({
-          where: { id: targetBuildingId },
-          select: { superAdminId: true },
-        });
-        if (!building) throw new Error("Building not found.");
-      }
-
-      const gates = await tx.gate.findMany({
-        where: { buildingId: targetBuildingId },
-        select: { direction: true },
-        orderBy: { gateNumber: "asc" },
-      });
-      let exitReaderId: string | null = null;
-      for (const gate of gates) {
-        const config = parseGateConfig(gate.direction);
-        if (config.exitReaderId) {
-          exitReaderId = config.exitReaderId;
-          break;
+        if (targetBuildingId !== user!.buildingId) {
+          throw new Error("This vehicle is outside your assigned building.");
         }
-        if (config.direction === "ENTRY_EXIT" && config.entryReaderId) {
-          exitReaderId = config.entryReaderId;
-          break;
-        }
-      }
-
-      if (!exitReaderId) {
-        throw new Error("No Exit reader is configured for this building.");
-      }
-
-      const exitReader = await tx.rfidReader.findUnique({
-        where: { id: exitReaderId },
-        select: {
-          id: true,
-          deviceNumber: true,
-          enabled: true,
-          buildingId: true,
-          connectionType: true,
-          tcpConnected: true,
-          connectionId: true,
-          lastGatewaySeenAt: true,
-        },
-      });
-      if (!exitReader || !exitReader.enabled || exitReader.buildingId !== targetBuildingId) {
-        throw new Error("The configured Exit reader is not available.");
-      }
-      if (
-        exitReader.connectionType !== "TCP" ||
-        !exitReader.tcpConnected ||
-        !exitReader.connectionId ||
-        !exitReader.lastGatewaySeenAt ||
-        Date.now() - exitReader.lastGatewaySeenAt.getTime() > 30000
-      ) {
-        throw new Error("Manual Exit LED requires the Exit reader to be online through the TCP gateway.");
       }
 
       const now = new Date();
@@ -130,41 +76,42 @@ export async function POST(request: Request) {
       if (kind === "vehicle") {
         await tx.vehicle.update({
           where: { id: recordId },
-          data: { isInside: false, lastAccessAt: now, lastAccessDevice: exitReader.deviceNumber },
+          data: {
+            isInside: false,
+            lastAccessAt: now,
+            lastAccessDevice: "MANUAL",
+          },
         });
       } else {
         await tx.buildingOwnerVehicle.update({
           where: { id: recordId },
-          data: { isInside: false, lastAccessAt: now, lastAccessDevice: exitReader.deviceNumber },
+          data: {
+            isInside: false,
+            lastAccessAt: now,
+            lastAccessDevice: "MANUAL",
+          },
         });
       }
 
       await tx.rfidEvent.create({
         data: {
-          readerId: exitReader.id,
+          readerId: null,
           buildingId: targetBuildingId,
           companyId,
           vehicleId,
           ownerVehicleId,
-          deviceNumber: exitReader.deviceNumber,
+          deviceNumber: "MANUAL",
           cardNo: cardNo || "MANUAL",
           action: "EXIT",
           code: "0000",
           message: "Manual exit allowed",
         },
       });
-
-      await tx.rfidReader.update({
-        where: { id: exitReader.id },
-        data: { pendingSuccessPulse: true },
-      });
-
-      return { deviceNumber: exitReader.deviceNumber };
     });
 
     return NextResponse.json({
       ok: true,
-      message: `Manual exit completed. Red LED pulse sent to Exit reader ${result.deviceNumber}.`,
+      message: "Manual exit completed.",
     });
   } catch (error) {
     console.error("MANUAL_EXIT_FAILED", error);
