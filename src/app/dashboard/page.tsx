@@ -9,7 +9,6 @@ import Sidebar from "@/components/Sidebar";
 import BuildingPortfolio from "@/components/BuildingPortfolio";
 import BuildingAdminPanel from "@/components/BuildingAdminPanel";
 import CompanyList from "@/components/CompanyList";
-import EmployeeCreateModal from "@/components/EmployeeCreateModal";
 import EmployeeList from "@/components/EmployeeList";
 import SupervisorManager from "@/components/SupervisorManager";
 import SupervisorHeadcount from "@/components/SupervisorHeadcount";
@@ -133,7 +132,7 @@ export default async function DashboardPage() {
     return <main className="dashboard-page"><Sidebar role={user.role} permissions={permissions} /><section className="dashboard-main">
       <header className="topbar"><div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>{company.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>Building</span><strong>{company.building.name}</strong></div><SignOutButton /></div></header>
       {canViewUsage ? <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANY PARKING</div><h2>Parking allocation</h2><p>Company parking usage available to this account.</p></div></div><div className="portfolio-divider" /><CompanyCredentialsEditor userId={user.userId} companyName={company.name} initialPassword={user.password} /><div className="account-parking-grid account-company-parking-grid"><div className="large-stat"><span>Company limit</span><strong>{company.parkingAllocation}</strong></div><div className="large-stat"><span>Total people</span><strong>{peopleCount}</strong></div><div className="large-stat"><span>Registered vehicles</span><strong>{used}</strong></div><div className="large-stat"><span>Unassigned</span><strong>{available}</strong></div></div></section> : null}
-      {(canManagePeople || canManageVehicles) ? <section className="portfolio-card building-management"><div className="employee-section-header"><div><div className="section-kicker">PEOPLE</div><h2>Employees & Company Owners</h2></div>{canManagePeople && canAllocateParking ? <EmployeeCreateModal companyId={company.id} departments={company.departments} maximumDepartments={company.maximumDepartments} canManageVehicles={canManageVehicles} canRegisterRfid={canRegisterRfid} /> : null}</div><div className="portfolio-divider" /><EmployeeList companyId={company.id} employees={company.employees} departments={company.departments} /></section> : null}
+      {(canManagePeople || canManageVehicles) ? <section className="portfolio-card building-management"><div className="employee-section-header"><div><div className="section-kicker">PEOPLE</div><h2>Employees & Company Owners</h2></div></div><div className="portfolio-divider" /><EmployeeList companyId={company.id} employees={company.employees} departments={company.departments} /></section> : null}
     </section></main>;
   }
 
