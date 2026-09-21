@@ -59,7 +59,7 @@ export async function GET() {
 
     const availableReaderWhere = user.role === "SUPER_ADMIN"
       ? { enabled: false, buildingId: null, lastSeenAt: { not: null } }
-      : { enabled: true, buildingId: user.buildingId!, mode: "UNASSIGNED" };
+      : { buildingId: user.buildingId!, mode: "UNASSIGNED" };
 
     const buildingWhere = user.role === "SUPER_ADMIN"
       ? (primarySuperAdmin ? undefined : { superAdminId: user.id })
@@ -137,47 +137,53 @@ export async function POST(request: Request) {
 
       const previousBuildingId = existing.buildingId;
 
-      // Detach/deactivate first so a live scan cannot continue using this reader
-      // while administrative cleanup is being performed.
+      // Reader state is the source of truth. Change it first so cleanup cannot
+      // prevent a valid removal from succeeding.
       await prisma.rfidReader.update({
         where: { id: existing.id },
         data: user.role === "BUILDING_ADMIN"
           ? {
-              enabled: true,
+              enabled: false,
               mode: "UNASSIGNED",
             }
           : {
               enabled: false,
               buildingId: null,
               mode: "UNASSIGNED",
-              registrationQrData: null,
-              entryExitQrData: null,
             },
       });
 
-      await prisma.rfidEnrollment.updateMany({
-        where: { readerId: existing.id, status: { in: ["WAITING", "CAPTURED"] } },
-        data: { status: "CANCELLED" },
-      });
+      const cleanupResults = await Promise.allSettled([
+        prisma.rfidEnrollment.updateMany({
+          where: { readerId: existing.id, status: { in: ["WAITING", "CAPTURED"] } },
+          data: { status: "CANCELLED" },
+        }),
+        previousBuildingId
+          ? (async () => {
+              const gates = await prisma.gate.findMany({
+                where: { buildingId: previousBuildingId },
+                select: { id: true, direction: true },
+              });
 
-      if (previousBuildingId) {
-        const gates = await prisma.gate.findMany({
-          where: { buildingId: previousBuildingId },
-          select: { id: true, direction: true },
-        });
+              for (const gate of gates) {
+                const config = parseGateConfig(gate.direction);
+                const entryReaderId = config.entryReaderId === existing.id ? null : config.entryReaderId;
+                const exitReaderId = config.exitReaderId === existing.id ? null : config.exitReaderId;
 
-        for (const gate of gates) {
-          const config = parseGateConfig(gate.direction);
-          const entryReaderId = config.entryReaderId === existing.id ? null : config.entryReaderId;
-          const exitReaderId = config.exitReaderId === existing.id ? null : config.exitReaderId;
+                if (entryReaderId !== config.entryReaderId || exitReaderId !== config.exitReaderId) {
+                  await prisma.gate.update({
+                    where: { id: gate.id },
+                    data: { direction: serializeGateConfig(config.direction, entryReaderId, exitReaderId) },
+                  });
+                }
+              }
+            })()
+          : Promise.resolve(),
+      ]);
 
-          if (entryReaderId !== config.entryReaderId || exitReaderId !== config.exitReaderId) {
-            await prisma.gate.update({
-              where: { id: gate.id },
-              data: { direction: serializeGateConfig(config.direction, entryReaderId, exitReaderId) },
-            });
-          }
-        }
+      const cleanupFailures = cleanupResults.filter((result) => result.status === "rejected");
+      if (cleanupFailures.length) {
+        console.error("RFID_READER_REMOVE_CLEANUP_FAILED", cleanupFailures);
       }
 
       return NextResponse.json({
@@ -218,7 +224,7 @@ export async function POST(request: Request) {
           data: {
             name,
             buildingId,
-            enabled: true,
+            enabled: false,
             mode: "UNASSIGNED",
           },
         });
