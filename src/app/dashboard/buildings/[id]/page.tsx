@@ -24,7 +24,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
         companies: {
           orderBy: { createdAt: "asc" },
           include: {
-            users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true }, take: 1 },
+            users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true, password: true }, take: 1 },
             vehicles: { select: { id: true } },
             employees: { where: { isPlaceholder: false }, select: { id: true, category: true } },
           },
@@ -60,7 +60,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
       <section className="portfolio-card building-management">
         <div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div>
         <div className="portfolio-divider" />
-        <CompanyList companies={building.companies} companyParking={building.companyParking} showUserId />
+        <CompanyList companies={building.companies} companyParking={building.companyParking} showUserId showPassword />
       </section>
     </section>
   </main>;
