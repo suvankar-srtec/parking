@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     prisma.vehicle.findMany({ where: { isInside: true, company: vehicleCompanyFilter }, select: { department: true } }),
     companyId ? Promise.resolve(0) : prisma.buildingOwnerVehicle.count({ where: { buildingId, isInside: true } }),
     prisma.rfidEvent.findMany({
-      where: { buildingId, ...companyFilter, action: { in: ["ENTRY", "EXIT", "IGNORED"] } },
+      where: { buildingId, ...companyFilter, action: { in: ["ENTRY", "EXIT", "IGNORED", "DENIED"] } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 5000,
       select: { id: true, action: true, code: true, message: true, cardNo: true, deviceNumber: true, createdAt: true, vehicle: { select: { plateNumber: true, ownerName: true, department: true } }, ownerVehicle: { select: { plateNumber: true, ownerName: true } }, company: { select: { name: true } } },
     }),
