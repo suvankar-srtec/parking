@@ -37,23 +37,21 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId, ...(adminRegistration ? { company: companyCardScope(user) } : {}) }, select: { id: true, isPlaceholder: true } });
       if (!employee) throw new ParkingError("Employee or company owner was not found in this company.", 404);
       if (employee.isPlaceholder) throw new ParkingError("Complete this employee roster slot before registering a vehicle.");
-      const company = await tx.company.findUnique({ where: { id: companyId }, select: { buildingId: true, parkingAllocation: true } });
+      const company = await tx.company.findUnique({ where: { id: companyId }, select: { buildingId: true } });
       if (!company) throw new ParkingError("Company was not found.", 404);
       const companyDepartment = await tx.companyDepartment.findFirst({ where: { companyId, name: department }, select: { id: true } });
       if (!companyDepartment) throw new ParkingError("Select a valid department for this company.", 400);
       await lockBuildingParking(tx, company.buildingId);
       const employeeUsed = await tx.vehicle.count({ where: { employeeId } });
       if (employeeUsed >= 1) throw new ParkingError("This person already has a parking allocation. Only one parking space is allowed per person.", 400);
-      const companyUsed = await tx.vehicle.count({ where: { companyId } });
-      if (companyUsed >= company.parkingAllocation) throw new ParkingError("No unallotted parking spaces remain for this company.", 400);
       const enrollment = enrollmentId ? await consumeCardEnrollment(tx, { enrollmentId, ownerId: user.id, companyId, employeeId, buildingId: company.buildingId }) : null;
       const vehicle = await tx.vehicle.create({ data: { ownerName, plateNumber, vehicleType, isStaff, department, rfidCardNo: enrollment?.cardNo || null, companyId, employeeId } });
       if (enrollment) await tx.rfidEvent.create({ data: { readerId: enrollment.readerId, buildingId: company.buildingId, companyId, vehicleId: vehicle.id, deviceNumber: enrollment.reader.deviceNumber, cardNo: enrollment.cardNo!, action: "REGISTER", code: "0000", message: "Card registered to vehicle." } });
-      return { vehicle, available: company.parkingAllocation - companyUsed - 1 };
+      return { vehicle };
     }, RFID_TRANSACTION);
     revalidatePath("/dashboard");
     revalidatePath("/access-control/register-cards", "layout");
-    return NextResponse.json({ ok: true, message: `Vehicle registered successfully. ${result.available} company parking spaces remain.`, vehicle: result.vehicle }, { status: 201 });
+    return NextResponse.json({ ok: true, message: "Vehicle and RFID card registered successfully.", vehicle: result.vehicle }, { status: 201 });
   } catch (error) {
     if (error instanceof ParkingError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ ok: false, message: "This plate number or RFID card is already registered." }, { status: 409 });
