@@ -81,9 +81,16 @@
   flex: none !important;
 }
 
-.companyIdentity > :global(.secondary-button) {
+.companyActions {
   grid-area: action;
-  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.companyActions > :global(.secondary-button) {
   min-width: 126px;
   white-space: nowrap;
 }
@@ -184,8 +191,8 @@
       "action action action";
   }
 
-  .companyIdentity > :global(.secondary-button) {
-    justify-self: end;
+  .companyActions {
+    justify-content: flex-end;
   }
 
   .summaryPanel {
@@ -207,9 +214,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .companyIdentity > :global(.secondary-button) {
+  .companyActions {
     width: 100%;
-    justify-self: stretch;
+    justify-content: stretch;
+  }
+
+  .companyActions > * {
+    flex: 1 1 auto;
   }
 }
 
