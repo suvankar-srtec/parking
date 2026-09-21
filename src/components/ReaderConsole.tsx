@@ -26,6 +26,9 @@ type ReaderData = {
   buildings: { id: string; name: string }[];
   canManage: boolean;
   canAddReaders: boolean;
+  canAssignReaders?: boolean;
+  canConfigureReaders?: boolean;
+  canRemoveReaders?: boolean;
 };
 
 type Activity = { inside: number };
@@ -50,11 +53,16 @@ function readQrImage(file: File) {
 }
 
 function normalizedMode(mode: string) {
-  return mode === "REGISTER" ? "REGISTER" : "ENTRY_EXIT";
+  if (mode === "REGISTER" || mode === "ENTRY" || mode === "EXIT" || mode === "ENTRY_EXIT") return mode;
+  return "UNASSIGNED";
 }
 
 function modeLabel(mode: string) {
-  return mode === "REGISTER" ? "Registration" : "Entry / Exit";
+  if (mode === "REGISTER") return "Registration";
+  if (mode === "ENTRY") return "Entry";
+  if (mode === "EXIT") return "Exit";
+  if (mode === "ENTRY_EXIT") return "Entry / Exit";
+  return "Purpose not configured";
 }
 
 function qrKindForMode(mode: string) {
@@ -154,7 +162,9 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
 
   function openConfigure(reader: Reader) {
     setEditing(reader);
-    setEditingMode(normalizedMode(reader.mode));
+    setEditingMode(normalizedMode(reader.mode) === "UNASSIGNED" ? "ENTRY_EXIT" : normalizedMode(reader.mode));
+    setRegistrationQr("");
+    setEntryExitQr("");
   }
 
   async function pickQr(event: ChangeEvent<HTMLInputElement>, kind: "registration" | "entryExit") {
@@ -190,10 +200,9 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       const result = await requestJson("/api/rfid/readers", "POST", {
         deviceNumber: editing!.deviceNumber,
         name: form.get("name"),
-        buildingId: form.get("buildingId"),
         mode: editingMode,
-        enabled: form.get("enabled") === "on",
-        heartbeatSeconds: editing!.heartbeatSeconds,
+        ...(registrationQr ? { registrationQrData: registrationQr } : {}),
+        ...(entryExitQr ? { entryExitQrData: entryExitQr } : {}),
       });
       notify(result.message || "Reader saved.");
       setEditing(null);
@@ -204,27 +213,20 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
   function allowReader(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    if (!selectedReader || !registrationQr || !entryExitQr) {
-      notify("Select a reader and upload both QR images before allowing the reader.", "error");
+    if (!selectedReader) {
+      notify("Select a detected reader first.", "error");
       return;
     }
     void execute(async () => {
       const result = await requestJson("/api/rfid/readers", "POST", {
+        action: "assign",
         deviceNumber: selectedReader.deviceNumber,
         name: form.get("name"),
         buildingId: form.get("buildingId"),
-        mode: setupMode,
-        enabled: true,
-        heartbeatSeconds: selectedReader.heartbeatSeconds,
-        registrationQrData: registrationQr,
-        entryExitQrData: entryExitQr,
       });
-      notify(result.message || "Reader added successfully.");
+      notify(result.message || "Reader allotted successfully.");
       setShowAvailable(false);
       setSelectedReader(null);
-      setRegistrationQr("");
-      setEntryExitQr("");
-      setSetupMode("ENTRY_EXIT");
       setSetupStep(1);
       setRevision((n) => n + 1);
     });
@@ -242,15 +244,15 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     });
   }
 
-  const setupQr = setupMode === "REGISTER" ? registrationQr : entryExitQr;
+  const editingQr = editingMode === "REGISTER" ? registrationQr : entryExitQr;
 
   return <>
     <section className="portfolio-card">
       <div className="portfolio-header">
         <div>
           <div className="section-kicker">ACCESS CONTROL</div>
-          <h2>Reader configuration</h2>
-          <p>Readers communicate with Vercel through HTTPS. Assign a building and operating mode.</p>
+          <h2>{data?.canAssignReaders ? "Reader allocation" : "Reader configuration"}</h2>
+          <p>{data?.canAssignReaders ? "Allot detected physical readers to buildings. Reader purpose is configured by the Building Admin." : "Configure the purpose of readers allotted to your building."}</p>
         </div>
         <div className="reader-toolbar">
           {data?.canAddReaders && <button className="secondary-button" type="button" onClick={openAddReader}>+ Add reader</button>}
@@ -268,9 +270,9 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <p>{data.buildings.find((building) => building.id === reader.buildingId)?.name || "Building not assigned"} · {modeLabel(normalizedMode(reader.mode))}</p>
             <p className="muted">{reader.enabled ? "Approved" : "Disabled"} · Last contact: {reader.lastSeenAt ? new Date(reader.lastSeenAt).toLocaleString() : "None"}</p>
             <p className="muted">Setup QR: {reader.hasRegistrationQr ? "Registration ✓" : "Registration missing"} · {reader.hasEntryExitQr ? "Entry / Exit ✓" : "Entry / Exit missing"}</p>
-            {data.canManage && <div className="reader-card-actions">
-              <button className="secondary-button" onClick={() => openConfigure(reader)}>Configure reader</button>
-              {data.canAddReaders && <button className="secondary-button" disabled={pending} onClick={() => removeReader(reader)}>Remove reader</button>}
+            {(data.canConfigureReaders || data.canRemoveReaders) && <div className="reader-card-actions">
+              {data.canConfigureReaders ? <button className="secondary-button" onClick={() => openConfigure(reader)}>Configure purpose</button> : null}
+              {data.canRemoveReaders ? <button className="secondary-button" disabled={pending} onClick={() => removeReader(reader)}>Remove allocation</button> : null}
             </div>}
           </article>;
         })}
@@ -282,9 +284,9 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       <section className="modal-card reader-selector-modal" role="dialog" aria-modal="true" aria-label="Add RFID reader">
         <div className="modal-head reader-selector-head">
           <div>
-            <div className="section-kicker">ADD RFID READER · STEP {setupStep} OF 2</div>
-            <h2>{setupStep === 1 ? "Select reader" : "Set up reader"}</h2>
-            <p>{setupStep === 1 ? "Choose an available reader to continue." : "Assign the reader, upload both setup QR codes, and preview the selected operating mode."}</p>
+            <div className="section-kicker">ALLOT RFID READER · STEP {setupStep} OF 2</div>
+            <h2>{setupStep === 1 ? "Select reader" : "Allot reader"}</h2>
+            <p>{setupStep === 1 ? "Choose an unassigned physical reader." : "Choose the building that will own this reader. The Building Admin will configure its purpose."}</p>
           </div>
           <button className="modal-close" disabled={pending} aria-label="Close add reader" onClick={closeAddReader}>×</button>
         </div>
@@ -322,43 +324,19 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <div><span>IP address</span><strong>{selectedReader.readerIp || "Not detected"}</strong></div>
           </div>
 
-          <fieldset className="reader-setup-fields" disabled={pending}>
+          <fieldset className="reader-setup-fields reader-allot-fields" disabled={pending}>
             <label>Name<input name="name" defaultValue={selectedReader.name || `Reader ${selectedReader.deviceNumber}`} required /></label>
             <label>Building<select name="buildingId" defaultValue="" required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-            <label>Operating mode<select name="mode" value={setupMode} onChange={(event) => setSetupMode(event.target.value)}><option value="ENTRY_EXIT">Entry / Exit</option><option value="REGISTER">Registration</option></select></label>
           </fieldset>
 
-          <div className="reader-setup-body">
-            <div className="reader-upload-column">
-              <label className="reader-qr-upload">
-                <span>Registration QR</span>
-                <div className="reader-upload-row">
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, "registration")} />
-                  {registrationQr ? <img src={registrationQr} alt="Registration QR preview" /> : <em>Not uploaded</em>}
-                </div>
-              </label>
-              <label className="reader-qr-upload">
-                <span>Entry / Exit QR</span>
-                <div className="reader-upload-row">
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, "entryExit")} />
-                  {entryExitQr ? <img src={entryExitQr} alt="Entry and Exit QR preview" /> : <em>Not uploaded</em>}
-                </div>
-              </label>
-            </div>
-
-            <div className="reader-qr-preview">
-              <div>
-                <span className="section-kicker">CONFIGURATION QR</span>
-                <strong>{modeLabel(setupMode)}</strong>
-              </div>
-              {setupQr ? <img src={setupQr} alt={`${modeLabel(setupMode)} configuration QR`} /> : <div className="reader-qr-placeholder">Upload the {setupMode === "REGISTER" ? "Registration" : "Entry / Exit"} QR</div>}
-              <small>Scan this QR with the physical reader.</small>
-            </div>
+          <div className="reader-allot-note">
+            <strong>Purpose will be configured by the Building Admin</strong>
+            <span>Registration, Entry, Exit, or Entry / Exit can be selected only after this reader is allotted to the building.</span>
           </div>
 
           <div className="modal-actions reader-compact-actions">
             <button type="button" className="secondary-button" disabled={pending} onClick={() => setSetupStep(1)}>Back</button>
-            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Adding…" disabled={!registrationQr || !entryExitQr}>Allow reader</ActionButton>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Allotting…">Allot reader</ActionButton>
           </div>
         </form>}
       </section>
@@ -375,9 +353,17 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
           <fieldset className="reader-config-fields" disabled={pending}>
             <label>Device number<input value={editing.deviceNumber} readOnly /></label>
             <label>Name<input name="name" defaultValue={editing.name} required /></label>
-            <label>Building<select name="buildingId" defaultValue={editing.buildingId || ""} required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-            <label>Operating mode<select name="mode" value={editingMode} onChange={(event) => setEditingMode(event.target.value)}><option value="ENTRY_EXIT">Entry / Exit</option><option value="REGISTER">Registration</option></select></label>
-            <label className="reader-enabled"><input type="checkbox" name="enabled" defaultChecked={editing.enabled} /><span>Approved / enabled</span></label>
+            <label>Building<input value={data?.buildings.find((building) => building.id === editing.buildingId)?.name || "Assigned building"} readOnly /></label>
+            <label>Purpose<select name="mode" value={editingMode} onChange={(event) => setEditingMode(event.target.value)}>
+              <option value="REGISTER">Registration</option>
+              <option value="ENTRY">Entry</option>
+              <option value="EXIT">Exit</option>
+              <option value="ENTRY_EXIT">Entry / Exit</option>
+            </select></label>
+            <label className="reader-config-upload">
+              {editingMode === "REGISTER" ? "Registration QR" : "Entry / Exit QR"}
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, editingMode === "REGISTER" ? "registration" : "entryExit")} />
+            </label>
           </fieldset>
 
           <div className="reader-qr-preview reader-config-qr">
@@ -385,8 +371,8 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
               <span className="section-kicker">CONFIGURATION QR</span>
               <strong>{modeLabel(editingMode)}</strong>
             </div>
-            {hasQrForMode(editing, editingMode) ? <img src={storedQrUrl(editing, editingMode, revision)} alt={`${modeLabel(editingMode)} reader configuration QR`} /> : <div className="reader-qr-placeholder">QR not uploaded</div>}
-            <small>{hasQrForMode(editing, editingMode) ? "Scan this QR with the physical reader." : `Upload the ${modeLabel(editingMode)} QR first.`}</small>
+            {editingQr ? <img src={editingQr} alt={`${modeLabel(editingMode)} configuration QR preview`} /> : hasQrForMode(editing, editingMode) ? <img src={storedQrUrl(editing, editingMode, revision)} alt={`${modeLabel(editingMode)} reader configuration QR`} /> : <div className="reader-qr-placeholder">QR not uploaded</div>}
+            <small>{editingQr || hasQrForMode(editing, editingMode) ? "Scan this QR with the physical reader if the hardware mode needs updating." : `Upload the ${modeLabel(editingMode)} QR if required by the hardware.`}</small>
           </div>
 
           <div className="modal-actions reader-compact-actions">
@@ -420,7 +406,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       .reader-device-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 10px;border:1px solid #d8e1dc;border-radius:8px;background:#f8faf9}
       .reader-device-strip div{display:flex;align-items:center;gap:7px;min-width:0}.reader-device-strip span{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#758078}.reader-device-strip strong{font-size:11px;color:#22362b;overflow-wrap:anywhere}
       .reader-setup-fields,.reader-config-fields{margin:0;padding:0;border:0;display:grid;gap:9px}
-      .reader-setup-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .reader-setup-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.reader-allot-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.reader-allot-note{display:grid;gap:3px;padding:10px 11px;border:1px solid #d8e1dc;border-radius:8px;background:#f8faf9;color:#31453a}.reader-allot-note strong{font-size:11px}.reader-allot-note span{font-size:9.5px;color:#758078}.reader-config-upload{grid-column:1/-1}
       .reader-setup-fields label,.reader-config-fields label{display:grid;gap:5px;color:#31453a;font-size:10.5px;font-weight:800}
       .reader-setup-fields input,.reader-setup-fields select,.reader-config-fields input,.reader-config-fields select{width:100%;height:36px;border:1px solid #ccd8d1;border-radius:7px;background:#fff;padding:7px 9px;outline:none;font-size:11px}
       .reader-setup-fields input:focus,.reader-setup-fields select:focus,.reader-config-fields input:focus,.reader-config-fields select:focus{border-color:#7c46ac;box-shadow:0 0 0 2px rgba(124,70,172,.09)}
