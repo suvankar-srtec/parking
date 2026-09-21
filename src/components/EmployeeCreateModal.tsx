@@ -22,7 +22,7 @@ const vehicleTypes = ["Two wheeler", "Four wheeler"];
 export default function EmployeeCreateModal({
   companyId,
   departments,
-  maximumDepartments,
+  maximumDepartments: _maximumDepartments,
   canManageVehicles = true,
   canRegisterRfid = true,
   registration,
@@ -33,7 +33,7 @@ export default function EmployeeCreateModal({
 }: {
   companyId: string;
   departments: DepartmentOption[];
-  maximumDepartments: number;
+  maximumDepartments: number; // retained for backward-compatible callers; department creation is unlimited
   canManageVehicles?: boolean;
   canRegisterRfid?: boolean;
   registration?: { employee: CreatedEmployee; buildingId: string; vehicle?: { id: string; plateNumber: string; isInside: boolean } };
@@ -146,11 +146,6 @@ export default function EmployeeCreateModal({
       notify("Enter a department name.", "error");
       return;
     }
-    if (departmentOptions.length >= maximumDepartments) {
-      notify(`This company can have a maximum of ${maximumDepartments} departments.`, "error");
-      return;
-    }
-
     setAddingDepartment(true);
     try {
       const result = await requestJson<{ ok: true; message: string; department: DepartmentOption }>(
@@ -290,10 +285,10 @@ export default function EmployeeCreateModal({
               onRemoved={(id) => setDepartmentOptions((current) => current.filter((item) => item.id !== id))}
             />
             <div className="employee-add-department">
-              <div className="employee-department-label"><strong>Add department</strong><span>{departmentOptions.length}/{maximumDepartments}</span></div>
+              <div className="employee-department-label"><strong>Add department</strong><span>{departmentOptions.length} department{departmentOptions.length === 1 ? "" : "s"}</span></div>
               <div className="employee-add-department-row">
                 <input value={newDepartment} onChange={(event) => setNewDepartment(event.target.value)} placeholder="e.g. Marketing" />
-                <button type="button" disabled={addingDepartment || !newDepartment.trim() || departmentOptions.length >= maximumDepartments} onClick={() => void addDepartment()}>{addingDepartment ? "Adding…" : "+ Add"}</button>
+                <button type="button" disabled={addingDepartment || !newDepartment.trim()} onClick={() => void addDepartment()}>{addingDepartment ? "Adding…" : "+ Add"}</button>
               </div>
             </div>
             <div className="employee-scope-note"><strong>Company scope</strong><span>This person is linked only to this company. Parking cannot exceed the limit assigned to the company.</span></div>
