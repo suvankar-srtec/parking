@@ -39,14 +39,14 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
       <header className="topbar">
         <div><div className="section-kicker">REGISTER RFID CARDS</div><h1>{company.name}</h1><p className={styles.building}>{company.building.name}</p></div>
         <div className="topbar-right"><AppLink href="/access-control/register-cards" className="secondary-button">← All companies</AppLink>
-          <EmployeeCreateModal
+          {user.role === "BUILDING_ADMIN" ? <EmployeeCreateModal
             companyId={company.id}
             departments={company.departments}
             maximumDepartments={company.maximumDepartments}
             canManageVehicles
             canRegisterRfid
             disabled={!company.building.enabled}
-          />
+          /> : null}
           <SignOutButton /></div>
       </header>
       <section className="portfolio-card building-management">
