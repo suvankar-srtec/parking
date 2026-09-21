@@ -21,10 +21,27 @@ function reply(success: boolean, _message: string) {
 }
 
 async function markHttpContact(deviceNumber: string) {
-  return prisma.rfidReader.updateMany({
+  const now = new Date();
+  const reader = await prisma.rfidReader.upsert({
     where: { deviceNumber },
-    data: { lastSeenAt: new Date(), connectionType: "HTTP", tcpConnected: false },
+    create: {
+      deviceNumber,
+      name: `Reader ${deviceNumber}`,
+      mode: "ENTRY_EXIT",
+      enabled: false,
+      buildingId: null,
+      lastSeenAt: now,
+      connectionType: "HTTP",
+      tcpConnected: false,
+    },
+    update: {
+      lastSeenAt: now,
+      connectionType: "HTTP",
+      tcpConnected: false,
+    },
+    select: { id: true },
   });
+  return { count: reader ? 1 : 0 };
 }
 
 function isHeartbeatBody(raw: string) {
