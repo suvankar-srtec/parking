@@ -10,7 +10,7 @@ import SignOutButton from "@/components/SignOutButton";
 function readerMode(mode: string) {
   if (mode === "REGISTER") return "Registration";
   if (mode === "ENTRY_EXIT") return "Entry / Exit";
-  if (mode === "EXIT") return "Exit";
+  if (mode === "UNASSIGNED") return "Not configured";
   return "Entry";
 }
 
@@ -23,7 +23,7 @@ export default async function AccessControlPage() {
   const primary = user.role === "SUPER_ADMIN" && isPrimarySuperAdmin(user);
   const where = user.role === "SUPER_ADMIN"
     ? (primary ? { enabled: true, buildingId: { not: null } } : { enabled: true, building: { superAdminId: user.id } })
-    : { enabled: true, buildingId: user.buildingId || "__none__" };
+    : { enabled: true, buildingId: user.buildingId || "__none__", mode: { not: "UNASSIGNED" } };
 
   const readers = await prisma.rfidReader.findMany({ where, orderBy: { deviceNumber: "asc" }, include: { building: { select: { name: true } } } });
 

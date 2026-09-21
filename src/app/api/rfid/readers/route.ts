@@ -52,8 +52,14 @@ export async function GET() {
     const canConfigureReaders = user.role === "BUILDING_ADMIN" && hasPermission(user, "building.configureReaders");
 
     const configuredReaderWhere = user.role === "SUPER_ADMIN"
-      ? (primarySuperAdmin ? { enabled: true, buildingId: { not: null } } : { enabled: true, building: { superAdminId: user.id } })
-      : { enabled: true, buildingId: user.buildingId! };
+      ? (primarySuperAdmin
+          ? { enabled: true, buildingId: { not: null } }
+          : { enabled: true, building: { superAdminId: user.id } })
+      : { enabled: true, buildingId: user.buildingId!, mode: { not: "UNASSIGNED" } };
+
+    const availableReaderWhere = user.role === "SUPER_ADMIN"
+      ? { enabled: false, buildingId: null, lastSeenAt: { not: null } }
+      : { enabled: true, buildingId: user.buildingId!, mode: "UNASSIGNED" };
 
     const buildingWhere = user.role === "SUPER_ADMIN"
       ? (primarySuperAdmin ? undefined : { superAdminId: user.id })
@@ -65,9 +71,10 @@ export async function GET() {
         include: { building: { select: { name: true } } },
         orderBy: { deviceNumber: "asc" },
       }),
-      canAssignReaders
+      (canAssignReaders || canConfigureReaders)
         ? prisma.rfidReader.findMany({
-            where: { enabled: false, buildingId: null, lastSeenAt: { not: null } },
+            where: availableReaderWhere,
+            include: { building: { select: { name: true } } },
             orderBy: [{ lastSeenAt: "desc" }, { deviceNumber: "asc" }],
           })
         : Promise.resolve([]),
@@ -84,7 +91,7 @@ export async function GET() {
       availableReaders: availableReaders.map(readerSummary),
       buildings,
       canManage: canConfigureReaders,
-      canAddReaders: canAssignReaders,
+      canAddReaders: canAssignReaders || canConfigureReaders,
       canAssignReaders,
       canConfigureReaders,
       canRemoveReaders: user.role === "SUPER_ADMIN" || canConfigureReaders,
@@ -149,18 +156,23 @@ export async function POST(request: Request) {
         });
         await tx.rfidReader.update({
           where: { id: existing.id },
-          data: {
-            enabled: false,
-            buildingId: null,
-            mode: "UNASSIGNED",
-            registrationQrData: null,
-            entryExitQrData: null,
-          },
+          data: user.role === "BUILDING_ADMIN"
+            ? {
+                enabled: true,
+                mode: "UNASSIGNED",
+              }
+            : {
+                enabled: false,
+                buildingId: null,
+                mode: "UNASSIGNED",
+                registrationQrData: null,
+                entryExitQrData: null,
+              },
         });
       }, RFID_TRANSACTION);
 
       return NextResponse.json({ ok: true, message: user.role === "BUILDING_ADMIN"
-        ? "Reader removed from your building. Super Admin can allot it again."
+        ? "Reader removed from active configuration. It remains allotted to your building and can be added again."
         : "Reader allocation removed. It is available for another building." });
     }
 

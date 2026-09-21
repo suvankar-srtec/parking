@@ -232,7 +232,7 @@ export default function GateDetailsManager({ buildings }: { buildings: BuildingG
       !visibleRows.length ? <div className="gate-empty-search"><strong>No building found</strong><span>No building matches “{search.trim()}”.</span></div> :
       <div className="gate-building-list">
         {visibleRows.map((building) => {
-          const selectableReaders = building.readers.filter((reader) => reader.enabled && reader.mode !== "REGISTER");
+          const selectableReaders = building.readers.filter((reader) => reader.enabled && reader.mode === "ENTRY_EXIT");
           const assignedIds = new Set(
             building.gates.flatMap((gate) => [gate.entryReaderId, gate.exitReaderId]).filter((id): id is string => Boolean(id)),
           );

@@ -18,6 +18,7 @@ type Reader = ReaderConnection & {
   sourcePort: number | null;
   hasRegistrationQr?: boolean;
   hasEntryExitQr?: boolean;
+  building?: { name: string } | null;
 };
 
 type ReaderData = {
@@ -195,7 +196,6 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
 
   function saveExisting(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
     void execute(async () => {
       const result = await requestJson("/api/rfid/readers", "POST", {
         deviceNumber: editing!.deviceNumber,
@@ -213,26 +213,38 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     if (!selectedReader) {
-      notify("Select a detected reader first.", "error");
+      notify(data?.canAssignReaders ? "Select a detected reader first." : "Select an allotted reader first.", "error");
       return;
     }
     void execute(async () => {
-      const result = await requestJson("/api/rfid/readers", "POST", {
-        action: "assign",
-        deviceNumber: selectedReader.deviceNumber,
-        name: form.get("name"),
-        buildingId: form.get("buildingId"),
-      });
-      notify(result.message || "Reader allotted successfully.");
+      const result = data?.canAssignReaders
+        ? await requestJson("/api/rfid/readers", "POST", {
+            action: "assign",
+            deviceNumber: selectedReader.deviceNumber,
+            name: form.get("name"),
+            buildingId: form.get("buildingId"),
+          })
+        : await requestJson("/api/rfid/readers", "POST", {
+            deviceNumber: selectedReader.deviceNumber,
+            mode: setupMode,
+            ...(registrationQr ? { registrationQrData: registrationQr } : {}),
+            ...(entryExitQr ? { entryExitQrData: entryExitQr } : {}),
+          });
+      notify(result.message || (data?.canAssignReaders ? "Reader allotted successfully." : "Reader added successfully."));
       setShowAvailable(false);
       setSelectedReader(null);
+      setRegistrationQr("");
+      setEntryExitQr("");
+      setSetupMode("ENTRY_EXIT");
       setSetupStep(1);
       setRevision((n) => n + 1);
     });
   }
 
   function removeReader(reader: Reader) {
-    if (!window.confirm(`Remove ${reader.name} (${reader.deviceNumber}) from this building? Any gate assignment for this reader will also be cleared.`)) return;
+    if (!window.confirm(data?.canAssignReaders
+      ? `Remove the building allotment for ${reader.name} (${reader.deviceNumber})? Any gate assignment will also be cleared.`
+      : `Remove ${reader.name} (${reader.deviceNumber}) from active configuration? It will remain allotted to this building and can be added again.`)) return;
     void execute(async () => {
       const result = await requestJson("/api/rfid/readers", "POST", {
         action: "reset",
@@ -283,15 +295,23 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       <section className="modal-card reader-selector-modal" role="dialog" aria-modal="true" aria-label="Add RFID reader">
         <div className="modal-head reader-selector-head">
           <div>
-            <div className="section-kicker">ALLOT RFID READER · STEP {setupStep} OF 2</div>
-            <h2>{setupStep === 1 ? "Select reader" : "Allot reader"}</h2>
-            <p>{setupStep === 1 ? "Choose an unassigned physical reader." : "Choose the building that will own this reader. The Building Admin will configure its purpose."}</p>
+            <div className="section-kicker">{data?.canAssignReaders ? "ALLOT RFID READER" : "ADD ALLOTTED READER"} · STEP {setupStep} OF 2</div>
+            <h2>{setupStep === 1 ? "Select reader" : data?.canAssignReaders ? "Allot reader" : "Configure reader"}</h2>
+            <p>{setupStep === 1
+              ? data?.canAssignReaders
+                ? "Choose an unassigned physical reader."
+                : "Choose a reader already allotted to your building by Super Admin."
+              : data?.canAssignReaders
+                ? "Choose the building that will own this reader. The Building Admin will configure its purpose."
+                : "Choose Registration or Entry / Exit for this allotted reader."}</p>
           </div>
           <button className="modal-close" disabled={pending} aria-label="Close add reader" onClick={closeAddReader}>×</button>
         </div>
 
         {setupStep === 1 && <>
-          {!data?.availableReaders?.length ? <p className="muted reader-selector-empty">No unassigned readers are currently available. Power on a reader and make sure its HTTPS URL is pointing to this application.</p> : <div className="reader-selector-list">
+          {!data?.availableReaders?.length ? <p className="muted reader-selector-empty">{data?.canAssignReaders
+            ? "No unassigned readers are currently available. Power on a reader and make sure its HTTPS URL is pointing to this application."
+            : "No additional reader is currently allotted to your building. Super Admin must allot a reader first."}</p> : <div className="reader-selector-list">
             {data.availableReaders.map((reader) => {
               const state = readerStatus(reader);
               const selected = selectedReader?.id === reader.id;
@@ -323,19 +343,44 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <div><span>IP address</span><strong>{selectedReader.readerIp || "Not detected"}</strong></div>
           </div>
 
-          <fieldset className="reader-setup-fields reader-allot-fields" disabled={pending}>
-            <label>Name<input name="name" defaultValue={selectedReader.name || `Reader ${selectedReader.deviceNumber}`} required /></label>
-            <label>Building<select name="buildingId" defaultValue="" required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
-          </fieldset>
-
-          <div className="reader-allot-note">
-            <strong>Purpose will be configured by the Building Admin</strong>
-            <span>Registration, Entry, Exit, or Entry / Exit can be selected only after this reader is allotted to the building.</span>
-          </div>
+          {data?.canAssignReaders ? <>
+            <fieldset className="reader-setup-fields reader-allot-fields" disabled={pending}>
+              <label>Name<input name="name" defaultValue={selectedReader.name || `Reader ${selectedReader.deviceNumber}`} required /></label>
+              <label>Building<select name="buildingId" defaultValue="" required><option value="">Select building</option>{data?.buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>
+            </fieldset>
+            <div className="reader-allot-note">
+              <strong>Purpose will be configured by the Building Admin</strong>
+              <span>Registration or Entry / Exit can be selected only after this reader is allotted to the building.</span>
+            </div>
+          </> : <>
+            <fieldset className="reader-setup-fields reader-admin-add-fields" disabled={pending}>
+              <label>Name<input value={selectedReader.name} readOnly /></label>
+              <label>Building<input value={selectedReader.building?.name || data?.buildings.find((building) => building.id === selectedReader.buildingId)?.name || "Assigned building"} readOnly /></label>
+              <label>Purpose<select value={setupMode} onChange={(event) => setSetupMode(event.target.value)}>
+                <option value="REGISTER">Registration</option>
+                <option value="ENTRY_EXIT">Entry / Exit</option>
+              </select></label>
+            </fieldset>
+            <div className="reader-setup-body reader-admin-setup-body">
+              <label className="reader-qr-upload">
+                <span>{setupMode === "REGISTER" ? "Registration QR" : "Entry / Exit QR"}</span>
+                <div className="reader-upload-row">
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void pickQr(event, setupMode === "REGISTER" ? "registration" : "entryExit")} />
+                  {(setupMode === "REGISTER" ? registrationQr : entryExitQr)
+                    ? <img src={setupMode === "REGISTER" ? registrationQr : entryExitQr} alt="Configuration QR preview" />
+                    : <em>Optional</em>}
+                </div>
+              </label>
+              <div className="reader-allot-note">
+                <strong>Only allotted readers are available here</strong>
+                <span>This reader is already tied to your building. Adding it only activates its selected purpose.</span>
+              </div>
+            </div>
+          </>}
 
           <div className="modal-actions reader-compact-actions">
             <button type="button" className="secondary-button" disabled={pending} onClick={() => setSetupStep(1)}>Back</button>
-            <ActionButton type="submit" className="primary-button" pending={pending} pendingText="Allotting…">Allot reader</ActionButton>
+            <ActionButton type="submit" className="primary-button" pending={pending} pendingText={data?.canAssignReaders ? "Allotting…" : "Adding…"}>{data?.canAssignReaders ? "Allot reader" : "Add reader"}</ActionButton>
           </div>
         </form>}
       </section>
@@ -403,7 +448,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
       .reader-device-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 10px;border:1px solid #d8e1dc;border-radius:8px;background:#f8faf9}
       .reader-device-strip div{display:flex;align-items:center;gap:7px;min-width:0}.reader-device-strip span{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#758078}.reader-device-strip strong{font-size:11px;color:#22362b;overflow-wrap:anywhere}
       .reader-setup-fields,.reader-config-fields{margin:0;padding:0;border:0;display:grid;gap:9px}
-      .reader-setup-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.reader-allot-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.reader-allot-note{display:grid;gap:3px;padding:10px 11px;border:1px solid #d8e1dc;border-radius:8px;background:#f8faf9;color:#31453a}.reader-allot-note strong{font-size:11px}.reader-allot-note span{font-size:9.5px;color:#758078}.reader-config-upload{grid-column:1/-1}
+      .reader-setup-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.reader-allot-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.reader-admin-add-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.reader-admin-setup-body{grid-template-columns:minmax(0,1fr) minmax(260px,1fr)}.reader-allot-note{display:grid;gap:3px;padding:10px 11px;border:1px solid #d8e1dc;border-radius:8px;background:#f8faf9;color:#31453a}.reader-allot-note strong{font-size:11px}.reader-allot-note span{font-size:9.5px;color:#758078}.reader-config-upload{grid-column:1/-1}
       .reader-setup-fields label,.reader-config-fields label{display:grid;gap:5px;color:#31453a;font-size:10.5px;font-weight:800}
       .reader-setup-fields input,.reader-setup-fields select,.reader-config-fields input,.reader-config-fields select{width:100%;height:36px;border:1px solid #ccd8d1;border-radius:7px;background:#fff;padding:7px 9px;outline:none;font-size:11px}
       .reader-setup-fields input:focus,.reader-setup-fields select:focus,.reader-config-fields input:focus,.reader-config-fields select:focus{border-color:#7c46ac;box-shadow:0 0 0 2px rgba(124,70,172,.09)}
