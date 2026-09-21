@@ -3,9 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { hasPermission } from "@/lib/permissions";
 import { claimUserId, UserIdError } from "@/lib/user-id-reservations";
-import { companyCardScope } from "@/lib/company-card-access";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -15,16 +13,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, message: "Sign in required." }, { status: 403 });
     }
 
-    const companyUser = owner.role === "COMPANY_ADMIN" && owner.companyId === companyId;
-    const adminRegistration = ["SUPER_ADMIN", "BUILDING_ADMIN"].includes(owner.role)
-      ? Boolean(await prisma.company.findFirst({ where: { AND: [{ id: companyId }, companyCardScope(owner)] }, select: { id: true } }))
-      : false;
-
-    if (!adminRegistration && (!companyUser || !hasPermission(owner, "company.managePeople"))) {
-      return NextResponse.json({ ok: false, message: "You do not have permission to add people to this company." }, { status: 403 });
+    if (owner.role !== "BUILDING_ADMIN" || !owner.buildingId) {
+      return NextResponse.json({ ok: false, message: "Only the Building Admin can add employees or company owners." }, { status: 403 });
     }
-    if (!adminRegistration && !hasPermission(owner, "company.allocateEmployeeParking")) {
-      return NextResponse.json({ ok: false, message: "Employee parking allocation is not assigned to this Company/User account." }, { status: 403 });
+
+    const companyInScope = await prisma.company.findFirst({
+      where: { id: companyId, buildingId: owner.buildingId },
+      select: { id: true },
+    });
+    if (!companyInScope) {
+      return NextResponse.json({ ok: false, message: "This company is outside your assigned building." }, { status: 403 });
     }
 
     let body;
