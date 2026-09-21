@@ -17,12 +17,24 @@ type ScanEvent = {
   company: { name: string } | null;
 };
 
+type ActiveCard = {
+  id: string;
+  rfidCardNo: string;
+  vehicleNumber: string;
+  personName: string;
+  personType: "OWNER" | "EMPLOYEE";
+  companyName: string;
+  department: string;
+  entryTime: string | null;
+};
+
 type Headcount = {
   ok: true;
   buildingName: string;
   totalIn: number | null;
   totalOut: number | null;
   totalOnSite: number | null;
+  activeCards: ActiveCard[];
   recentEvents: ScanEvent[];
   updatedAt: string;
 };
@@ -87,6 +99,7 @@ export default function SupervisorHeadcount({
   const [clock, setClock] = useState(() => new Date());
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [popupQueue, setPopupQueue] = useState<PopupState[]>([]);
+  const [showActiveCards, setShowActiveCards] = useState(false);
   const range = useMemo(localDayRange, []);
   const seenEventId = useRef<string | null>(null);
   const initialized = useRef(false);
@@ -179,11 +192,28 @@ export default function SupervisorHeadcount({
       <div className="portfolio-divider" />
       {error ? <div className={`parking-feedback parking-feedback-error ${styles.error}`}>{error}</div> : null}
       <div className={styles.totals} style={{ gridTemplateColumns: `repeat(${metricCount}, minmax(0, 1fr))` }}>
-        {showTotalOnSite ? <article className={`${styles.totalCard} ${styles.onsite}`}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong></article> : null}
+        {showTotalOnSite ? <button type="button" className={`${styles.totalCard} ${styles.onsite} ${styles.clickableTotal}`} onClick={() => setShowActiveCards(true)}><span>Total On Site</span><strong>{data?.totalOnSite ?? 0}</strong><small>Click to view active cards</small></button> : null}
         {showTotalIn ? <article className={`${styles.totalCard} ${styles.in}`}><span>Total IN</span><strong>{data?.totalIn ?? 0}</strong></article> : null}
         {showTotalOut ? <article className={`${styles.totalCard} ${styles.out}`}><span>Total OUT</span><strong>{data?.totalOut ?? 0}</strong></article> : null}
       </div>
     </section> : null}
+
+    {showActiveCards ? <div className={styles.activeCardsBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setShowActiveCards(false); }}>
+      <section className={styles.activeCardsModal} role="dialog" aria-modal="true" aria-label="Active RFID cards">
+        <div className={styles.activeCardsHeader}>
+          <div><div className="section-kicker">CURRENTLY ON SITE</div><h2>Active RFID cards</h2><p>{data?.activeCards?.length || 0} vehicle{(data?.activeCards?.length || 0) === 1 ? "" : "s"} currently inside.</p></div>
+          <button type="button" className={styles.popupClose} aria-label="Close active cards" onClick={() => setShowActiveCards(false)}>×</button>
+        </div>
+        <div className={styles.activeCardsTableWrap}>
+          <table className={styles.activeCardsTable}>
+            <thead><tr><th>RFID</th><th>Vehicle</th><th>Owner / Employee</th><th>Type</th><th>Company</th><th>Department</th><th>Entry time</th></tr></thead>
+            <tbody>{data?.activeCards?.length ? data.activeCards.map((card) => <tr key={card.id}>
+              <td>{card.rfidCardNo}</td><td>{card.vehicleNumber}</td><td>{card.personName}</td><td>{card.personType === "OWNER" ? "Owner" : "Employee"}</td><td>{card.companyName}</td><td>{card.department}</td><td>{card.entryTime ? new Date(card.entryTime).toLocaleString() : "-"}</td>
+            </tr>) : <tr><td colSpan={7} className={styles.emptyTable}>No active RFID cards are currently on site.</td></tr>}</tbody>
+          </table>
+        </div>
+      </section>
+    </div> : null}
 
     {showLiveDashboard ? <section className={`portfolio-card ${styles.scanTableCard}`}>
       <div className={styles.scanTableHeader}><div><div className="section-kicker">RFID ACTIVITY</div><h2>Live Dashboard</h2></div></div>
