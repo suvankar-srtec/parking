@@ -68,7 +68,25 @@ export async function GET(request: Request) {
     prisma.rfidEvent.findMany({
       where: { buildingId, ...companyFilter, action: { in: ["ENTRY", "EXIT", "IGNORED", "DENIED"] } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 5000,
-      select: { id: true, action: true, code: true, message: true, cardNo: true, deviceNumber: true, createdAt: true, vehicle: { select: { plateNumber: true, ownerName: true, department: true } }, ownerVehicle: { select: { plateNumber: true, ownerName: true } }, company: { select: { name: true } } },
+      select: {
+        id: true,
+        action: true,
+        code: true,
+        message: true,
+        cardNo: true,
+        deviceNumber: true,
+        createdAt: true,
+        vehicle: {
+          select: {
+            plateNumber: true,
+            ownerName: true,
+            department: true,
+            employee: { select: { category: true } },
+          },
+        },
+        ownerVehicle: { select: { plateNumber: true, ownerName: true } },
+        company: { select: { name: true } },
+      },
     }),
     prisma.company.findMany({
       where: companyId ? { id: companyId, buildingId } : { buildingId }, orderBy: { name: "asc" },
@@ -85,7 +103,36 @@ export async function GET(request: Request) {
   const employeeParkingByCompany = parkingCompanies.map((parkingCompany) => ({ companyId: parkingCompany.id, companyName: parkingCompany.name, spacesAllotted: parkingCompany.employees.length, vehiclesInside: parkingCompany.vehicles.length }));
   const employeeSpacesAllotted = employeeParkingByCompany.reduce((sum, item) => sum + item.spacesAllotted, 0);
   const employeeVehiclesInside = employeeParkingByCompany.reduce((sum, item) => sum + item.vehiclesInside, 0);
-  const normalizedRecentEvents = recentEvents.map(({ ownerVehicle, ...event }) => ({ ...event, vehicle: event.vehicle || (ownerVehicle ? { plateNumber: ownerVehicle.plateNumber, ownerName: ownerVehicle.ownerName, department: "-" } : null), company: event.company || (ownerVehicle ? { name: "Building owner" } : null) }));
+  const normalizedRecentEvents = recentEvents.map(({ ownerVehicle, ...event }) => {
+    const personType = ownerVehicle
+      ? "OWNER"
+      : event.vehicle?.employee.category === "OWNER"
+        ? "OWNER"
+        : event.vehicle
+          ? "EMPLOYEE"
+          : "UNKNOWN";
+
+    const vehicle = event.vehicle
+      ? {
+          plateNumber: event.vehicle.plateNumber,
+          ownerName: event.vehicle.ownerName,
+          department: event.vehicle.department,
+        }
+      : ownerVehicle
+        ? {
+            plateNumber: ownerVehicle.plateNumber,
+            ownerName: ownerVehicle.ownerName,
+            department: "-",
+          }
+        : null;
+
+    return {
+      ...event,
+      vehicle,
+      personType,
+      company: event.company || (ownerVehicle ? { name: "Building owner" } : null),
+    };
+  });
 
   return NextResponse.json({
     ok: true,
