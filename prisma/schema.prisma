@@ -93,6 +93,7 @@ model Gate {
 model Company {
   id                        String @id @default(cuid())
   name                      String
+  enabled                   Boolean @default(true)
   parkingAllocation         Int    @default(0)
   totalPersons              Int    @default(0)
   ownerParkingAllocation    Int    @default(0)
