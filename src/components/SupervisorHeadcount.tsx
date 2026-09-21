@@ -13,6 +13,7 @@ type ScanEvent = {
   deviceNumber: string;
   createdAt: string;
   vehicle: { plateNumber: string; ownerName: string; department: string } | null;
+  personType: "OWNER" | "EMPLOYEE" | "UNKNOWN";
   company: { name: string } | null;
 };
 
@@ -186,8 +187,8 @@ export default function SupervisorHeadcount({
 
     {showLiveDashboard ? <section className={`portfolio-card ${styles.scanTableCard}`}>
       <div className={styles.scanTableHeader}><div><div className="section-kicker">RFID ACTIVITY</div><h2>Live Dashboard</h2></div></div>
-      {showActivity ? <div className={styles.tableWrap}><table className={styles.scanTable}><thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Rider</th><th>Company</th><th>Action</th><th>Result</th></tr></thead><tbody>
-        {data?.recentEvents.length ? data.recentEvents.map((event) => <tr key={event.id}><td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td><td>{event.deviceNumber || "-"}</td><td>{event.cardNo || "-"}</td><td>{event.vehicle?.plateNumber || "-"}</td><td>{event.vehicle?.ownerName || "-"}</td><td>{event.company?.name || "-"}</td><td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td><td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{eventResult(event)}</td></tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No ENTRY, EXIT, IGNORED, or DENIED RFID activity has been recorded yet.</td></tr>}
+      {showActivity ? <div className={styles.tableWrap}><table className={styles.scanTable}><thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Owner</th><th>Employee</th><th>Company</th><th>Action</th><th>Result</th></tr></thead><tbody>
+        {data?.recentEvents.length ? data.recentEvents.map((event) => <tr key={event.id}><td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td><td>{event.deviceNumber || "-"}</td><td>{event.cardNo || "-"}</td><td>{event.vehicle?.plateNumber || "-"}</td><td className={event.personType === "OWNER" ? styles.ownerPerson : undefined}>{event.personType === "OWNER" ? event.vehicle?.ownerName || "-" : "-"}</td><td className={event.personType === "EMPLOYEE" ? styles.employeePerson : undefined}>{event.personType === "EMPLOYEE" ? event.vehicle?.ownerName || "-" : "-"}</td><td>{event.company?.name || "-"}</td><td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td><td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{eventResult(event)}</td></tr>) : <tr><td colSpan={9} className={styles.emptyTable}>No ENTRY, EXIT, IGNORED, or DENIED RFID activity has been recorded yet.</td></tr>}
       </tbody></table></div> : <p className="muted">RFID activity access is not assigned to this Supervisor.</p>}
     </section> : null}
   </>;
