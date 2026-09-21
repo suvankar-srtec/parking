@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "./LoadingIndicator";
+import OverstayAlert, { type OverstayCard } from "./OverstayAlert";
 import styles from "./SupervisorHeadcount.module.css";
 
 type Option = { id: string; name: string; buildingId?: string };
@@ -25,6 +26,7 @@ type Headcount = {
   totalIn: number;
   totalOut: number;
   totalOnSite: number;
+  activeCards: OverstayCard[];
   recentEvents: ScanEvent[];
   updatedAt: string;
 };
@@ -122,6 +124,8 @@ export default function RealtimeMonitor({
   }, [load]);
 
   return <>
+    <OverstayAlert cards={data?.activeCards || []} enabled={Boolean(buildingId)} />
+
     <section className="portfolio-card building-management" style={{ marginTop: 19 }}>
       <div className="portfolio-header">
         <div>
