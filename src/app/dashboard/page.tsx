@@ -112,7 +112,7 @@ export default async function DashboardPage() {
         {canManageOwner && building.ownerVehicles.length ? <div className="owner-vehicle-list">{building.ownerVehicles.map((vehicle) => <div className="owner-vehicle-row" key={vehicle.id}><div><strong>{vehicle.ownerName}</strong><span> · {vehicle.plateNumber} · {vehicle.vehicleType}{vehicle.rfidCardNo ? ` · RFID ${vehicle.rfidCardNo}` : ""}</span></div><span>{vehicle.isInside ? "Inside" : "Outside"}</span></div>)}</div> : canManageOwner ? <p className="muted">No Owner Parking vehicles registered yet.</p> : null}
       </section> : null}
 
-      <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div>{canCreateCompanies ? <BuildingAdminPanel buildingId={building.id} /> : null}</div><div className="portfolio-divider" /><CompanyList companies={building.companies} companyParking={building.companyParking} showUserId showPassword /></section>
+      <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div>{canCreateCompanies ? <BuildingAdminPanel buildingId={building.id} /> : null}</div><div className="portfolio-divider" /><CompanyList companies={building.companies} companyParking={building.companyParking} showUserId showPassword canManageStatus /></section>
     </section></main>;
   }
 
