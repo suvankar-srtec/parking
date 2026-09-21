@@ -39,9 +39,9 @@ async function markHttpContact(deviceNumber: string) {
       connectionType: "HTTP",
       tcpConnected: false,
     },
-    select: { id: true },
+    select: { id: true, pendingSuccessPulse: true },
   });
-  return { count: reader ? 1 : 0 };
+  return { count: reader ? 1 : 0, pendingSuccessPulse: reader?.pendingSuccessPulse || false };
 }
 
 function isHeartbeatBody(raw: string) {
@@ -117,6 +117,13 @@ export async function handleRfidPost(request: Request, path?: { key: string; dev
     try {
       const contact = await markHttpContact(path.deviceNumber);
       if (isHeartbeatBody(raw)) {
+        if (contact.pendingSuccessPulse) {
+          await prisma.rfidReader.updateMany({
+            where: { deviceNumber: path.deviceNumber, pendingSuccessPulse: true },
+            data: { pendingSuccessPulse: false },
+          });
+          return reply(true, "Manual exit LED pulse");
+        }
         return reply(false, contact.count ? "Heartbeat received" : "Reader is not registered");
       }
     } catch {
