@@ -44,8 +44,11 @@ function popupTone(event: ScanEvent): PopupState["tone"] {
 }
 
 function popupTitle(event: PopupState) {
+  const message = event.message.toLowerCase();
   if (event.tone === "entry") return "Vehicle Entry";
   if (event.tone === "exit") return "Vehicle Exit";
+  if (message.includes("allocation is full") || message.includes("parking is full")) return "Parking Allocation Full";
+  if (event.action === "IGNORED") return "Scan Ignored";
   if (event.tone === "denied") return "Access Denied";
   return "RFID Scan";
 }
@@ -82,6 +85,7 @@ export default function SupervisorHeadcount({
   const [loading, setLoading] = useState(true);
   const [clock, setClock] = useState(() => new Date());
   const [popup, setPopup] = useState<PopupState | null>(null);
+  const [popupQueue, setPopupQueue] = useState<PopupState[]>([]);
   const range = useMemo(localDayRange, []);
   const seenEventId = useRef<string | null>(null);
   const initialized = useRef(false);
@@ -99,12 +103,27 @@ export default function SupervisorHeadcount({
 
       const incomingEvents = Array.isArray(next.recentEvents) ? next.recentEvents as ScanEvent[] : [];
       const newestEvent = incomingEvents[0];
+
       if (!initialized.current) {
         initialized.current = true;
         seenEventId.current = newestEvent?.id || null;
-      } else if (showLiveDashboard && showActivity && newestEvent?.id && newestEvent.id !== seenEventId.current) {
-        seenEventId.current = newestEvent.id;
-        setPopup({ ...newestEvent, tone: popupTone(newestEvent) });
+      } else if (showLiveDashboard && showActivity && incomingEvents.length) {
+        const previousSeenId = seenEventId.current;
+        const unseen: ScanEvent[] = [];
+
+        for (const event of incomingEvents) {
+          if (event.id === previousSeenId) break;
+          unseen.push(event);
+        }
+
+        if (newestEvent?.id) seenEventId.current = newestEvent.id;
+
+        if (unseen.length) {
+          const ordered = unseen
+            .reverse()
+            .map((event) => ({ ...event, tone: popupTone(event) } as PopupState));
+          setPopupQueue((current) => [...current, ...ordered]);
+        }
       }
 
       setData((current) => ({ ...next, recentEvents: mergeEvents(current?.recentEvents || [], incomingEvents) }));
@@ -127,6 +146,13 @@ export default function SupervisorHeadcount({
     const timer = window.setInterval(() => setClock(new Date()), 1000);
     return () => { stopped = true; if (pollTimer !== undefined) window.clearTimeout(pollTimer); window.clearInterval(timer); document.removeEventListener("visibilitychange", onVisibility); };
   }, [load]);
+
+  useEffect(() => {
+    if (popup || popupQueue.length === 0) return;
+    const [nextPopup, ...rest] = popupQueue;
+    setPopup(nextPopup);
+    setPopupQueue(rest);
+  }, [popup, popupQueue]);
 
   useEffect(() => {
     if (!popup) return;
@@ -161,7 +187,7 @@ export default function SupervisorHeadcount({
     {showLiveDashboard ? <section className={`portfolio-card ${styles.scanTableCard}`}>
       <div className={styles.scanTableHeader}><div><div className="section-kicker">RFID ACTIVITY</div><h2>Live Dashboard</h2></div></div>
       {showActivity ? <div className={styles.tableWrap}><table className={styles.scanTable}><thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Rider</th><th>Company</th><th>Action</th><th>Result</th></tr></thead><tbody>
-        {data?.recentEvents.length ? data.recentEvents.map((event) => <tr key={event.id}><td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td><td>{event.deviceNumber || "-"}</td><td>{event.cardNo || "-"}</td><td>{event.vehicle?.plateNumber || "-"}</td><td>{event.vehicle?.ownerName || "-"}</td><td>{event.company?.name || "-"}</td><td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td><td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{eventResult(event)}</td></tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No ENTRY, EXIT, or IGNORED RFID activity has been recorded yet.</td></tr>}
+        {data?.recentEvents.length ? data.recentEvents.map((event) => <tr key={event.id}><td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td><td>{event.deviceNumber || "-"}</td><td>{event.cardNo || "-"}</td><td>{event.vehicle?.plateNumber || "-"}</td><td>{event.vehicle?.ownerName || "-"}</td><td>{event.company?.name || "-"}</td><td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td><td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{eventResult(event)}</td></tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No ENTRY, EXIT, IGNORED, or DENIED RFID activity has been recorded yet.</td></tr>}
       </tbody></table></div> : <p className="muted">RFID activity access is not assigned to this Supervisor.</p>}
     </section> : null}
   </>;
