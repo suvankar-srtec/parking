@@ -26,7 +26,7 @@ export function rfidApiError(error: unknown) {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
     return NextResponse.json({ ok: false, message: "This reader or card is already registered, or the reader is busy." }, { status: 409 });
   }
-  console.error("RFID_OPERATION_FAILED");
+  console.error("RFID_OPERATION_FAILED", error);
   return NextResponse.json({ ok: false, message: "Unable to complete the RFID request. Please try again." }, { status: 500 });
 }
 export async function expireEnrollments(tx: Prisma.TransactionClient) {
