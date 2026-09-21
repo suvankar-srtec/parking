@@ -24,7 +24,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       where: { id },
       select: {
         parkingAllocation: true,
-        vehicles: { select: { employee: { select: { category: true } } } },
+        vehicles: { where: { isInside: true }, select: { employee: { select: { category: true } } } },
       },
     });
     if (!company) return NextResponse.json({ ok: false, message: "Company not found." }, { status: 404 });
@@ -35,10 +35,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const currentOwners = company.vehicles.filter((vehicle) => vehicle.employee?.category === "OWNER").length;
     const currentEmployees = company.vehicles.filter((vehicle) => vehicle.employee?.category !== "OWNER").length;
     if (ownerParkingAllocation < currentOwners) {
-      return NextResponse.json({ ok: false, message: `${currentOwners} Company Owner vehicles are already registered. Owner parking cannot be lower than ${currentOwners}.` }, { status: 400 });
+      return NextResponse.json({ ok: false, message: `${currentOwners} Company Owner vehicles are currently inside. Owner parking cannot be lower than ${currentOwners} until a vehicle exits.` }, { status: 400 });
     }
     if (employeeParkingAllocation < currentEmployees) {
-      return NextResponse.json({ ok: false, message: `${currentEmployees} Employee vehicles are already registered. Employee parking cannot be lower than ${currentEmployees}.` }, { status: 400 });
+      return NextResponse.json({ ok: false, message: `${currentEmployees} Employee vehicles are currently inside. Employee parking cannot be lower than ${currentEmployees} until a vehicle exits.` }, { status: 400 });
     }
 
     const updated = await prisma.company.update({
