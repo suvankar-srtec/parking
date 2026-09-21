@@ -4,6 +4,7 @@ import { canCreateEntity, normalizeEntityName, type EntityKind } from "@/lib/ent
 import { reserveUserId, UserIdError } from "@/lib/user-id-reservations";
 import { companyCardScope } from "@/lib/company-card-access";
 import { prisma } from "@/lib/prisma";
+import { nextSupervisorUserId } from "@/lib/supervisor-user-id";
 
 export async function POST(request: Request) {
   try {
@@ -31,6 +32,16 @@ export async function POST(request: Request) {
     if (!allowed) {
       return NextResponse.json({ ok: false, message: "You cannot create this account." }, { status: 403 });
     }
+
+    if (kind === "supervisor") {
+      const userId = await nextSupervisorUserId();
+      return NextResponse.json({
+        ok: true,
+        userId,
+        reservationId: `DIRECT_SUPERVISOR:${userId}`,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
     const name = typeof body.name === "string" ? normalizeEntityName(body.name) : "";
     if (!name || name.length > 120) {
       return NextResponse.json({ ok: false, message: "Enter a name of 1 to 120 characters." }, { status: 400 });
@@ -41,7 +52,7 @@ export async function POST(request: Request) {
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof UserIdError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
-    console.error("GENERATE_USER_ID_FAILED");
+    console.error("GENERATE_USER_ID_FAILED", error);
     return NextResponse.json({ ok: false, message: "Unable to generate a User ID. Please try again." }, { status: 500 });
   }
 }
