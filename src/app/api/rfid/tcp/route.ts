@@ -6,37 +6,6 @@ function authorized(request: Request) {
   return validReaderToken(request.headers.get("x-gateway-token"), process.env.RFID_GATEWAY_TOKEN);
 }
 
-export async function GET(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ ok: false }, { status: 403 });
-
-  const url = new URL(request.url);
-  const deviceNumber = String(url.searchParams.get("deviceNumber") || "").trim();
-  const connectionId = String(url.searchParams.get("connectionId") || "").trim();
-  if (!deviceNumber || !connectionId) {
-    return NextResponse.json({ ok: false, message: "deviceNumber and connectionId are required." }, { status: 400 });
-  }
-
-  const reader = await prisma.rfidReader.findUnique({
-    where: { deviceNumber },
-    select: {
-      id: true,
-      connectionType: true,
-      tcpConnected: true,
-      connectionId: true,
-      pendingSuccessPulse: true,
-    },
-  });
-
-  if (!reader || reader.connectionType !== "TCP" || !reader.tcpConnected || reader.connectionId !== connectionId) {
-    return NextResponse.json({ ok: false, command: null }, { status: 404 });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    command: reader.pendingSuccessPulse ? { type: "SUCCESS_PULSE", message: "Manual exit" } : null,
-  }, { headers: { "Cache-Control": "no-store" } });
-}
-
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ ok: false }, { status: 403 });
 
@@ -44,20 +13,6 @@ export async function POST(request: Request) {
   const { deviceNumber, connectionId, action, readerIp, sourcePort } = body || {};
   if (typeof deviceNumber !== "string" || typeof connectionId !== "string") {
     return NextResponse.json({ ok: false }, { status: 400 });
-  }
-
-  if (action === "pulse-ack") {
-    const result = await prisma.rfidReader.updateMany({
-      where: {
-        deviceNumber,
-        connectionType: "TCP",
-        tcpConnected: true,
-        connectionId,
-        pendingSuccessPulse: true,
-      },
-      data: { pendingSuccessPulse: false, lastGatewaySeenAt: new Date() },
-    });
-    return NextResponse.json({ ok: result.count > 0 });
   }
 
   if (!["connect", "alive", "disconnect", "offline"].includes(action)) {
@@ -97,5 +52,6 @@ export async function POST(request: Request) {
       data: { tcpConnected: action === "alive", lastGatewaySeenAt: new Date() },
     });
   }
+
   return NextResponse.json({ ok: true });
 }
