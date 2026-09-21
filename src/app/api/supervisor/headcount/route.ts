@@ -63,8 +63,23 @@ export async function GET(request: Request) {
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
     prisma.rfidEvent.count({ where: { buildingId, ...companyFilter, action: "ENTRY", createdAt: { gte: start, lt: end } } }),
     prisma.rfidEvent.count({ where: { buildingId, ...companyFilter, action: "EXIT", createdAt: { gte: start, lt: end } } }),
-    prisma.vehicle.findMany({ where: { isInside: true, company: vehicleCompanyFilter }, select: { department: true } }),
-    companyId ? Promise.resolve(0) : prisma.buildingOwnerVehicle.count({ where: { buildingId, isInside: true } }),
+    prisma.vehicle.findMany({
+      where: { isInside: true, company: vehicleCompanyFilter },
+      select: {
+        id: true,
+        plateNumber: true,
+        ownerName: true,
+        department: true,
+        rfidCardNo: true,
+        lastAccessAt: true,
+        employee: { select: { category: true } },
+        company: { select: { name: true } },
+      },
+    }),
+    companyId ? Promise.resolve([]) : prisma.buildingOwnerVehicle.findMany({
+      where: { buildingId, isInside: true },
+      select: { id: true, plateNumber: true, ownerName: true, rfidCardNo: true, lastAccessAt: true },
+    }),
     prisma.rfidEvent.findMany({
       where: { buildingId, ...companyFilter, action: { in: ["ENTRY", "EXIT", "IGNORED", "DENIED"] } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 5000,
@@ -100,6 +115,33 @@ export async function GET(request: Request) {
     departmentMap.set(department, (departmentMap.get(department) || 0) + 1);
   }
   const departments = Array.from(departmentMap, ([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const activeCards = [
+    ...insideVehicles.map((vehicle) => ({
+      id: `vehicle:${vehicle.id}`,
+      rfidCardNo: vehicle.rfidCardNo || "-",
+      vehicleNumber: vehicle.plateNumber,
+      personName: vehicle.ownerName,
+      personType: vehicle.employee.category === "OWNER" ? "OWNER" : "EMPLOYEE",
+      companyName: vehicle.company.name,
+      department: vehicle.department || "-",
+      entryTime: vehicle.lastAccessAt?.toISOString() || null,
+    })),
+    ...ownerVehiclesInside.map((vehicle) => ({
+      id: `owner:${vehicle.id}`,
+      rfidCardNo: vehicle.rfidCardNo || "-",
+      vehicleNumber: vehicle.plateNumber,
+      personName: vehicle.ownerName,
+      personType: "OWNER",
+      companyName: "Building owner",
+      department: "-",
+      entryTime: vehicle.lastAccessAt?.toISOString() || null,
+    })),
+  ].sort((a, b) => {
+    const at = a.entryTime ? new Date(a.entryTime).getTime() : 0;
+    const bt = b.entryTime ? new Date(b.entryTime).getTime() : 0;
+    return bt - at;
+  });
+
   const employeeParkingByCompany = parkingCompanies.map((parkingCompany) => ({ companyId: parkingCompany.id, companyName: parkingCompany.name, spacesAllotted: parkingCompany.employees.length, vehiclesInside: parkingCompany.vehicles.length }));
   const employeeSpacesAllotted = employeeParkingByCompany.reduce((sum, item) => sum + item.spacesAllotted, 0);
   const employeeVehiclesInside = employeeParkingByCompany.reduce((sum, item) => sum + item.vehiclesInside, 0);
@@ -140,7 +182,8 @@ export async function GET(request: Request) {
     companyName: company?.name || null,
     totalIn: allowTotalIn ? totalIn : null,
     totalOut: allowTotalOut ? totalOut : null,
-    totalOnSite: allowTotalOnSite ? insideVehicles.length + ownerVehiclesInside : null,
+    totalOnSite: allowTotalOnSite ? insideVehicles.length + ownerVehiclesInside.length : null,
+    activeCards: allowTotalOnSite ? activeCards : [],
     employeeSpacesAllotted: allowEmployeeParking ? employeeSpacesAllotted : null,
     employeeVehiclesInside: allowEmployeeParking ? employeeVehiclesInside : null,
     employeeParkingByCompany: allowEmployeeParking ? employeeParkingByCompany : [],
