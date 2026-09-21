@@ -219,7 +219,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     if (effectiveMode === "ENTRY_EXIT") {
       enter = !currentInside;
     } else if (effectiveMode === "ENTRY") {
-      if (currentInside) return record(READER_NO_SUCCESS_CODE, "Exit before Entry.", "DENIED", vehicle?.id, vehicle?.companyId, ownerVehicle?.id);
+      if (currentInside) return record(READER_NO_SUCCESS_CODE, "Vehicle is already inside. Exit before another Entry.", "DENIED", vehicle?.id, vehicle?.companyId, ownerVehicle?.id);
       enter = true;
     } else {
       if (!currentInside) return record(READER_NO_SUCCESS_CODE, "Vehicle is already outside.", "IGNORED", vehicle?.id, vehicle?.companyId, ownerVehicle?.id);
