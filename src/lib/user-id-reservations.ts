@@ -10,17 +10,34 @@ type IdentityRequest = { ownerId: string; kind: EntityKind; scopeId: string; nam
 const RESERVATION_MS = 15 * 60 * 1000;
 
 async function nextAvailableUserId(tx: Prisma.TransactionClient, kind: EntityKind) {
-  const prefix = userIdCode(kind);
-  // Only saved accounts use a number. Drafts, cancelled forms, and failed saves do not.
-  const candidates = await tx.$queryRaw<Array<{ userId: string }>>`
-    SELECT ${prefix} || lpad(n::text, 2, '0') AS "userId"
-    FROM generate_series(1, 99) n
-    WHERE NOT EXISTS (SELECT 1 FROM users u WHERE upper(u."userId") = ${prefix} || lpad(n::text, 2, '0'))
-      AND NOT EXISTS (SELECT 1 FROM employees e WHERE upper(e."userId") = ${prefix} || lpad(n::text, 2, '0'))
-    ORDER BY n LIMIT 1
-  `;
-  if (!candidates[0]) throw new UserIdError("All User IDs for this account type are in use.");
-  return candidates[0].userId;
+  const prefix = userIdCode(kind).toUpperCase();
+
+  // Avoid raw generate_series/concatenation queries here. The app only needs a
+  // small SUP/BLD/COMP/EMP namespace, so reading the matching IDs and selecting
+  // the first free number in application code is simpler and reliable on Neon.
+  const [users, employees] = await Promise.all([
+    tx.user.findMany({
+      where: { userId: { startsWith: prefix, mode: "insensitive" } },
+      select: { userId: true },
+    }),
+    tx.employee.findMany({
+      where: { userId: { startsWith: prefix, mode: "insensitive" } },
+      select: { userId: true },
+    }),
+  ]);
+
+  const used = new Set(
+    [...users, ...employees]
+      .map((record) => record.userId.trim().toUpperCase())
+      .filter(Boolean),
+  );
+
+  for (let number = 1; number <= 9999; number += 1) {
+    const userId = `${prefix}${String(number).padStart(2, "0")}`;
+    if (!used.has(userId)) return userId;
+  }
+
+  throw new UserIdError("All User IDs for this account type are in use.");
 }
 
 export async function reserveUserId(input: IdentityRequest) {
