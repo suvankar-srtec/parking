@@ -101,10 +101,28 @@ export async function POST(request: Request) {
 
       const exitReader = await tx.rfidReader.findUnique({
         where: { id: exitReaderId },
-        select: { id: true, deviceNumber: true, enabled: true, buildingId: true },
+        select: {
+          id: true,
+          deviceNumber: true,
+          enabled: true,
+          buildingId: true,
+          connectionType: true,
+          tcpConnected: true,
+          connectionId: true,
+          lastGatewaySeenAt: true,
+        },
       });
       if (!exitReader || !exitReader.enabled || exitReader.buildingId !== targetBuildingId) {
         throw new Error("The configured Exit reader is not available.");
+      }
+      if (
+        exitReader.connectionType !== "TCP" ||
+        !exitReader.tcpConnected ||
+        !exitReader.connectionId ||
+        !exitReader.lastGatewaySeenAt ||
+        Date.now() - exitReader.lastGatewaySeenAt.getTime() > 30000
+      ) {
+        throw new Error("Manual Exit LED requires the Exit reader to be online through the TCP gateway.");
       }
 
       const now = new Date();
@@ -146,7 +164,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      message: `Manual exit completed. Exit reader ${result.deviceNumber} will flash on its next heartbeat.`,
+      message: `Manual exit completed. Red LED pulse sent to Exit reader ${result.deviceNumber}.`,
     });
   } catch (error) {
     console.error("MANUAL_EXIT_FAILED", error);
