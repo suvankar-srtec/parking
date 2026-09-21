@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hasActiveBuilding, BUILDING_DISABLED_MESSAGE } from "@/lib/building-status";
+import { accountAccessStatus } from "@/lib/building-status";
 import { missingLoginConfiguration, loginErrorDiagnostic } from "@/lib/login-diagnostics";
 import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
 
@@ -27,8 +27,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "User ID or password is incorrect." }, { status: 401 });
     }
 
-    if (!await hasActiveBuilding(user)) {
-      return NextResponse.json({ ok: false, message: BUILDING_DISABLED_MESSAGE }, { status: 403 });
+    const access = await accountAccessStatus(user);
+    if (!access.active) {
+      return NextResponse.json({ ok: false, message: access.message }, { status: 403 });
     }
 
     const response = NextResponse.json({
