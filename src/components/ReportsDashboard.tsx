@@ -160,7 +160,9 @@ export default function ReportsDashboard({
   const [toDate, setToDate] = useState("");
   const [buildingId, setBuildingId] = useState(role === "SUPER_ADMIN" ? "" : buildings[0]?.id || "");
   const [companyId, setCompanyId] = useState(role === "COMPANY_ADMIN" ? companies[0]?.id || "" : "");
-  const [reportType, setReportType] = useState("vehicle");
+  const [reportType, setReportType] = useState<"vehicle" | "exitPending" | "exitPendingTime">("vehicle");
+  const [pending24Hours, setPending24Hours] = useState(true);
+  const [pending48Hours, setPending48Hours] = useState(false);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<ColumnKey>>(() => new Set(ALL_COLUMN_KEYS));
 
   useEffect(() => {
@@ -185,8 +187,20 @@ export default function ReportsDashboard({
     if (companyId === "__owner__") {
       if (row.companyId) return false;
     } else if (companyId && row.companyId !== companyId) return false;
-    return withinDate(row.inTime, fromDate, toDate);
-  }), [rows, buildingId, companyId, fromDate, toDate]);
+    if (!withinDate(row.inTime, fromDate, toDate)) return false;
+
+    if (reportType === "exitPending" && row.status !== "Inside") return false;
+    if (reportType === "exitPendingTime") {
+      if (row.status !== "Inside") return false;
+      const elapsedHours = (Date.now() - new Date(row.inTime).getTime()) / 3600000;
+      if (!pending24Hours && !pending48Hours) return false;
+      if (pending24Hours && pending48Hours) return elapsedHours >= 24;
+      if (pending24Hours) return elapsedHours >= 24 && elapsedHours < 48;
+      if (pending48Hours) return elapsedHours >= 48;
+    }
+
+    return true;
+  }), [rows, buildingId, companyId, fromDate, toDate, reportType, pending24Hours, pending48Hours]);
 
   const visibleColumns = useMemo(
     () => COLUMN_DEFINITIONS.filter((column) => visibleColumnKeys.has(column.key)),
@@ -195,6 +209,11 @@ export default function ReportsDashboard({
 
   const inside = filtered.filter((row) => row.status === "Inside").length;
   const exited = filtered.filter((row) => row.status === "Exited").length;
+  const reportTitle = reportType === "exitPending"
+    ? "Exit Pending"
+    : reportType === "exitPendingTime"
+      ? "Exit Pending with time"
+      : "Vehicle IN / OUT time";
 
   function clearFilters() {
     setFromDate("");
@@ -252,7 +271,7 @@ export default function ReportsDashboard({
     }
 
     const pages = chunks.map((chunk, index) => [
-      "Parking report - Vehicle IN / OUT time",
+      `Parking report - ${reportTitle}`,
       `Generated ${new Date().toLocaleString()} | Records ${filtered.length} | Page ${index + 1}/${chunks.length}`,
       `Date: ${dateRange} | Building: ${buildingName} | Company/Owner: ${companyName}`,
       "",
@@ -267,13 +286,19 @@ export default function ReportsDashboard({
   return <>
     <section className={styles.reportToolbar}>
       <div>
-        <strong>Vehicle IN / OUT time</strong>
+        <strong>{reportTitle}</strong>
         <span>Generated {browserReady ? new Date().toLocaleString() : "..."} · Auto-updating every 3 seconds</span>
       </div>
       <div className={styles.toolbarActions}>
-        <select value={reportType} onChange={(event) => setReportType(event.target.value)} aria-label="Report type">
+        <select value={reportType} onChange={(event) => setReportType(event.target.value as "vehicle" | "exitPending" | "exitPendingTime")} aria-label="Report type">
           <option value="vehicle">Vehicle IN / OUT time</option>
+          <option value="exitPending">Exit Pending</option>
+          <option value="exitPendingTime">Exit Pending with time</option>
         </select>
+        {reportType === "exitPendingTime" ? <div className={styles.pendingTimeFilters} aria-label="Exit pending duration">
+          <label><input type="checkbox" checked={pending24Hours} onChange={(event) => setPending24Hours(event.target.checked)} /><span>24 hr</span></label>
+          <label><input type="checkbox" checked={pending48Hours} onChange={(event) => setPending48Hours(event.target.checked)} /><span>48 hr</span></label>
+        </div> : null}
         <button type="button" onClick={downloadExcel}>Excel</button>
         <button type="button" onClick={downloadPdf}>PDF</button>
       </div>
@@ -315,7 +340,7 @@ export default function ReportsDashboard({
     </section>
 
     <section className={styles.reportTableCard}>
-      <div className={styles.tableHeader}><strong>Vehicle IN / OUT time</strong></div>
+      <div className={styles.tableHeader}><strong>{reportTitle}</strong></div>
       <div className={styles.tableWrap}>
         <table>
           <thead><tr>{visibleColumns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
