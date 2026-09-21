@@ -162,7 +162,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
 
   function openConfigure(reader: Reader) {
     setEditing(reader);
-    setEditingMode(normalizedMode(reader.mode) === "UNASSIGNED" ? "ENTRY_EXIT" : normalizedMode(reader.mode));
+    setEditingMode(normalizedMode(reader.mode) === "REGISTER" ? "REGISTER" : "ENTRY_EXIT");
     setRegistrationQr("");
     setEntryExitQr("");
   }
@@ -199,7 +199,6 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
     void execute(async () => {
       const result = await requestJson("/api/rfid/readers", "POST", {
         deviceNumber: editing!.deviceNumber,
-        name: form.get("name"),
         mode: editingMode,
         ...(registrationQr ? { registrationQrData: registrationQr } : {}),
         ...(entryExitQr ? { entryExitQrData: entryExitQr } : {}),
@@ -233,7 +232,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
   }
 
   function removeReader(reader: Reader) {
-    if (!window.confirm(`Remove ${reader.name} (${reader.deviceNumber})? It will return to the available reader list.`)) return;
+    if (!window.confirm(`Remove ${reader.name} (${reader.deviceNumber}) from this building? Any gate assignment for this reader will also be cleared.`)) return;
     void execute(async () => {
       const result = await requestJson("/api/rfid/readers", "POST", {
         action: "reset",
@@ -272,7 +271,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
             <p className="muted">Setup QR: {reader.hasRegistrationQr ? "Registration ✓" : "Registration missing"} · {reader.hasEntryExitQr ? "Entry / Exit ✓" : "Entry / Exit missing"}</p>
             {(data.canConfigureReaders || data.canRemoveReaders) && <div className="reader-card-actions">
               {data.canConfigureReaders ? <button className="secondary-button" onClick={() => openConfigure(reader)}>Configure purpose</button> : null}
-              {data.canRemoveReaders ? <button className="secondary-button" disabled={pending} onClick={() => removeReader(reader)}>Remove allocation</button> : null}
+              {data.canRemoveReaders ? <button className="secondary-button" disabled={pending} onClick={() => removeReader(reader)}>Remove reader</button> : null}
             </div>}
           </article>;
         })}
@@ -352,12 +351,10 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
         <form className="reader-config-form" onSubmit={saveExisting}>
           <fieldset className="reader-config-fields" disabled={pending}>
             <label>Device number<input value={editing.deviceNumber} readOnly /></label>
-            <label>Name<input name="name" defaultValue={editing.name} required /></label>
+            <label>Name<input value={editing.name} readOnly /></label>
             <label>Building<input value={data?.buildings.find((building) => building.id === editing.buildingId)?.name || "Assigned building"} readOnly /></label>
             <label>Purpose<select name="mode" value={editingMode} onChange={(event) => setEditingMode(event.target.value)}>
               <option value="REGISTER">Registration</option>
-              <option value="ENTRY">Entry</option>
-              <option value="EXIT">Exit</option>
               <option value="ENTRY_EXIT">Entry / Exit</option>
             </select></label>
             <label className="reader-config-upload">

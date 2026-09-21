@@ -5,9 +5,10 @@ import { rfidUser, rfidApiError, lockRfid, RFID_TRANSACTION } from "@/lib/rfid-a
 import { ParkingError } from "@/lib/building-parking";
 import { hasPermission } from "@/lib/permissions";
 import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
+import { parseGateConfig, serializeGateConfig } from "@/lib/gate-config";
 
 const MAX_QR_DATA_LENGTH = 1_600_000;
-const ADMIN_READER_MODES = new Set(["REGISTER", "ENTRY", "EXIT", "ENTRY_EXIT"]);
+const ADMIN_READER_MODES = new Set(["REGISTER", "ENTRY_EXIT"]);
 
 function validateQrData(value: unknown, label: string) {
   const data = String(value ?? "").trim();
@@ -86,7 +87,7 @@ export async function GET() {
       canAddReaders: canAssignReaders,
       canAssignReaders,
       canConfigureReaders,
-      canRemoveReaders: user.role === "SUPER_ADMIN",
+      canRemoveReaders: user.role === "SUPER_ADMIN" || canConfigureReaders,
       serverTime: new Date().toISOString(),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
@@ -101,7 +102,9 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
 
     if (body?.action === "reset") {
-      if (user.role !== "SUPER_ADMIN") throw new ParkingError("Only Super Admin can remove a reader allocation.", 403);
+      if (!["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) {
+        throw new ParkingError("Only Super Admin or Building Admin can remove a reader allocation.", 403);
+      }
       const deviceNumber = String(body?.deviceNumber ?? "").trim();
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(deviceNumber)) throw new ParkingError("Invalid reader device number.");
 
@@ -110,12 +113,34 @@ export async function POST(request: Request) {
         const existing = await tx.rfidReader.findUnique({ where: { deviceNumber } });
         if (!existing) throw new ParkingError("Reader not found.", 404);
 
-        if (!isPrimarySuperAdmin(user) && existing.buildingId) {
+        if (user.role === "BUILDING_ADMIN") {
+          if (!user.buildingId || existing.buildingId !== user.buildingId) {
+            throw new ParkingError("You can remove only readers allotted to your own building.", 403);
+          }
+        } else if (!isPrimarySuperAdmin(user) && existing.buildingId) {
           const building = await tx.building.findUnique({
             where: { id: existing.buildingId },
             select: { superAdminId: true },
           });
           if (building?.superAdminId !== user.id) throw new ParkingError("This reader belongs to another Super Admin.", 403);
+        }
+
+        if (existing.buildingId) {
+          const gates = await tx.gate.findMany({
+            where: { buildingId: existing.buildingId },
+            select: { id: true, direction: true },
+          });
+          for (const gate of gates) {
+            const config = parseGateConfig(gate.direction);
+            const entryReaderId = config.entryReaderId === existing.id ? null : config.entryReaderId;
+            const exitReaderId = config.exitReaderId === existing.id ? null : config.exitReaderId;
+            if (entryReaderId !== config.entryReaderId || exitReaderId !== config.exitReaderId) {
+              await tx.gate.update({
+                where: { id: gate.id },
+                data: { direction: serializeGateConfig(config.direction, entryReaderId, exitReaderId) },
+              });
+            }
+          }
         }
 
         await tx.rfidEnrollment.updateMany({
@@ -134,7 +159,9 @@ export async function POST(request: Request) {
         });
       }, RFID_TRANSACTION);
 
-      return NextResponse.json({ ok: true, message: "Reader allocation removed. It is available for another building." });
+      return NextResponse.json({ ok: true, message: user.role === "BUILDING_ADMIN"
+        ? "Reader removed from your building. Super Admin can allot it again."
+        : "Reader allocation removed. It is available for another building." });
     }
 
     if (body?.action === "assign") {
@@ -188,16 +215,15 @@ export async function POST(request: Request) {
     }
 
     const deviceNumber = String(body?.deviceNumber ?? "").trim();
-    const name = String(body?.name ?? "").trim();
     const mode = String(body?.mode ?? "");
     const registrationQrData = body?.registrationQrData === undefined ? undefined : validateQrData(body.registrationQrData, "Registration");
     const entryExitQrData = body?.entryExitQrData === undefined ? undefined : validateQrData(body.entryExitQrData, "Entry / Exit");
 
-    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(deviceNumber) || !name || name.length > 120) {
-      throw new ParkingError("Enter a valid reader name and device number.");
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(deviceNumber)) {
+      throw new ParkingError("Invalid reader device number.");
     }
     if (!READER_MODES.includes(mode as typeof READER_MODES[number]) || !ADMIN_READER_MODES.has(mode)) {
-      throw new ParkingError("Select Registration, Entry, Exit, or Entry / Exit.");
+      throw new ParkingError("Select Registration or Entry / Exit.");
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -218,7 +244,6 @@ export async function POST(request: Request) {
       return tx.rfidReader.update({
         where: { id: existing.id },
         data: {
-          name,
           mode,
           enabled: true,
           ...(registrationQrData !== undefined ? { registrationQrData } : {}),
