@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "./LoadingIndicator";
 import { useFeedback, useMutation } from "./FeedbackProvider";
+import OverstayAlert from "./OverstayAlert";
 import styles from "./SupervisorHeadcount.module.css";
 
 type ScanEvent = {
@@ -199,6 +200,8 @@ export default function SupervisorHeadcount({
   if (loading && !data) return <section className={`portfolio-card ${styles.headcount}`}><p><Spinner /> Loading Real Time Monitor…</p></section>;
 
   return <>
+    <OverstayAlert cards={data?.activeCards || []} enabled={showTotalOnSite || showLiveDashboard} />
+
     {popup && showLiveDashboard && showActivity ? <div className={`${styles.scanPopup} ${styles[popup.tone]}`} role="status" aria-live="polite">
       <button type="button" className={styles.popupClose} aria-label="Close notification" onClick={() => setPopup(null)}>×</button>
       <div className={styles.popupIcon} aria-hidden="true">{popup.tone === "entry" ? "IN" : popup.tone === "exit" ? "OUT" : popup.tone === "denied" ? "!" : "RF"}</div>
