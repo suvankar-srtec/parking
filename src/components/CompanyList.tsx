@@ -1,11 +1,13 @@
 import styles from "./CompanyList.module.css";
 import CompanyPasswordField from "@/components/CompanyPasswordField";
 import CompanyAdminSettingsModal from "@/components/CompanyAdminSettingsModal";
+import CompanyStatusControl from "@/components/CompanyStatusControl";
 
 type CompanySummary = {
   id: string;
   name: string;
   parkingAllocation: number;
+  enabled?: boolean;
   ownerParkingAllocation: number;
   employeeParkingAllocation: number;
   vehicles: { id: string }[];
@@ -18,11 +20,13 @@ export default function CompanyList({
   companyParking,
   showUserId = false,
   showPassword = false,
+  canManageStatus = false,
 }: {
   companies: CompanySummary[];
   companyParking: number;
   showUserId?: boolean;
   showPassword?: boolean;
+  canManageStatus?: boolean;
 }) {
   if (companies.length === 0) return <p className="muted">No companies created yet.</p>;
 
@@ -46,7 +50,10 @@ export default function CompanyList({
             <strong>{userId}</strong>
           </div> : null}
           {showPassword ? <CompanyPasswordField companyId={company.id} password={password} /> : null}
-          {showPassword ? <CompanyAdminSettingsModal companyId={company.id} companyName={company.name} parkingAllocation={company.parkingAllocation} /> : null}
+          <div className={styles.companyActions}>
+            {canManageStatus ? <CompanyStatusControl companyId={company.id} companyName={company.name} enabled={company.enabled !== false} /> : null}
+            {showPassword ? <CompanyAdminSettingsModal companyId={company.id} companyName={company.name} parkingAllocation={company.parkingAllocation} /> : null}
+          </div>
         </div>
 
         <div className={styles.summaryPanel}>
