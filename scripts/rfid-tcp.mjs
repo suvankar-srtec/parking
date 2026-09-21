@@ -27,29 +27,6 @@ function report(data) {
   return task;
 }
 
-async function pullCommand(state) {
-  const url = new URL(app + "/api/rfid/tcp");
-  url.searchParams.set("deviceNumber", state.deviceNumber);
-  url.searchParams.set("connectionId", state.connectionId);
-  const response = await fetch(url, {
-    headers: { "x-gateway-token": gatewayToken },
-    signal: AbortSignal.timeout(8000),
-    cache: "no-store",
-  });
-  if (!response.ok) return null;
-  const payload = await response.json().catch(() => null);
-  return payload?.command || null;
-}
-
-async function acknowledgePulse(state) {
-  const response = await fetch(app + "/api/rfid/tcp", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-gateway-token": gatewayToken },
-    body: JSON.stringify({ ...state, action: "pulse-ack" }),
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!response.ok) throw new Error("Pulse acknowledgement failed");
-}
 const server = net.createServer((socket) => {
   const ip = socket.remoteAddress?.replace(/^::ffff:/, "");
   const reader = approved.find((item) => item.readerIp === ip);
@@ -70,21 +47,6 @@ const server = net.createServer((socket) => {
     }
   }, 10000);
 
-  let commandBusy = false;
-  const commandPoll = setInterval(() => {
-    if (socket.destroyed || commandBusy) return;
-    commandBusy = true;
-    void pullCommand(state).then(async (command) => {
-      if (!command || socket.destroyed) return;
-      if (command.type === "SUCCESS_PULSE") {
-        // The reader's SuccessAction is triggered by the documented success
-        // response packet. Write it directly over the live TCP session.
-        socket.write(readerReply(true, command.message || "Manual exit"));
-        await acknowledgePulse(state);
-      }
-    }).catch(() => console.error("Reader command poll unavailable"))
-      .finally(() => { commandBusy = false; });
-  }, 1000);
   let frameTimer;
   socket.on("data", (chunk) => {
     clearTimeout(frameTimer);
@@ -113,7 +75,7 @@ const server = net.createServer((socket) => {
   });
   function close() {
     if (stopped) return;
-    stopped = true; clearInterval(heartbeat); clearInterval(commandPoll); clearTimeout(frameTimer);
+    stopped = true; clearInterval(heartbeat); clearTimeout(frameTimer);
     if (sessions.get(reader.deviceNumber) === socket) sessions.delete(reader.deviceNumber);
     void report({ ...state, action: "disconnect" }).catch(() => console.error("Could not report reader disconnection"));
     console.log("Reader disconnected: " + reader.deviceNumber);
