@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "./LoadingIndicator";
+import { useFeedback, useMutation } from "./FeedbackProvider";
 import styles from "./SupervisorHeadcount.module.css";
 
 type ScanEvent = {
@@ -100,6 +101,8 @@ export default function SupervisorHeadcount({
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [popupQueue, setPopupQueue] = useState<PopupState[]>([]);
   const [showActiveCards, setShowActiveCards] = useState(false);
+  const { notify } = useFeedback();
+  const { pending: manualExitPending, execute: executeManualExit } = useMutation();
   const range = useMemo(localDayRange, []);
   const seenEventId = useRef<string | null>(null);
   const initialized = useRef(false);
@@ -174,6 +177,21 @@ export default function SupervisorHeadcount({
     return () => window.clearTimeout(timer);
   }, [popup]);
 
+  function manualExit(card: ActiveCard) {
+    if (!window.confirm(`Manually exit ${card.personName} · ${card.vehicleNumber}?`)) return;
+    void executeManualExit(async () => {
+      const response = await fetch("/api/supervisor/manual-exit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: card.id }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.message || "Unable to complete manual exit.");
+      notify(result?.message || "Manual exit completed.");
+      await load();
+    });
+  }
+
   if (!showTotalOnSite && !showTotalIn && !showTotalOut && !showLiveDashboard) {
     return <section className={`portfolio-card ${styles.headcount}`}><div className="section-kicker">SUPERVISOR</div><h2>No monitoring features assigned</h2><p className="muted">Ask the building Admin or Super Admin to enable the required Supervisor features.</p></section>;
   }
@@ -206,10 +224,10 @@ export default function SupervisorHeadcount({
         </div>
         <div className={styles.activeCardsTableWrap}>
           <table className={styles.activeCardsTable}>
-            <thead><tr><th>RFID</th><th>Vehicle</th><th>Owner / Employee</th><th>Type</th><th>Company</th><th>Department</th><th>Entry time</th></tr></thead>
+            <thead><tr><th>RFID</th><th>Vehicle</th><th>Owner / Employee</th><th>Type</th><th>Company</th><th>Department</th><th>Entry time</th><th>Action</th></tr></thead>
             <tbody>{data?.activeCards?.length ? data.activeCards.map((card) => <tr key={card.id}>
-              <td>{card.rfidCardNo}</td><td>{card.vehicleNumber}</td><td>{card.personName}</td><td>{card.personType === "OWNER" ? "Owner" : "Employee"}</td><td>{card.companyName}</td><td>{card.department}</td><td>{card.entryTime ? new Date(card.entryTime).toLocaleString() : "-"}</td>
-            </tr>) : <tr><td colSpan={7} className={styles.emptyTable}>No active RFID cards are currently on site.</td></tr>}</tbody>
+              <td>{card.rfidCardNo}</td><td>{card.vehicleNumber}</td><td>{card.personName}</td><td>{card.personType === "OWNER" ? "Owner" : "Employee"}</td><td>{card.companyName}</td><td>{card.department}</td><td>{card.entryTime ? new Date(card.entryTime).toLocaleString() : "-"}</td><td><button type="button" className={styles.manualExitButton} disabled={manualExitPending} onClick={() => manualExit(card)}>{manualExitPending ? "Please wait…" : "Manual exit"}</button></td>
+            </tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No active RFID cards are currently on site.</td></tr>}</tbody>
           </table>
         </div>
       </section>
