@@ -47,21 +47,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!name) return NextResponse.json({ ok: false, message: "Enter a department name." }, { status: 400 });
     if (name.length > 80) return NextResponse.json({ ok: false, message: "Department name must be 80 characters or less." }, { status: 400 });
 
-    const result = await prisma.$transaction(async (tx) => {
-      const company = await tx.company.findUnique({ where: { id: companyId }, select: { maximumDepartments: true } });
-      if (!company) throw new Error("COMPANY_NOT_FOUND");
-      const count = await tx.companyDepartment.count({ where: { companyId } });
-      if (count >= company.maximumDepartments) throw new Error("DEPARTMENT_LIMIT");
-      const department = await tx.companyDepartment.create({ data: { companyId, name } });
-      return { department, remaining: company.maximumDepartments - count - 1 };
-    });
+    const company = await prisma.company.findUnique({ where: { id: companyId }, select: { id: true } });
+    if (!company) throw new Error("COMPANY_NOT_FOUND");
+
+    const department = await prisma.companyDepartment.create({ data: { companyId, name } });
 
     revalidatePath("/dashboard");
     revalidatePath("/access-control/register-cards", "layout");
-    return NextResponse.json({ ok: true, message: `${result.department.name} department added. ${result.remaining} department slots remaining.`, department: result.department }, { status: 201 });
+    return NextResponse.json({ ok: true, message: `${department.name} department added.`, department }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "COMPANY_NOT_FOUND") return NextResponse.json({ ok: false, message: "Company not found." }, { status: 404 });
-    if (error instanceof Error && error.message === "DEPARTMENT_LIMIT") return NextResponse.json({ ok: false, message: "This company has reached its department limit." }, { status: 409 });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ ok: false, message: "This department already exists for the company." }, { status: 409 });
     console.error("CREATE_COMPANY_DEPARTMENT_FAILED", error);
     return NextResponse.json({ ok: false, message: "Unable to add department." }, { status: 500 });
