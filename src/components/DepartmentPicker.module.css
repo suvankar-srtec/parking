@@ -12,9 +12,3 @@
 
 .field .trigger > span { margin: 0; color: inherit; font-size: inherit; font-weight: inherit; }
 .field .remove > span { margin: 0; color: inherit; font-size: 21px; line-height: 1; }
-
-.departmentList { display: grid; gap: 6px; margin-top: 8px; }
-.departmentItem { display: grid; grid-template-columns: minmax(0,1fr) 32px; gap: 6px; align-items: center; }
-.departmentName { min-width: 0; min-height: 34px; padding: 7px 10px; border: 1px solid #d9e2dd; border-radius: 7px; background: #f8faf9; color: #2d4035; text-align: left; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; overflow-wrap: anywhere; }
-.departmentName:hover, .departmentName[aria-pressed="true"] { border-color: #c8b2da; background: #f2eaf8; color: #703ba0; }
-.departmentName:disabled { opacity: .55; cursor: wait; }
