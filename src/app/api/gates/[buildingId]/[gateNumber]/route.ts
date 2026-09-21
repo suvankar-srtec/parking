@@ -30,6 +30,9 @@ async function validateReader(buildingId: string, readerId: string | null, label
   if (!reader || reader.buildingId !== buildingId) return `${label} reader must be assigned to this building.`;
   if (!reader.enabled) return `${label} reader is disabled and cannot be allotted to a gate.`;
   if (reader.mode === "REGISTER") return `A Registration reader cannot be used as the ${label.toLowerCase()} reader.`;
+  if (reader.mode === "UNASSIGNED") return `${label} reader purpose has not been configured by the Building Admin.`;
+  if (label === "Entry" && reader.mode === "EXIT") return "This reader is configured for Exit only.";
+  if (label === "Exit" && reader.mode === "ENTRY") return "This reader is configured for Entry only.";
   return null;
 }
 
@@ -74,7 +77,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ build
   const exitError = await validateReader(buildingId, exitReaderId, "Exit");
   if (exitError) return NextResponse.json({ ok: false, message: exitError }, { status: 400 });
 
-  const allGates = await prisma.gate.findMany({ select: { buildingId: true, gateNumber: true, direction: true } });
+  const allGates = await prisma.gate.findMany({
+    where: { buildingId },
+    select: { buildingId: true, gateNumber: true, direction: true },
+  });
   const requestedReaderIds = [entryReaderId, exitReaderId].filter((id): id is string => Boolean(id));
   for (const readerId of requestedReaderIds) {
     const usedElsewhere = allGates.find((gate) => {
@@ -82,7 +88,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ build
       const config = parseGateConfig(gate.direction);
       return config.entryReaderId === readerId || config.exitReaderId === readerId;
     });
-    if (usedElsewhere) return NextResponse.json({ ok: false, message: "This reader is already allotted to another gate. Remove that allocation first." }, { status: 409 });
+    if (usedElsewhere) return NextResponse.json({ ok: false, message: "This reader is already assigned to another gate in this building. Remove that gate assignment first." }, { status: 409 });
   }
 
   const storedDirection = serializeGateConfig(direction, entryReaderId, exitReaderId);

@@ -168,7 +168,9 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       select: { gateNumber: true, direction: true },
       orderBy: { gateNumber: "asc" },
     });
-    const allottedGate = buildingGates.find((gate) => parseGateConfig(gate.direction).readerId === reader.id);
+    const allottedGate = buildingGates
+      .map((gate) => ({ gate, config: parseGateConfig(gate.direction) }))
+      .find(({ config }) => config.entryReaderId === reader.id || config.exitReaderId === reader.id);
     if (!allottedGate) {
       return record(
         READER_NO_SUCCESS_CODE,
@@ -180,7 +182,16 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       );
     }
 
-    const effectiveMode = parseGateConfig(allottedGate.direction).direction;
+    let effectiveMode = allottedGate.config.direction;
+    if (allottedGate.config.direction === "ENTRY_EXIT") {
+      if (allottedGate.config.entryReaderId === reader.id && allottedGate.config.exitReaderId === reader.id) {
+        effectiveMode = "ENTRY_EXIT";
+      } else if (allottedGate.config.entryReaderId === reader.id) {
+        effectiveMode = "ENTRY";
+      } else if (allottedGate.config.exitReaderId === reader.id) {
+        effectiveMode = "EXIT";
+      }
+    }
     if (!["ENTRY_EXIT", "ENTRY", "EXIT"].includes(effectiveMode)) {
       return record(
         READER_NO_SUCCESS_CODE,
