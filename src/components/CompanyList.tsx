@@ -6,11 +6,10 @@ type CompanySummary = {
   id: string;
   name: string;
   parkingAllocation: number;
-  totalPersons: number;
   ownerParkingAllocation: number;
   employeeParkingAllocation: number;
   vehicles: { id: string }[];
-  employees: { id: string; category: string }[];
+  employees: { id: string; category: string; isPlaceholder?: boolean }[];
   users: { userId: string; username: string; password?: string }[];
 };
 
@@ -29,8 +28,9 @@ export default function CompanyList({
 
   return <div className="entity-list">
     {companies.map((company) => {
-      const employeeCount = company.employees.filter((person) => person.category !== "OWNER").length;
-      const ownerCount = company.employees.filter((person) => person.category === "OWNER").length;
+      const people = company.employees.filter((person) => !person.isPlaceholder);
+      const employeeCount = people.filter((person) => person.category !== "OWNER").length;
+      const ownerCount = people.filter((person) => person.category === "OWNER").length;
       const userId = company.users[0]?.userId || "-";
       const password = company.users[0]?.password || "";
       const registeredVehicles = company.vehicles.length;
@@ -46,20 +46,20 @@ export default function CompanyList({
             <strong>{userId}</strong>
           </div> : null}
           {showPassword ? <CompanyPasswordField companyId={company.id} password={password} /> : null}
-          {showPassword ? <CompanyAdminSettingsModal companyId={company.id} companyName={company.name} totalPersons={company.totalPersons} parkingAllocation={company.parkingAllocation} /> : null}
+          {showPassword ? <CompanyAdminSettingsModal companyId={company.id} companyName={company.name} parkingAllocation={company.parkingAllocation} /> : null}
         </div>
 
         <div className={styles.summaryPanel}>
           <section className={styles.summaryGroup} aria-label={`${company.name} people summary`}>
             <div className={styles.groupTitle}>
               <span>PEOPLE</span>
-              <small>Roster capacity and current roles</small>
+              <small>Registered people and current roles</small>
             </div>
             <div className={styles.peopleGrid}>
               <div className={styles.metricCard}>
                 <span>Total People</span>
-                <strong>{company.totalPersons}</strong>
-                <small>Admin-set roster size</small>
+                <strong>{people.length}</strong>
+                <small>Registered people</small>
               </div>
               <div className={styles.metricCard}>
                 <span>Employees</span>

@@ -39,40 +39,32 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!["EMPLOYEE", "OWNER"].includes(category)) return NextResponse.json({ ok: false, message: "Choose Employee or Company Owner." }, { status: 400 });
 
     const result = await prisma.$transaction(async (tx) => {
+      // Serialize additions so a legacy empty slot is filled only once.
+      await tx.$queryRaw`SELECT id FROM companies WHERE id = ${companyId} FOR UPDATE`;
       const company = await tx.company.findUnique({
         where: { id: companyId },
-        select: {
-          totalPersons: true,
-          ownerParkingAllocation: true,
-          employeeParkingAllocation: true,
-        },
+        select: { id: true },
       });
       if (!company) throw new UserIdError("Company not found.", 404);
       const departmentExists = await tx.companyDepartment.findFirst({ where: { companyId, name: department }, select: { id: true } });
       if (!departmentExists) throw new UserIdError("Select a department created for this company.", 400);
 
-      const currentPeople = await tx.employee.count({ where: { companyId } });
-      if (currentPeople >= company.totalPersons) {
-        throw new UserIdError(`The Admin set Total Persons to ${company.totalPersons}. No more people can be added to this company.`, 400);
-      }
-
-      const categoryCount = await tx.employee.count({
-        where: { companyId, category: category === "OWNER" ? "OWNER" : { not: "OWNER" } },
-      });
-      const categoryLimit = category === "OWNER" ? company.ownerParkingAllocation : company.employeeParkingAllocation;
-      const categoryLabel = category === "OWNER" ? "Company Owner" : "Employee";
-      if (categoryCount >= categoryLimit) {
-        throw new UserIdError(`No ${categoryLabel} parking space remains. Update the Company parking split first.`, 400);
-      }
-
       const claimedUserId = await claimUserId(tx, { ownerId: owner.id, reservationId, kind: "employee", scopeId: companyId, name });
-      return tx.employee.create({ data: { name, userId: claimedUserId, companyId, category, parkingLimit, department } });
+      const emptySlot = await tx.employee.findFirst({
+        where: { companyId, isPlaceholder: true, accountId: null, vehicles: { none: {} } },
+        orderBy: [{ slotNumber: "asc" }, { createdAt: "asc" }],
+        select: { id: true },
+      });
+      const data = { name, userId: claimedUserId, companyId, category, parkingLimit, department, isPlaceholder: false };
+      return emptySlot
+        ? tx.employee.update({ where: { id: emptySlot.id, isPlaceholder: true }, data })
+        : tx.employee.create({ data });
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 15000 });
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/company-parking");
     revalidatePath(`/access-control/register-cards/${companyId}`);
-    return NextResponse.json({ ok: true, message: `${result.category === "OWNER" ? "Company owner" : "Employee"} created with 1 parking space.`, employee: { id: result.id, name: result.name, userId: result.userId, category: result.category, parkingLimit: result.parkingLimit, department: result.department } }, { status: 201 });
+    return NextResponse.json({ ok: true, message: `${result.category === "OWNER" ? "Company owner" : "Employee"} created successfully.`, employee: { id: result.id, name: result.name, userId: result.userId, category: result.category, parkingLimit: result.parkingLimit, department: result.department } }, { status: 201 });
   } catch (error) {
     if (error instanceof UserIdError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ ok: false, message: "This generated User ID is already in use." }, { status: 409 });

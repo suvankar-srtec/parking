@@ -7,7 +7,6 @@ import { hasPermission, sanitizePermissions } from "@/lib/permissions";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
 import { MAX_PARKING } from "@/lib/parking";
 import { claimUserId, UserIdError } from "@/lib/user-id-reservations";
-import { syncCompanyRoster } from "@/lib/company-roster";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -31,7 +30,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const username = name;
     const password = String(body.password ?? "");
     const parkingAllocation = Number(body.parkingAllocation ?? 0);
-    const totalPersons = Number(body.totalPersons ?? 0);
     const maximumDepartments = Number(body.maximumDepartments ?? 1);
     const permissions = sanitizePermissions("COMPANY_ADMIN", body.permissions);
     if (!name || !userId || !reservationId || !password.trim()) {
@@ -39,12 +37,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     if (!Number.isInteger(parkingAllocation) || parkingAllocation < 0 || parkingAllocation > MAX_PARKING) {
       return NextResponse.json({ ok: false, message: "Parking allocation must be a valid whole number of 0 or greater." }, { status: 400 });
-    }
-    if (!Number.isInteger(totalPersons) || totalPersons < 1 || totalPersons > 1000000) {
-      return NextResponse.json({ ok: false, message: "Total persons must be a whole number of at least 1." }, { status: 400 });
-    }
-    if (parkingAllocation > totalPersons) {
-      return NextResponse.json({ ok: false, message: "Company parking cannot be greater than Total Persons." }, { status: 400 });
     }
     if (user.role === "BUILDING_ADMIN" && parkingAllocation > 0 && !hasPermission(user, "building.allocateCompanyParking")) {
       return NextResponse.json({ ok: false, message: "Your account cannot allocate company parking." }, { status: 403 });
@@ -68,7 +60,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         data: {
           name,
           parkingAllocation,
-          totalPersons,
           ownerParkingAllocation: 0,
           employeeParkingAllocation: parkingAllocation,
           maximumDepartments,
@@ -90,7 +81,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         },
       });
       await tx.entityIdentity.create({ data: { entityType: "company", entityId: company.id, userId: claimedUserId } });
-      await syncCompanyRoster(tx, company.id, claimedUserId, totalPersons);
       return { company, account };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 15000 });
 
@@ -99,7 +89,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     revalidatePath(`/dashboard/buildings/${buildingId}`);
     return NextResponse.json({
       ok: true,
-      message: `Company created successfully with ${totalPersons} employee roster slots.`,
+      message: "Company created successfully.",
       company: { id: result.company.id, name: result.company.name, userId: result.account.userId, username: result.account.username },
     }, { status: 201 });
   } catch (error) {

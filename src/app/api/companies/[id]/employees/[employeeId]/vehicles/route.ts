@@ -34,7 +34,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     const result = await prisma.$transaction(async (tx) => {
       await lockRfid(tx);
-      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId, ...(adminRegistration ? { company: companyCardScope(user) } : {}) }, select: { id: true, parkingLimit: true, isPlaceholder: true } });
+      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId, ...(adminRegistration ? { company: companyCardScope(user) } : {}) }, select: { id: true, isPlaceholder: true } });
       if (!employee) throw new ParkingError("Employee or company owner was not found in this company.", 404);
       if (employee.isPlaceholder) throw new ParkingError("Complete this employee roster slot before registering a vehicle.");
       const company = await tx.company.findUnique({ where: { id: companyId }, select: { buildingId: true, parkingAllocation: true } });
@@ -43,7 +43,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (!companyDepartment) throw new ParkingError("Select a valid department for this company.", 400);
       await lockBuildingParking(tx, company.buildingId);
       const employeeUsed = await tx.vehicle.count({ where: { employeeId } });
-      if (employeeUsed >= employee.parkingLimit) throw new ParkingError(`This person has reached the assigned parking limit of ${employee.parkingLimit}.`, 400);
+      if (employeeUsed >= 1) throw new ParkingError("This person already has a parking allocation. Only one parking space is allowed per person.", 400);
       const companyUsed = await tx.vehicle.count({ where: { companyId } });
       if (companyUsed >= company.parkingAllocation) throw new ParkingError("No unallotted parking spaces remain for this company.", 400);
       const enrollment = enrollmentId ? await consumeCardEnrollment(tx, { enrollmentId, ownerId: user.id, companyId, employeeId, buildingId: company.buildingId }) : null;

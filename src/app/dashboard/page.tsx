@@ -58,7 +58,7 @@ export default async function DashboardPage() {
             include: {
               users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true, password: true }, take: 1 },
               vehicles: { select: { id: true } },
-              employees: { select: { id: true, category: true } },
+              employees: { where: { isPlaceholder: false }, select: { id: true, category: true } },
             },
           },
         },
@@ -121,9 +121,9 @@ export default async function DashboardPage() {
 
     const company = await prisma.company.findUnique({ where: { id: user.companyId }, include: { building: { select: { name: true } }, departments: { orderBy: { name: "asc" } }, employees: { orderBy: { createdAt: "asc" }, include: { vehicles: true } } } });
     if (!company) redirect("/");
-    const allotted = company.employees.reduce((total, employee) => total + employee.parkingLimit, 0);
+    const peopleCount = company.employees.filter((employee) => !employee.isPlaceholder).length;
     const used = company.employees.reduce((total, employee) => total + employee.vehicles.length, 0);
-    const available = Math.max(company.parkingAllocation - allotted, 0);
+    const available = Math.max(company.parkingAllocation - used, 0);
     const canViewUsage = hasPermission(user, "company.viewUsage");
     const canManagePeople = hasPermission(user, "company.managePeople");
     const canAllocateParking = hasPermission(user, "company.allocateEmployeeParking");
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
 
     return <main className="dashboard-page"><Sidebar role={user.role} permissions={permissions} /><section className="dashboard-main">
       <header className="topbar"><div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>{company.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>Building</span><strong>{company.building.name}</strong></div><SignOutButton /></div></header>
-      {canViewUsage ? <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANY PARKING</div><h2>Parking allocation</h2><p>Company parking usage available to this account.</p></div></div><div className="portfolio-divider" /><CompanyCredentialsEditor userId={user.userId} companyName={company.name} initialPassword={user.password} /><div className="account-parking-grid account-company-parking-grid"><div className="large-stat"><span>Company limit</span><strong>{company.parkingAllocation}</strong></div><div className="large-stat"><span>Assigned limits</span><strong>{allotted}</strong></div><div className="large-stat"><span>Registered vehicles</span><strong>{used}</strong></div><div className="large-stat"><span>Unassigned</span><strong>{available}</strong></div></div></section> : null}
+      {canViewUsage ? <section className="portfolio-card building-management"><div className="portfolio-header"><div><div className="section-kicker">COMPANY PARKING</div><h2>Parking allocation</h2><p>Company parking usage available to this account.</p></div></div><div className="portfolio-divider" /><CompanyCredentialsEditor userId={user.userId} companyName={company.name} initialPassword={user.password} /><div className="account-parking-grid account-company-parking-grid"><div className="large-stat"><span>Company limit</span><strong>{company.parkingAllocation}</strong></div><div className="large-stat"><span>Total people</span><strong>{peopleCount}</strong></div><div className="large-stat"><span>Registered vehicles</span><strong>{used}</strong></div><div className="large-stat"><span>Unassigned</span><strong>{available}</strong></div></div></section> : null}
       {(canManagePeople || canManageVehicles) ? <section className="portfolio-card building-management"><div className="employee-section-header"><div><div className="section-kicker">PEOPLE</div><h2>Employees & Company Owners</h2></div>{canManagePeople && canAllocateParking ? <EmployeeCreateModal companyId={company.id} departments={company.departments} maximumDepartments={company.maximumDepartments} canManageVehicles={canManageVehicles} canRegisterRfid={canRegisterRfid} /> : null}</div><div className="portfolio-divider" /><EmployeeList companyId={company.id} employees={company.employees} departments={company.departments} /></section> : null}
     </section></main>;
   }

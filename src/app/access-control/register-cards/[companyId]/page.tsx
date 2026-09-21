@@ -38,7 +38,16 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
     <section className="dashboard-main">
       <header className="topbar">
         <div><div className="section-kicker">REGISTER RFID CARDS</div><h1>{company.name}</h1><p className={styles.building}>{company.building.name}</p></div>
-        <div className="topbar-right"><AppLink href="/access-control/register-cards" className="secondary-button">← All companies</AppLink><SignOutButton /></div>
+        <div className="topbar-right"><AppLink href="/access-control/register-cards" className="secondary-button">← All companies</AppLink>
+          <EmployeeCreateModal
+            companyId={company.id}
+            departments={company.departments}
+            maximumDepartments={company.maximumDepartments}
+            canManageVehicles
+            canRegisterRfid
+            disabled={!company.building.enabled}
+          />
+          <SignOutButton /></div>
       </header>
       <section className="portfolio-card building-management">
         <div className="portfolio-header">
@@ -66,20 +75,7 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
               </tr>);
             })}</tbody>
           </table>
-        </div> : <div className={styles.empty}>
-          <p>No employees have been added to this company yet.</p>
-          <EmployeeCreateModal
-            companyId={company.id}
-            departments={company.departments}
-            maximumDepartments={company.maximumDepartments}
-            canManageVehicles
-            canRegisterRfid
-            disabled={!company.building.enabled}
-            triggerLabel="Add Employee / Company Owner"
-            triggerClassName="primary-button"
-            showTriggerIcon={false}
-          />
-        </div>}
+        </div> : <div className={styles.empty}>No employees have been added to this company yet. Use Add Employee above to get started.</div>}
       </section>
     </section>
   </main>;

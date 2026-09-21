@@ -26,7 +26,7 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
           include: {
             users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true }, take: 1 },
             vehicles: { select: { id: true } },
-            employees: { select: { id: true, category: true } },
+            employees: { where: { isPlaceholder: false }, select: { id: true, category: true } },
           },
         },
       },

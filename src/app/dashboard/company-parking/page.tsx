@@ -18,12 +18,11 @@ export default async function CompanyParkingPage() {
     select: {
       id: true,
       name: true,
-      totalPersons: true,
       parkingAllocation: true,
       ownerParkingAllocation: true,
       employeeParkingAllocation: true,
       building: { select: { name: true } },
-      employees: { select: { category: true } },
+      employees: { where: { isPlaceholder: false }, select: { category: true } },
     },
   });
   if (!company) redirect("/dashboard");
@@ -40,7 +39,7 @@ export default async function CompanyParkingPage() {
         <div className="portfolio-header"><div><div className="section-kicker">COMPANY PARKING</div><h2>Separate parking allocation</h2><p>Admin assigned the company total. Divide it between Company Owners and Employees.</p></div></div>
         <div className="portfolio-divider" />
         <div className="account-parking-grid account-company-parking-grid">
-          <div className="large-stat"><span>Total Persons</span><strong>{company.totalPersons}</strong></div>
+          <div className="large-stat"><span>Total People</span><strong>{company.employees.length}</strong></div>
           <div className="large-stat"><span>Total Company Parking</span><strong>{company.parkingAllocation}</strong></div>
           <div className="large-stat"><span>Owners Assigned</span><strong>{ownerAssigned}</strong></div>
           <div className="large-stat"><span>Employees Assigned</span><strong>{employeeAssigned}</strong></div>

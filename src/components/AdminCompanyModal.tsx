@@ -36,15 +36,13 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
     event.preventDefault();
     if (!userId || !reservationId) { notify("Enter the company name and wait for the generated User ID.", "error"); return; }
     const data = new FormData(event.currentTarget);
-    const totalPersons = Number(data.get("totalPersons"));
     const parkingAllocation = Number(data.get("parkingAllocation"));
-    if (!Number.isInteger(totalPersons) || totalPersons < 1) { notify("Total Persons must be at least 1.", "error"); return; }
-    if (!Number.isInteger(parkingAllocation) || parkingAllocation < 0 || parkingAllocation > totalPersons) { notify("Company parking must be between 0 and Total Persons.", "error"); return; }
+    if (!Number.isInteger(parkingAllocation) || parkingAllocation < 0) { notify("Company parking must be a whole number of 0 or greater.", "error"); return; }
     void execute(async () => {
       const result = await requestJson(`/api/buildings/${buildingId}/companies`, "POST", {
         name: name.trim(), userId, reservationId,
         password: String(data.get("password") || ""),
-        totalPersons, parkingAllocation, maximumDepartments: departmentLimit, permissions,
+        parkingAllocation, maximumDepartments: departmentLimit, permissions,
       });
       notify(result.message || "Company created successfully.");
       setOpen(false); refresh();
@@ -54,14 +52,13 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
   return <>
     <button type="button" className="add-building-button" onClick={() => { setOpen(true); setName(""); setPermissions(defaultPermissionsForRole("COMPANY_ADMIN")); }}><span className="plus-icon">+</span>New company</button>
     {open ? <div className="modal-backdrop"><section className="modal-card permission-modal" role="dialog" aria-modal="true">
-      <div className="modal-head permission-modal-head"><div><div className="section-kicker">COMPANY SETUP</div><h2>Create company</h2><p>Admin defines total people and total parking. Company/User later separates that parking between owners and employees.</p></div><button type="button" className="modal-close" onClick={() => setOpen(false)}>×</button></div>
+      <div className="modal-head permission-modal-head"><div><div className="section-kicker">COMPANY SETUP</div><h2>Create company</h2><p>Admin assigns company parking. Company/User later divides that parking between owners and employees.</p></div><button type="button" className="modal-close" onClick={() => setOpen(false)}>×</button></div>
       <form className="modal-form permission-layout-form" onSubmit={submit}>
         <div className="entity-main-column setup-card">
           <fieldset className="entity-fields compact-entity-fields" disabled={pending}>
             <label>Company name<input required autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Pvt Ltd" /></label>
             <label>User ID<input readOnly value={userId || "Generated automatically"} /></label>
             <PasswordInput label="Password" name="password" required autoComplete="new-password" placeholder="Password" disabled={pending} />
-            <label>Total Persons (Staff + Employees)<input name="totalPersons" type="number" min="1" step="1" defaultValue="1" required /></label>
             <label>Company parking<input name="parkingAllocation" type="number" min="0" step="1" defaultValue="0" required /></label>
             <div className="department-limit-field"><span>Department limit</span><div className="department-stepper"><button type="button" onClick={() => setDepartmentLimit(v => Math.max(1, v - 1))}>−</button><strong>{departmentLimit}</strong><button type="button" onClick={() => setDepartmentLimit(v => Math.min(500, v + 1))}>+</button></div></div>
           </fieldset>
