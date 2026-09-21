@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { canCreateEntity, normalizeEntityName, type EntityKind } from "@/lib/entity-identity";
 import { reserveUserId, UserIdError } from "@/lib/user-id-reservations";
-import { companyCardScope } from "@/lib/company-card-access";
 import { prisma } from "@/lib/prisma";
 import { nextSupervisorUserId } from "@/lib/supervisor-user-id";
 
@@ -21,12 +20,15 @@ export async function POST(request: Request) {
     const previousReservationId = typeof body.previousReservationId === "string" ? body.previousReservationId : undefined;
 
     let allowed = canCreateEntity(user, kind, scopeId);
-    if (!allowed && kind === "employee" && scopeId && ["SUPER_ADMIN", "BUILDING_ADMIN"].includes(user.role)) {
-      const company = await prisma.company.findFirst({
-        where: { AND: [{ id: scopeId }, companyCardScope(user)] },
-        select: { id: true },
-      });
-      allowed = Boolean(company);
+    if (kind === "employee") {
+      allowed = false;
+      if (user.role === "BUILDING_ADMIN" && user.buildingId && scopeId) {
+        const company = await prisma.company.findFirst({
+          where: { id: scopeId, buildingId: user.buildingId },
+          select: { id: true },
+        });
+        allowed = Boolean(company);
+      }
     }
 
     if (!allowed) {
