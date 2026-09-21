@@ -259,6 +259,7 @@ model RfidReader {
   lastGatewaySeenAt DateTime?
   registrationQrData String? @db.Text
   entryExitQrData String? @db.Text
+  pendingSuccessPulse Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
