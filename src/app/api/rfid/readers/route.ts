@@ -53,13 +53,13 @@ export async function GET() {
 
     const configuredReaderWhere = user.role === "SUPER_ADMIN"
       ? (primarySuperAdmin
-          ? { enabled: true, buildingId: { not: null } }
-          : { enabled: true, building: { superAdminId: user.id } })
-      : { enabled: true, buildingId: user.buildingId!, mode: { not: "UNASSIGNED" } };
+          ? { buildingId: { not: null } }
+          : { building: { superAdminId: user.id } })
+      : { enabled: true, buildingId: user.buildingId! };
 
     const availableReaderWhere = user.role === "SUPER_ADMIN"
       ? { enabled: false, buildingId: null, lastSeenAt: { not: null } }
-      : { buildingId: user.buildingId!, mode: "UNASSIGNED" };
+      : { enabled: false, buildingId: user.buildingId! };
 
     const buildingWhere = user.role === "SUPER_ADMIN"
       ? (primarySuperAdmin ? undefined : { superAdminId: user.id })
@@ -118,14 +118,33 @@ export async function POST(request: Request) {
         throw new ParkingError("Invalid reader device number.");
       }
 
-      const existing = await prisma.rfidReader.findUnique({ where: { deviceNumber } });
+      const existing = await prisma.rfidReader.findUnique({
+        where: { deviceNumber },
+        select: {
+          id: true,
+          deviceNumber: true,
+          buildingId: true,
+        },
+      });
       if (!existing) throw new ParkingError("Reader not found.", 404);
 
       if (user.role === "BUILDING_ADMIN") {
         if (!user.buildingId || existing.buildingId !== user.buildingId) {
           throw new ParkingError("You can remove only readers allotted to your own building.", 403);
         }
-      } else if (!isPrimarySuperAdmin(user) && existing.buildingId) {
+
+        await prisma.rfidReader.update({
+          where: { id: existing.id },
+          data: { enabled: false },
+        });
+
+        return NextResponse.json({
+          ok: true,
+          message: "Reader removed from active configuration. It remains allotted to your building and can be added again.",
+        });
+      }
+
+      if (!isPrimarySuperAdmin(user) && existing.buildingId) {
         const building = await prisma.building.findUnique({
           where: { id: existing.buildingId },
           select: { superAdminId: true },
@@ -135,62 +154,17 @@ export async function POST(request: Request) {
         }
       }
 
-      const previousBuildingId = existing.buildingId;
-
-      // Reader state is the source of truth. Change it first so cleanup cannot
-      // prevent a valid removal from succeeding.
       await prisma.rfidReader.update({
         where: { id: existing.id },
-        data: user.role === "BUILDING_ADMIN"
-          ? {
-              enabled: false,
-              mode: "UNASSIGNED",
-            }
-          : {
-              enabled: false,
-              buildingId: null,
-              mode: "UNASSIGNED",
-            },
+        data: {
+          enabled: false,
+          buildingId: null,
+        },
       });
-
-      const cleanupResults = await Promise.allSettled([
-        prisma.rfidEnrollment.updateMany({
-          where: { readerId: existing.id, status: { in: ["WAITING", "CAPTURED"] } },
-          data: { status: "CANCELLED" },
-        }),
-        previousBuildingId
-          ? (async () => {
-              const gates = await prisma.gate.findMany({
-                where: { buildingId: previousBuildingId },
-                select: { id: true, direction: true },
-              });
-
-              for (const gate of gates) {
-                const config = parseGateConfig(gate.direction);
-                const entryReaderId = config.entryReaderId === existing.id ? null : config.entryReaderId;
-                const exitReaderId = config.exitReaderId === existing.id ? null : config.exitReaderId;
-
-                if (entryReaderId !== config.entryReaderId || exitReaderId !== config.exitReaderId) {
-                  await prisma.gate.update({
-                    where: { id: gate.id },
-                    data: { direction: serializeGateConfig(config.direction, entryReaderId, exitReaderId) },
-                  });
-                }
-              }
-            })()
-          : Promise.resolve(),
-      ]);
-
-      const cleanupFailures = cleanupResults.filter((result) => result.status === "rejected");
-      if (cleanupFailures.length) {
-        console.error("RFID_READER_REMOVE_CLEANUP_FAILED", cleanupFailures);
-      }
 
       return NextResponse.json({
         ok: true,
-        message: user.role === "BUILDING_ADMIN"
-          ? "Reader removed from active configuration. It remains allotted to your building and can be added again."
-          : "Reader removed from the building. It is now available for Super Admin allotment.",
+        message: "Reader removed from the building. It is now available for Super Admin allotment.",
       });
     }
 
@@ -225,7 +199,6 @@ export async function POST(request: Request) {
             name,
             buildingId,
             enabled: false,
-            mode: "UNASSIGNED",
           },
         });
       }, RFID_TRANSACTION);
