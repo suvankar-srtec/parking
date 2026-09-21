@@ -155,7 +155,13 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     }
 
     const [vehicle, ownerVehicle] = await Promise.all([
-      tx.vehicle.findUnique({ where: { rfidCardNo: cardNo }, include: { company: true } }),
+      tx.vehicle.findUnique({
+        where: { rfidCardNo: cardNo },
+        include: {
+          company: true,
+          employee: { select: { category: true } },
+        },
+      }),
       tx.buildingOwnerVehicle.findUnique({ where: { rfidCardNo: cardNo } }),
     ]);
 
@@ -240,13 +246,30 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
           return record(READER_NO_SUCCESS_CODE, "Owner Parking allocation is full", "DENIED", undefined, undefined, ownerVehicle.id);
         }
       } else {
-        const companyInside = await tx.vehicle.count({ where: { companyId: vehicle!.companyId, isInside: true } });
+        const isCompanyOwner = vehicle!.employee.category === "OWNER";
+        const categoryInside = await tx.vehicle.count({
+          where: {
+            companyId: vehicle!.companyId,
+            isInside: true,
+            employee: { category: isCompanyOwner ? "OWNER" : { not: "OWNER" } },
+          },
+        });
+        const categoryLimit = isCompanyOwner
+          ? vehicle!.company.ownerParkingAllocation
+          : vehicle!.company.employeeParkingAllocation;
+
         if (
-          companyInside >= vehicle!.company.parkingAllocation ||
+          categoryInside >= categoryLimit ||
           companyInsideTotal >= building.companyParking ||
           totalInside >= building.totalParking
         ) {
-          return record(READER_NO_SUCCESS_CODE, "Parking allocation is full", "DENIED", vehicle!.id, vehicle!.companyId);
+          return record(
+            READER_NO_SUCCESS_CODE,
+            isCompanyOwner ? "Company Owner parking allocation is full" : "Employee parking allocation is full",
+            "DENIED",
+            vehicle!.id,
+            vehicle!.companyId,
+          );
         }
       }
     }
