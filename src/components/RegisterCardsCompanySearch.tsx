@@ -12,7 +12,13 @@ type Company = {
   vehicles: { id: string; rfidCardNo: string | null }[];
 };
 
-export default function RegisterCardsCompanySearch({ companies }: { companies: Company[] }) {
+export default function RegisterCardsCompanySearch({
+  companies,
+  buildingAdmin = false,
+}: {
+  companies: Company[];
+  buildingAdmin?: boolean;
+}) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -25,27 +31,39 @@ export default function RegisterCardsCompanySearch({ companies }: { companies: C
   }, [companies, query]);
 
   return <>
-    <div className="rfid-company-controls">
-      <div className="rfid-auto-search-field">
-        <span aria-hidden="true">⌕</span>
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search company or User ID"
-          aria-label="Search companies"
-        />
+    <div className="portfolio-header rfid-register-header">
+      <div>
+        <div className="section-kicker">COMPANIES</div>
+        <h2>{buildingAdmin ? "Companies in this building" : "Companies"}</h2>
+        <p>{buildingAdmin
+          ? "All companies assigned to your building are shown here."
+          : "Companies available in your current Super Admin scope."}</p>
       </div>
-      <div className="rfid-total-companies" aria-label="Total companies">
-        <span>Total companies</span>
-        <strong>{companies.length}</strong>
+
+      <div className="rfid-company-controls">
+        <div className="rfid-auto-search-field">
+          <span aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search company or User ID"
+            aria-label="Search companies"
+          />
+        </div>
+        <div className="rfid-total-companies" aria-label="Total companies">
+          <span>Total companies</span>
+          <strong>{companies.length}</strong>
+        </div>
       </div>
     </div>
+
+    <div className="portfolio-divider" />
 
     {filtered.length ? <div className="rfid-company-grid">
       {filtered.map((company, index) => {
         const companyRegistered = company.vehicles.filter((vehicle) => Boolean(vehicle.rfidCardNo)).length;
-        return <AppLink className={`rfid-company-card ${index % 2 === 0 ? "rfid-company-card-white" : "rfid-company-card-yellow"}`} key={company.id} href={`/access-control/register-cards/${company.id}`}>
+        return <AppLink className={`rfid-company-card ${index % 2 === 0 ? "rfid-company-card-white" : "rfid-company-card-blue"}`} key={company.id} href={`/access-control/register-cards/${company.id}`}>
           <div className="rfid-company-card-head">
             <div>
               <span>{company.building.name}</span>
