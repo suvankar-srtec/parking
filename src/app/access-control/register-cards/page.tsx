@@ -1,4 +1,4 @@
-import AppLink from "@/components/AppLink";
+import RegisterCardsCompanySearch from "@/components/RegisterCardsCompanySearch";
 import { companyCardScope } from "@/lib/company-card-access";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -58,26 +58,7 @@ export default async function RegisterCardsPage() {
 
         <div className="portfolio-divider" />
 
-        {companies.length ? <div className="rfid-company-grid">
-          {companies.map((company) => {
-            const companyRegistered = company.vehicles.filter((vehicle) => Boolean(vehicle.rfidCardNo)).length;
-            return <AppLink className="rfid-company-card" key={company.id} href={`/access-control/register-cards/${company.id}`}>
-              <div className="rfid-company-card-head">
-                <div>
-                  <span>{company.building.name}</span>
-                  <strong>{company.name}</strong>
-                </div>
-                <span className="rfid-company-user-id">{company.users[0]?.userId || "No user"}</span>
-              </div>
-              <div className="rfid-company-stats">
-                <div><span>Parking allotted</span><strong>{company.parkingAllocation}</strong></div>
-                <div><span>Vehicles</span><strong>{company.vehicles.length}</strong></div>
-                <div><span>RFID registered</span><strong>{companyRegistered}</strong></div>
-              </div>
-            <span className="rfid-company-open">View employees &amp; register cards <span aria-hidden="true">→</span></span>
-            </AppLink>;
-          })}
-        </div> : <div className="rfid-company-empty">No companies have been created for this building yet.</div>}
+        {companies.length ? <RegisterCardsCompanySearch companies={companies} /> : <div className="rfid-company-empty">No companies have been created for this building yet.</div>}
       </section>
     </section>
 
@@ -103,6 +84,11 @@ export default async function RegisterCardsPage() {
       .rfid-company-stats span{display:block;min-height:22px;color:#68766e;font-size:8.5px;font-weight:700;line-height:1.2}
       .rfid-company-stats strong{display:block;margin-top:4px;color:#293d32;font-size:16px}
       .rfid-company-empty{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:12px}
+      .rfid-auto-search{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+      .rfid-auto-search-field{display:flex;align-items:center;gap:8px;width:min(450px,100%);min-height:42px;padding:0 12px;border:1px solid #cfdad4;border-radius:9px;background:#fff}
+      .rfid-auto-search-field>span{color:#7b8780;font-size:18px}
+      .rfid-auto-search-field input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:12px}
+      .rfid-auto-search>span{padding:5px 8px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:9px;font-weight:900;white-space:nowrap}
       @media(max-width:980px){.rfid-company-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:760px){
         .rfid-register-header{align-items:flex-start}
