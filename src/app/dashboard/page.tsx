@@ -15,6 +15,7 @@ import SupervisorHeadcount from "@/components/SupervisorHeadcount";
 import BuildingCredentialsEditor from "@/components/BuildingCredentialsEditor";
 import CompanyCredentialsEditor from "@/components/CompanyCredentialsEditor";
 import OwnerParkingVehicleModal from "@/components/OwnerParkingVehicleModal";
+import OwnerVehicleDetailsList from "@/components/OwnerVehicleDetailsList";
 
 function AssignmentRequired({ title, message }: { title: string; message: string }) {
   return <section className="portfolio-card building-management">
@@ -109,7 +110,11 @@ export default async function DashboardPage() {
         </div>
         <div className="portfolio-divider" />
         <div className="owner-parking-toolbar"><div className="owner-parking-stats"><div className="large-stat"><span>Allotted</span><strong>{building.ownerParking}</strong></div><div className="large-stat"><span>Registered</span><strong>{ownerRegistered}</strong></div><div className="large-stat"><span>Available</span><strong>{ownerAvailable}</strong></div></div><div className="large-stat"><span>Vehicles In</span><strong>{ownerInside}</strong></div></div>
-        {canManageOwner && building.ownerVehicles.length ? <div className="owner-vehicle-list">{building.ownerVehicles.map((vehicle) => <div className="owner-vehicle-row" key={vehicle.id}><div><strong>{vehicle.ownerName}</strong><span> · {vehicle.plateNumber} · {vehicle.vehicleType}{vehicle.rfidCardNo ? ` · RFID ${vehicle.rfidCardNo}` : ""}</span></div><span>{vehicle.isInside ? "Inside" : "Outside"}</span></div>)}</div> : canManageOwner ? <p className="muted">No Owner Parking vehicles registered yet.</p> : null}
+        {canManageOwner && building.ownerVehicles.length
+          ? <OwnerVehicleDetailsList vehicles={building.ownerVehicles} />
+          : canManageOwner
+            ? <p className="muted">No Owner Parking vehicles registered yet.</p>
+            : null}
       </section> : null}
 
       <section className="portfolio-card building-management"><CompanyList
