@@ -257,23 +257,24 @@ export default function Sidebar({
 
     <style>{`
       .sidebar-shell{
-        --sidebar-bg:#2f203f;
-        --sidebar-bg-deep:#281936;
-        --sidebar-accent:#9b61c8;
-        --sidebar-accent-soft:#b987df;
-        --sidebar-text:#f7f2fa;
-        --sidebar-muted:#cfc1d8;
-        --sidebar-line:rgba(255,255,255,.11);
+        --sidebar-bg:#ffffff;
+        --sidebar-blue:#1769c2;
+        --sidebar-blue-dark:#0f4f97;
+        --sidebar-blue-soft:#eaf3ff;
+        --sidebar-blue-softer:#f5f9ff;
+        --sidebar-text:#1769c2;
+        --sidebar-muted:#5f7fa4;
+        --sidebar-line:#d9e6f3;
         height:100vh;
         min-height:100vh;
         position:sticky;
         top:0;
         overflow:hidden;
         padding:14px 12px 11px;
-        background:
-          radial-gradient(circle at 15% -5%,rgba(171,106,215,.25),transparent 28%),
-          linear-gradient(180deg,var(--sidebar-bg) 0%,var(--sidebar-bg-deep) 100%);
-        box-shadow:9px 0 28px rgba(35,20,46,.08);
+        background:#fff;
+        color:var(--sidebar-text);
+        border-right:1px solid #dfe9f4;
+        box-shadow:7px 0 24px rgba(38,83,128,.07);
       }
 
       .sidebar-shell .sidebar-brand{
@@ -289,13 +290,13 @@ export default function Sidebar({
         flex:0 0 39px;
         display:grid;
         place-items:center;
-        border:1px solid rgba(255,255,255,.18);
+        border:1px solid #c9dcf1;
         border-radius:10px;
-        background:linear-gradient(145deg,#ffd45d,#e9b92f);
-        color:#35220d;
+        background:linear-gradient(145deg,#2476cf,#0f5cad);
+        color:#fff;
         font-size:16px;
         font-weight:900;
-        box-shadow:0 8px 18px rgba(0,0,0,.16);
+        box-shadow:0 7px 16px rgba(23,105,194,.18);
       }
 
       .sidebar-brand-copy{
@@ -305,7 +306,7 @@ export default function Sidebar({
       }
 
       .sidebar-brand-copy strong{
-        color:#fff;
+        color:var(--sidebar-blue-dark);
         font-size:12.5px;
         line-height:1.2;
         letter-spacing:.1px;
@@ -318,10 +319,10 @@ export default function Sidebar({
         min-height:18px;
         margin:0!important;
         padding:3px 7px;
-        border:1px solid rgba(255,255,255,.1);
+        border:1px solid #cfe0f2;
         border-radius:999px;
-        background:rgba(255,255,255,.08);
-        color:#e9dff0!important;
+        background:#eef6ff;
+        color:var(--sidebar-blue)!important;
         font-size:8.5px!important;
         font-weight:800;
         letter-spacing:.35px;
@@ -375,23 +376,24 @@ export default function Sidebar({
         border:1px solid transparent;
         border-radius:9px;
         background:transparent;
-        color:var(--sidebar-text);
+        color:var(--sidebar-blue);
         font-size:11.5px;
         font-weight:750;
       }
 
       .sidebar-nav-parent:hover,
       .sidebar-nav-link:hover{
-        background:rgba(255,255,255,.07);
-        color:#fff;
+        background:var(--sidebar-blue-softer);
+        color:var(--sidebar-blue-dark);
+        border-color:#d8e7f6;
       }
 
       .sidebar-nav-parent.is-active,
       .sidebar-nav-link.is-active{
-        border-color:rgba(255,255,255,.12);
-        background:linear-gradient(90deg,rgba(151,86,197,.30),rgba(255,255,255,.07));
-        color:#fff;
-        box-shadow:inset 3px 0 0 var(--sidebar-accent-soft);
+        border-color:#c4daf1;
+        background:linear-gradient(90deg,#e6f1ff 0%,#f6faff 100%);
+        color:var(--sidebar-blue-dark);
+        box-shadow:inset 3px 0 0 var(--sidebar-blue);
       }
 
       .sidebar-nav-icon{
@@ -400,14 +402,14 @@ export default function Sidebar({
         display:grid;
         place-items:center;
         border-radius:7px;
-        color:#cbb1dd;
-        background:rgba(255,255,255,.045);
+        color:var(--sidebar-blue);
+        background:#f2f7fd;
       }
 
       .is-active>.sidebar-nav-icon,
       .sidebar-nav-parent.is-active .sidebar-nav-icon{
         color:#fff;
-        background:rgba(174,111,218,.24);
+        background:var(--sidebar-blue);
       }
 
       .sidebar-nav-label{
@@ -415,23 +417,26 @@ export default function Sidebar({
         overflow:hidden;
         text-overflow:ellipsis;
         white-space:nowrap;
+        color:inherit;
       }
 
       .sidebar-nav-end{
         display:grid;
         place-items:center;
+        color:var(--sidebar-blue);
       }
 
       .sidebar-chevron{
         width:7px;
         height:7px;
         display:block;
-        border-right:1.7px solid currentColor;
-        border-bottom:1.7px solid currentColor;
+        border-right:1.8px solid currentColor;
+        border-bottom:1.8px solid currentColor;
         transform:rotate(45deg) translate(-1px,-1px);
         transform-origin:center;
         transition:transform .2s ease;
-        opacity:.85;
+        opacity:1;
+        color:var(--sidebar-blue);
       }
 
       .sidebar-chevron.is-open{
@@ -454,7 +459,7 @@ export default function Sidebar({
         top:4px;
         bottom:6px;
         width:1px;
-        background:rgba(208,180,226,.20);
+        background:#bfd6ee;
       }
 
       .sidebar-submenu-link{
@@ -465,7 +470,7 @@ export default function Sidebar({
         padding:5px 8px 5px 10px;
         border:1px solid transparent;
         border-radius:8px;
-        color:#d7cadd;
+        color:var(--sidebar-blue);
         background:transparent;
         font-size:10.5px;
         font-weight:650;
@@ -478,60 +483,67 @@ export default function Sidebar({
         top:50%;
         width:8px;
         height:1px;
-        background:rgba(208,180,226,.22);
+        background:#bfd6ee;
       }
 
       .sidebar-submenu-link .sidebar-nav-icon{
         width:25px;
         height:25px;
         border-radius:6px;
-        background:transparent;
-        color:#bda5cd;
+        background:#f3f8fe;
+        color:var(--sidebar-blue);
       }
 
       .sidebar-submenu-link:hover{
-        background:rgba(255,255,255,.065);
-        color:#fff;
+        background:#f2f7fd;
+        color:var(--sidebar-blue-dark);
+        border-color:#dce9f6;
       }
 
       .sidebar-submenu-link.is-active{
-        border-color:rgba(255,255,255,.13);
-        background:#fff;
-        color:#352245;
-        box-shadow:0 5px 14px rgba(22,10,29,.13);
+        border-color:#bcd5ef;
+        background:#e8f2ff;
+        color:var(--sidebar-blue-dark);
+        box-shadow:0 4px 12px rgba(23,105,194,.10);
         font-weight:800;
       }
 
       .sidebar-submenu-link.is-active .sidebar-nav-icon{
-        background:#f1e8f7;
-        color:#7c46ac;
+        background:var(--sidebar-blue);
+        color:#fff;
       }
 
       .sidebar-shell :global(.sidebar-reader-status){
         flex:0 0 auto;
         margin-top:7px!important;
         padding:10px 6px 1px!important;
-        border-top:1px solid rgba(255,255,255,.12)!important;
+        border-top:1px solid #dbe7f3!important;
       }
 
       .sidebar-shell :global(.sidebar-reader-title){
-        color:#d8c9e2!important;
+        color:var(--sidebar-blue)!important;
         font-size:9px!important;
         letter-spacing:.35px;
         text-transform:uppercase;
       }
 
       .sidebar-shell :global(.sidebar-reader-item){
-        color:#eee7f3!important;
+        color:var(--sidebar-blue)!important;
         font-size:9.5px!important;
       }
 
-      .sidebar-shell :global(.sidebar-reader-item strong){color:#fff!important}
+      .sidebar-shell :global(.sidebar-reader-item strong){
+        color:var(--sidebar-blue-dark)!important;
+      }
+
+      .sidebar-shell :global(.sidebar-reader-empty){
+        color:#7897b8!important;
+      }
 
       .sidebar-nav-parent:focus-visible,
       .sidebar-nav-link:focus-visible,
       .sidebar-submenu-link:focus-visible{
-        outline:2px solid #d7b3ef;
+        outline:2px solid #5f9dde;
         outline-offset:2px;
       }
 
@@ -553,6 +565,8 @@ export default function Sidebar({
           position:relative;
           overflow:visible;
           border-radius:0 0 14px 14px;
+          border-right:0;
+          border-bottom:1px solid #dfe9f4;
         }
 
         .sidebar-shell .sidebar-nav{
