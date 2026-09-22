@@ -36,6 +36,16 @@ export default function CompanyList({
   headerAction?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
+  const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(() => new Set());
+
+  function toggleCompany(companyId: string) {
+    setExpandedCompanies((current) => {
+      const next = new Set(current);
+      if (next.has(companyId)) next.delete(companyId);
+      else next.add(companyId);
+      return next;
+    });
+  }
   const filteredCompanies = useMemo(() => {
     const search = query.trim().toLowerCase();
     if (!search) return companies;
@@ -91,6 +101,8 @@ export default function CompanyList({
           ? Math.min(100, Math.max(0, (company.ownerParkingAllocation / company.parkingAllocation) * 100))
           : 0;
 
+        const expanded = expandedCompanies.has(company.id);
+
         return <article className={`${styles.companyCard} ${index % 2 === 1 ? styles.cardBlue : styles.cardWhite}`} key={company.id}>
           <header className={styles.cardHeader}>
             <div className={styles.companyTitleBlock}>
@@ -108,10 +120,20 @@ export default function CompanyList({
                     {company.enabled === false ? "Disabled" : "Enabled"}
                   </span>}
               {showPassword ? <CompanyAdminSettingsModal companyId={company.id} companyName={company.name} parkingAllocation={company.parkingAllocation} /> : null}
+              <button
+                type="button"
+                className={`${styles.expandButton} ${expanded ? styles.expandButtonOpen : ""}`}
+                aria-expanded={expanded}
+                aria-controls={`company-details-${company.id}`}
+                aria-label={expanded ? `Hide ${company.name} details` : `Show ${company.name} details`}
+                onClick={() => toggleCompany(company.id)}
+              >
+                <span aria-hidden="true">⌄</span>
+              </button>
             </div>
           </header>
 
-          <div className={styles.cardBody}>
+          {expanded ? <div id={`company-details-${company.id}`} className={styles.cardBody}>
             <section className={styles.infoSection} aria-label={`${company.name} account information`}>
               <div className={styles.sectionHeading}>
                 <span>ACCOUNT</span>
@@ -158,7 +180,7 @@ export default function CompanyList({
                 <div><dt>Registered vehicles</dt><dd>{registeredVehicles}</dd></div>
               </dl>
             </section>
-          </div>
+          </div> : null}
         </article>;
       })}
     </div> : <div className={styles.noResults}>No companies match “{query}”.</div>}
