@@ -25,24 +25,27 @@ export default function RegisterCardsCompanySearch({ companies }: { companies: C
   }, [companies, query]);
 
   return <>
-    <div className="rfid-auto-search">
+    <div className="rfid-company-controls">
       <div className="rfid-auto-search-field">
         <span aria-hidden="true">⌕</span>
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search company, building or User ID"
+          placeholder="Search company or User ID"
           aria-label="Search companies"
         />
       </div>
-      <span>{filtered.length} of {companies.length}</span>
+      <div className="rfid-total-companies" aria-label="Total companies">
+        <span>Total companies</span>
+        <strong>{companies.length}</strong>
+      </div>
     </div>
 
     {filtered.length ? <div className="rfid-company-grid">
-      {filtered.map((company) => {
+      {filtered.map((company, index) => {
         const companyRegistered = company.vehicles.filter((vehicle) => Boolean(vehicle.rfidCardNo)).length;
-        return <AppLink className="rfid-company-card" key={company.id} href={`/access-control/register-cards/${company.id}`}>
+        return <AppLink className={`rfid-company-card ${index % 2 === 0 ? "rfid-company-card-white" : "rfid-company-card-yellow"}`} key={company.id} href={`/access-control/register-cards/${company.id}`}>
           <div className="rfid-company-card-head">
             <div>
               <span>{company.building.name}</span>
