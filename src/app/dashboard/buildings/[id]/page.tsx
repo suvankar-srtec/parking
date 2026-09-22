@@ -58,9 +58,14 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
         <BuildingParkingEditor buildingId={building.id} initialValues={{ totalParking: building.totalParking, ownerParking: building.ownerParking, companyParking: building.companyParking, maximumGate: building.maximumGate }} />
       </section>
       <section className="portfolio-card building-management">
-        <div className="portfolio-header"><div><div className="section-kicker">COMPANIES</div><h2>Companies</h2></div><BuildingAdminPanel buildingId={building.id} /></div>
-        <div className="portfolio-divider" />
-        <CompanyList companies={building.companies} companyParking={building.companyParking} showUserId showPassword />
+        <CompanyList
+          companies={building.companies}
+          companyParking={building.companyParking}
+          showUserId
+          showPassword
+          integratedHeader
+          headerAction={<BuildingAdminPanel buildingId={building.id} />}
+        />
       </section>
     </section>
   </main>;
