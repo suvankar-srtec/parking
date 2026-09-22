@@ -25,7 +25,10 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
           orderBy: { createdAt: "asc" },
           include: {
             users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true, password: true }, take: 1 },
-            vehicles: { select: { id: true } },
+            vehicles: {
+              where: { employee: { isPlaceholder: false } },
+              select: { id: true },
+            },
             employees: { where: { isPlaceholder: false }, select: { id: true, category: true } },
           },
         },
