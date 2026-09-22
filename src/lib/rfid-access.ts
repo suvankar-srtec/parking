@@ -104,8 +104,12 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
         if (enrollment.buildingId !== reader.buildingId) return record("1004", "Registration belongs to another building.");
       } else {
         if (!enrollment.companyId) return record("1004", "Registration is missing company information.");
-        const company = await tx.company.findUnique({ where: { id: enrollment.companyId }, select: { buildingId: true } });
+        const company = await tx.company.findUnique({
+          where: { id: enrollment.companyId },
+          select: { buildingId: true, enabled: true },
+        });
         if (company?.buildingId !== reader.buildingId) return record("1004", "Registration belongs to another building.");
+        if (!company.enabled) return record(READER_NO_SUCCESS_CODE, "Company is disabled. Card registration is unavailable.");
       }
 
       if (enrollment.status === "CAPTURED") {
@@ -159,13 +163,16 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
         where: { rfidCardNo: cardNo },
         include: {
           company: true,
-          employee: { select: { category: true } },
+          employee: { select: { category: true, isPlaceholder: true } },
         },
       }),
       tx.buildingOwnerVehicle.findUnique({ where: { rfidCardNo: cardNo } }),
     ]);
 
     if (!vehicle && !ownerVehicle) return record(READER_NO_SUCCESS_CODE, "RFID card is not registered");
+    if (vehicle && (!vehicle.company.enabled || vehicle.employee.isPlaceholder)) {
+      return record(READER_NO_SUCCESS_CODE, "This company employee is inactive.", "DENIED", vehicle.id, vehicle.companyId);
+    }
     if (vehicle && vehicle.company.buildingId !== reader.buildingId) return record("1004", "Card belongs to another building.");
     if (ownerVehicle && ownerVehicle.buildingId !== reader.buildingId) return record("1004", "Card belongs to another building.");
 
