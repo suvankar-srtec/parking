@@ -191,6 +191,7 @@ export default function EmployeeCreateModal({
       name: String(data.get("name") ?? "").trim(),
       reservationId,
       category: String(data.get("category") ?? "EMPLOYEE"),
+      parkingLimit: Number(data.get("parkingLimit") ?? 1),
       department,
     };
 
@@ -251,14 +252,14 @@ export default function EmployeeCreateModal({
           <div>
             <div className="section-kicker">{createdEmployee ? "VEHICLE REGISTRATION" : "PEOPLE SETUP"}</div>
             <h2 id={modalId + "-title"}>{createdEmployee ? (registration?.vehicle ? `Register card for ${createdEmployee.name}` : `Add vehicle for ${createdEmployee.name}`) : "Add Employee / Company Owner"}</h2>
-            <p>{registration ? (createdEmployee ? "Scan the card and save to complete registration for this person." : "Review this person and select or add a department, then continue to card registration.") : createdEmployee ? "The person has been created. You can register a vehicle now or finish without a vehicle." : "Create a person and link them to a company department. Each person can have one parking space."}</p>
+            <p>{registration ? (createdEmployee ? "Scan the card and save to complete registration for this person." : "Review this person and select or add a department, then continue to card registration.") : createdEmployee ? "The person has been created. You can register a vehicle now or finish without a vehicle." : "Create a person, assign their parking limit, and link them to a company department."}</p>
           </div>
           <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={close}>×</button>
         </div>
 
         {!createdEmployee ? <form className="employee-create-form" noValidate onSubmit={submitEmployee}>
           <fieldset disabled={pending} className="employee-details-card">
-            <div className="employee-card-title"><span>01</span><div><strong>Person details</strong><small>{existingEmployee ? "Existing User ID is retained" : "User ID is generated automatically"}</small></div></div>
+            <div className="employee-card-title"><span>01</span><div><strong>Person details</strong><small>{existingEmployee ? "Existing User ID and parking allocation are retained" : "User ID is generated automatically"}</small></div></div>
             <div className="employee-fields-grid">
               <label>Full Name<input name="name" autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Alex Smith" /></label>
               <div className="employee-generated-field">
@@ -270,6 +271,7 @@ export default function EmployeeCreateModal({
                 {generationError ? <small className="employee-id-error">{generationError}</small> : null}
               </div>
               <label>Person Type<select name="category" defaultValue={existingEmployee?.category || "EMPLOYEE"} disabled={Boolean(existingEmployee)} required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
+              <label>Parking Limit<input name="parkingLimit" type="number" min={existingEmployee ? "0" : "1"} step="1" defaultValue={existingEmployee?.parkingLimit ?? 1} readOnly={Boolean(existingEmployee)} required /></label>
             </div>
           </fieldset>
 
@@ -300,7 +302,7 @@ export default function EmployeeCreateModal({
           </div>
         </form> : <form className="employee-vehicle-step" noValidate onSubmit={submitVehicle}>
           <div className="employee-created-banner">
-            <div><span>{existingEmployee ? "PERSON DETAILS" : "PERSON CREATED"}</span><strong>{createdEmployee.name}</strong><small>{createdEmployee.userId} · {createdEmployee.department} · 1 parking space per person</small></div>
+            <div><span>{existingEmployee ? "PERSON DETAILS" : "PERSON CREATED"}</span><strong>{createdEmployee.name}</strong><small>{createdEmployee.userId} · {createdEmployee.department} · Parking limit {createdEmployee.parkingLimit}</small></div>
             <span className="employee-success-check">✓</span>
           </div>
           <fieldset disabled={pending} className="employee-vehicle-grid">

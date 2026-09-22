@@ -24,9 +24,8 @@ test("admins and company users add multiple people without a person cap; parking
   async function add(userId: string, companyId: string, name: string, category = "EMPLOYEE") {
     const reservation = await api(userId, "/api/user-ids", { kind: "employee", scopeId: companyId, name });
     expect(reservation.body.ok, JSON.stringify(reservation.body)).toBe(true);
-    const result = await api(userId, `/api/companies/${companyId}/employees`, { name, category, parkingLimit: 6, department: "Default", reservationId: reservation.body.reservationId });
+    const result = await api(userId, `/api/companies/${companyId}/employees`, { name, category, department: "Default", reservationId: reservation.body.reservationId });
     expect(result.status, JSON.stringify(result.body)).toBe(201);
-    expect(result.body.employee.parkingLimit).toBe(1);
     return result.body.employee;
   }
   try {
@@ -74,7 +73,6 @@ test("admins and company users add multiple people without a person cap; parking
     await page.goto(`/access-control/register-cards/${company.id}`);
     await page.getByRole("button", { name: "Add Employee", exact: true }).click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog.locator('input[name="parkingLimit"]')).toHaveCount(0);
     await dialog.getByLabel("Full Name").fill("Admin browser employee");
     await expect(dialog.getByLabel("User ID", { exact: true })).toHaveValue(/^EMP\d+$/);
     await dialog.getByRole("button", { name: "Add & Continue" }).click();
@@ -102,33 +100,5 @@ test("admins and company users add multiple people without a person cap; parking
     await db.entityIdentity.deleteMany({ where: { entityType: "company", entityId: { in: companyRows.map(company => company.id) } } });
     await db.building.deleteMany({ where: { id: { in: buildings } } });
     await db.user.deleteMany({ where: { id: { in: users } } });
-  }
-});
-
-test("each employee and company owner gets only one vehicle allocation, including legacy allowances", async ({ request, baseURL }) => {
-  test.setTimeout(120000);
-  const tag = "ONE-SPACE-" + randomBytes(6).toString("hex");
-  let buildingId = "";
-  try {
-    const building = await db.building.create({ data: { name: tag, totalParking: 10, ownerParking: 0, companyParking: 10 } });
-    buildingId = building.id;
-    const company = await db.company.create({ data: { name: tag, buildingId, parkingAllocation: 10, departments: { create: { name: "Default" } } } });
-    const user = await db.user.create({ data: { userId: tag, username: tag, role: "COMPANY_ADMIN", buildingId, companyId: company.id } });
-    const headers = { Cookie: "parking_session=" + cookie(user.id) };
-    for (const category of ["EMPLOYEE", "OWNER"]) {
-      const employee = await db.employee.create({ data: { name: category, userId: tag + category, companyId: company.id, category, department: "Default", parkingLimit: 6 } });
-      const data = { ownerName: category, department: "Default", vehicleType: "Four wheeler", workerType: "Employee" };
-      // Concurrent submissions must not create two allocations, even when an old record says six.
-      const responses = await Promise.all([1, 2].map(number => request.post(`${baseURL}/api/companies/${company.id}/employees/${employee.id}/vehicles`, { headers, data: { ...data, plateNumber: `${tag}-${category}-${number}` } })));
-      expect(responses.map(response => response.status()).sort()).toEqual([201, 400]);
-      const rejected = responses.find(response => response.status() === 400)!;
-      expect((await rejected.json()).message).toContain("Only one parking space is allowed per person");
-      expect(await db.vehicle.count({ where: { employeeId: employee.id } })).toBe(1);
-      const edit = await request.patch(`${baseURL}/api/companies/${company.id}/employees/${employee.id}`, { headers, data: { name: category, department: "Default", parkingLimit: 6 } });
-      expect(edit.status()).toBe(200);
-      expect((await edit.json()).employee.parkingLimit).toBe(1);
-    }
-  } finally {
-    if (buildingId) await db.building.delete({ where: { id: buildingId } });
   }
 });

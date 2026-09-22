@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     }),
     prisma.company.findMany({
       where: companyId ? { id: companyId, buildingId } : { buildingId }, orderBy: { name: "asc" },
-      select: { id: true, name: true, employees: { where: { category: "EMPLOYEE", isPlaceholder: false }, select: { id: true } }, vehicles: { where: { isInside: true, employee: { category: "EMPLOYEE" } }, select: { id: true } } },
+      select: { id: true, name: true, employees: { where: { category: "EMPLOYEE" }, select: { parkingLimit: true } }, vehicles: { where: { isInside: true, employee: { category: "EMPLOYEE" } }, select: { id: true } } },
     }),
   ]);
 
@@ -142,7 +142,7 @@ export async function GET(request: Request) {
     return bt - at;
   });
 
-  const employeeParkingByCompany = parkingCompanies.map((parkingCompany) => ({ companyId: parkingCompany.id, companyName: parkingCompany.name, spacesAllotted: parkingCompany.employees.length, vehiclesInside: parkingCompany.vehicles.length }));
+  const employeeParkingByCompany = parkingCompanies.map((parkingCompany) => ({ companyId: parkingCompany.id, companyName: parkingCompany.name, spacesAllotted: parkingCompany.employees.reduce((sum, employee) => sum + employee.parkingLimit, 0), vehiclesInside: parkingCompany.vehicles.length }));
   const employeeSpacesAllotted = employeeParkingByCompany.reduce((sum, item) => sum + item.spacesAllotted, 0);
   const employeeVehiclesInside = employeeParkingByCompany.reduce((sum, item) => sum + item.vehiclesInside, 0);
   const normalizedRecentEvents = recentEvents.map(({ ownerVehicle, ...event }) => {

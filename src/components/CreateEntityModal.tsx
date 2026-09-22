@@ -161,6 +161,7 @@ export default function CreateEntityModal({
     } else {
       if (!department) { notify("Select or add a department.", "error"); return; }
       body.category = String(formData.get("category") ?? "EMPLOYEE");
+      body.parkingLimit = Number(formData.get("parkingLimit") ?? 1);
       body.department = department;
     }
 
@@ -225,7 +226,7 @@ export default function CreateEntityModal({
 
   const employeeVehicleStep = createdEmployee ? <form className="modal-form entity-form employee-vehicle-form" noValidate onSubmit={submitVehicle}>
     <div className="employee-created-banner">
-      <div><span>EMPLOYEE CREATED</span><strong>{createdEmployee.name}</strong><small>{createdEmployee.userId} · {createdEmployee.department} · 1 parking space per person</small></div>
+      <div><span>EMPLOYEE CREATED</span><strong>{createdEmployee.name}</strong><small>{createdEmployee.userId} · {createdEmployee.department} · Parking limit {createdEmployee.parkingLimit}</small></div>
       <span className="success-check">✓</span>
     </div>
     <fieldset className="entity-fields" disabled={pending}>
@@ -282,6 +283,7 @@ export default function CreateEntityModal({
             <label>Name<input name="name" autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Alex Smith" /></label>
             <div className="generated-id-field"><label htmlFor="generated-user-id">User ID</label><div className="generated-id-wrap"><input id="generated-user-id" readOnly value={generatedUserId || (generatingUserId ? "Generating..." : "Generated automatically")} aria-invalid={Boolean(generationError)} /><button type="button" className="id-refresh" aria-label="Refresh User ID" title="Refresh User ID" disabled={pending || generatingUserId || !name.trim()} onClick={() => setIdRefresh((value) => value + 1)}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.7 7A7 7 0 0 1 20 12M4 12a7 7 0 0 0 14.3 5" /></svg></button></div></div>
             <label>Type<select name="category" defaultValue="EMPLOYEE" required><option value="EMPLOYEE">Employee</option><option value="OWNER">Company Owner</option></select></label>
+            <label>Parking lot limit<input name="parkingLimit" type="number" min="1" step="1" defaultValue="1" required /></label>
             <DepartmentPicker companyId={companyId!} departments={departmentOptions} value={department} onChange={setDepartment} disabled={pending || addingDepartment} onBusyChange={setDepartmentBusy} onRemoved={(id) => setDepartmentOptions((current) => current.filter((item) => item.id !== id))} />
             <div className="generated-id-field"><label htmlFor="new-department">Add department <span className="department-count">{departmentOptions.length}/{maximumDepartments}</span></label><div className="generated-id-wrap"><input id="new-department" value={newDepartment} onChange={(event) => setNewDepartment(event.target.value)} placeholder="e.g. Marketing" /><button type="button" className="id-refresh" style={{ width: 68, borderRadius: 7, fontWeight: 800, fontSize: 11 }} disabled={addingDepartment || !newDepartment.trim() || departmentOptions.length >= maximumDepartments} onClick={() => void addDepartment()}>{addingDepartment ? "Adding…" : "+ Add"}</button></div></div>
           </fieldset>}

@@ -68,7 +68,6 @@ export async function PATCH(
           name,
           department,
           isPlaceholder: false,
-          parkingLimit: 1,
         },
       });
       if (name !== employee.name || department !== employee.department) {

@@ -34,7 +34,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
     const result = await prisma.$transaction(async (tx) => {
       await lockRfid(tx);
-      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId, ...(adminRegistration ? { company: companyCardScope(user) } : {}) }, select: { id: true, isPlaceholder: true } });
+      const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId, ...(adminRegistration ? { company: companyCardScope(user) } : {}) }, select: { id: true, parkingLimit: true, isPlaceholder: true } });
       if (!employee) throw new ParkingError("Employee or company owner was not found in this company.", 404);
       if (employee.isPlaceholder) throw new ParkingError("Complete this employee roster slot before registering a vehicle.");
       const company = await tx.company.findUnique({
@@ -54,7 +54,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (!companyDepartment) throw new ParkingError("Select a valid department for this company.", 400);
       await lockBuildingParking(tx, company.buildingId);
       const employeeUsed = await tx.vehicle.count({ where: { employeeId } });
-      if (employeeUsed >= 1) throw new ParkingError("This person already has a parking allocation. Only one parking space is allowed per person.", 400);
+      if (employeeUsed >= employee.parkingLimit) throw new ParkingError(`This person has reached the assigned parking limit of ${employee.parkingLimit}.`, 400);
       const enrollment = enrollmentId ? await consumeCardEnrollment(tx, { enrollmentId, ownerId: user.id, companyId, employeeId, buildingId: company.buildingId }) : null;
       const vehicle = await tx.vehicle.create({ data: { ownerName, plateNumber, vehicleType, isStaff, department, rfidCardNo: enrollment?.cardNo || null, companyId, employeeId } });
       if (enrollment) await tx.rfidEvent.create({ data: { readerId: enrollment.readerId, buildingId: company.buildingId, companyId, vehicleId: vehicle.id, deviceNumber: enrollment.reader.deviceNumber, cardNo: enrollment.cardNo!, action: "REGISTER", code: "0000", message: "Card registered to vehicle." } });
