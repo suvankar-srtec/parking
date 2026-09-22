@@ -19,10 +19,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const companyInScope = await prisma.company.findFirst({
       where: { id: companyId, buildingId: owner.buildingId },
-      select: { id: true },
+      select: { id: true, enabled: true },
     });
     if (!companyInScope) {
       return NextResponse.json({ ok: false, message: "This company is outside your assigned building." }, { status: 403 });
+    }
+    if (!companyInScope.enabled) {
+      return NextResponse.json({ ok: false, message: "Enable this company before creating employees." }, { status: 409 });
     }
 
     let body;
@@ -41,15 +44,29 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       await tx.$queryRaw`SELECT id FROM companies WHERE id = ${companyId} FOR UPDATE`;
       const company = await tx.company.findUnique({
         where: { id: companyId },
-        select: { id: true },
+        select: { id: true, enabled: true },
       });
       if (!company) throw new UserIdError("Company not found.", 404);
-      const departmentExists = await tx.companyDepartment.findFirst({ where: { companyId, name: department }, select: { id: true } });
+      if (!company.enabled) throw new UserIdError("Enable this company before creating employees.", 409);
+      const departmentExists = await tx.companyDepartment.findFirst({
+        where: {
+          companyId,
+          name: department,
+          NOT: { name: { startsWith: "__ARCHIVED__" } },
+        },
+        select: { id: true },
+      });
       if (!departmentExists) throw new UserIdError("Select a department created for this company.", 400);
 
       const claimedUserId = await claimUserId(tx, { ownerId: owner.id, reservationId, kind: "employee", scopeId: companyId, name });
       const emptySlot = await tx.employee.findFirst({
-        where: { companyId, isPlaceholder: true, accountId: null, vehicles: { none: {} } },
+        where: {
+          companyId,
+          isPlaceholder: true,
+          slotNumber: { not: null },
+          accountId: null,
+          vehicles: { none: {} },
+        },
         orderBy: [{ slotNumber: "asc" }, { createdAt: "asc" }],
         select: { id: true },
       });
