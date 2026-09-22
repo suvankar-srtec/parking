@@ -16,6 +16,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     );
   }
 
+  const buildingId = user.buildingId;
+
   const body = await request.json().catch(() => null);
   if (typeof body?.enabled !== "boolean") {
     return NextResponse.json({ ok: false, message: "Choose Enable or Disable." }, { status: 400 });
@@ -24,7 +26,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     const result = await prisma.$transaction(async (tx) => {
       const company = await tx.company.findFirst({
-        where: { id, buildingId: user.buildingId },
+        where: { id, buildingId },
         select: {
           id: true,
           name: true,
