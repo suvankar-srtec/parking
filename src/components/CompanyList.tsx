@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import styles from "./CompanyList.module.css";
 import CompanyPasswordField from "@/components/CompanyPasswordField";
 import CompanyAdminSettingsModal from "@/components/CompanyAdminSettingsModal";
@@ -28,10 +31,39 @@ export default function CompanyList({
   showPassword?: boolean;
   canManageStatus?: boolean;
 }) {
+  const [query, setQuery] = useState("");
+  const filteredCompanies = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    if (!search) return companies;
+    return companies.filter((company) => {
+      const account = company.users[0];
+      return [
+        company.name,
+        account?.userId || "",
+        account?.username || "",
+      ].some((value) => value.toLowerCase().includes(search));
+    });
+  }, [companies, query]);
+
   if (companies.length === 0) return <p className="muted">No companies created yet.</p>;
 
-  return <div className="entity-list">
-    {companies.map((company) => {
+  return <>
+    <div className={styles.searchBar}>
+      <div className={styles.searchField}>
+        <span aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search company name or User ID"
+          aria-label="Search companies"
+        />
+      </div>
+      <span className={styles.searchCount}>{filteredCompanies.length} of {companies.length}</span>
+    </div>
+
+    {filteredCompanies.length ? <div className="entity-list">
+    {filteredCompanies.map((company) => {
       const people = company.employees.filter((person) => !person.isPlaceholder);
       const employeeCount = people.filter((person) => person.category !== "OWNER").length;
       const ownerCount = people.filter((person) => person.category === "OWNER").length;
@@ -112,5 +144,6 @@ export default function CompanyList({
         </div>
       </article>;
     })}
-  </div>;
+  </div> : <div className={styles.noResults}>No companies match “{query}”.</div>}
+  </>;
 }
