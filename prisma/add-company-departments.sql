@@ -31,4 +31,5 @@ CROSS JOIN LATERAL (
   FROM "employees" e
   WHERE e."companyId" = c."id" AND e."department" <> 'Unassigned'
 ) d
-ON CONFLICT ("companyId", "name") DO NOTHING;
+-- Also tolerate IDs retained by archived or renamed departments.
+ON CONFLICT DO NOTHING;

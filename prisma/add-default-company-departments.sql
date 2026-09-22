@@ -15,4 +15,7 @@ WHERE NOT EXISTS (
   FROM "company_departments" cd
   WHERE cd."companyId" = c."id"
     AND lower(cd."name") = lower(d.name)
-);
+)
+-- Archived or renamed departments retain their deterministic IDs.
+-- Preserve those records when this backfill runs again.
+ON CONFLICT DO NOTHING;
