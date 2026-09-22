@@ -20,7 +20,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
   const reservationRef = useRef("");
 
   useEffect(() => {
-    if (!open || !name.trim()) {
+    if (!open) {
       setUserId("");
       setReservationId("");
       reservationRef.current = "";
@@ -28,11 +28,14 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
     }
 
     const controller = new AbortController();
+    const identityName = name.trim() || "__draft_company__";
+    const delay = name.trim() ? 250 : 0;
+
     const timer = window.setTimeout(() => {
       void requestJson<{ ok: true; userId: string; reservationId: string }>("/api/user-ids", "POST", {
         kind: "company",
         scopeId: buildingId,
-        name: name.trim(),
+        name: identityName,
         previousReservationId: reservationRef.current,
       }, controller.signal)
         .then((result) => {
@@ -46,7 +49,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
             setReservationId("");
           }
         });
-    }, 250);
+    }, delay);
 
     return () => {
       window.clearTimeout(timer);
@@ -181,10 +184,10 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
                   <div className="company-generated-field">
                     <input
                       readOnly
-                      value={userId || "Generated automatically"}
+                      value={userId || "Generating…"}
                       aria-label="Generated User ID"
                     />
-                    <small>{userId ? "READY" : "AUTO"}</small>
+                    <small>{userId ? "READY" : "..."}</small>
                   </div>
                 </label>
 
