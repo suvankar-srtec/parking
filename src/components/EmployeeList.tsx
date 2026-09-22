@@ -35,9 +35,13 @@ export default async function EmployeeList({
   const managePeople = canManagePeople ?? (companyScoped && user ? hasPermission(user, "company.managePeople") : true);
   const manageVehicles = canManageVehicles ?? (companyScoped && user ? hasPermission(user, "company.manageVehicles") : true);
 
-  if (employees.length === 0) return <p className="muted">No employee roster slots are available yet.</p>;
+  const visibleEmployees = employees.filter((employee) =>
+    !employee.isPlaceholder || employee.slotNumber !== null && employee.slotNumber !== undefined
+  );
 
-  const orderedEmployees = [...employees].sort((a, b) => {
+  if (visibleEmployees.length === 0) return <p className="muted">No employees have been created for this company yet.</p>;
+
+  const orderedEmployees = [...visibleEmployees].sort((a, b) => {
     const aSlot = a.slotNumber ?? Number.MAX_SAFE_INTEGER;
     const bSlot = b.slotNumber ?? Number.MAX_SAFE_INTEGER;
     if (aSlot !== bSlot) return aSlot - bSlot;
