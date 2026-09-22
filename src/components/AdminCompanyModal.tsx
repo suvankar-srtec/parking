@@ -266,11 +266,6 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
             </aside>
 
             <div className="company-create-footer">
-              <div className="company-create-footer-note">
-                <span aria-hidden="true">✓</span>
-                <small>All settings can be updated later from company management.</small>
-              </div>
-
               <div className="company-create-actions">
                 <button
                   type="button"
@@ -319,9 +314,9 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
         z-index:3;
         display:flex;
         align-items:flex-start;
-        justify-content:space-between;
+        justify-content:flex-end;
         gap:24px;
-        padding:22px 24px 19px;
+        padding:15px 20px 13px;
         border-bottom:1px solid #ece7f0;
         background:linear-gradient(180deg,#fff 0%,#fcfaff 100%);
       }
@@ -335,14 +330,14 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
 
       .company-create-icon{
         width:42px;
-        height:42px;
+        height:36px;
         flex:0 0 42px;
         display:grid;
         place-items:center;
         border-radius:12px;
         background:linear-gradient(135deg,#7c46ac,#9d69c4);
         color:#fff;
-        font-size:18px;
+        font-size:16px;
         font-weight:900;
         box-shadow:0 8px 20px rgba(124,70,172,.23);
       }
@@ -403,7 +398,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-create-section-head{
-        margin-bottom:12px;
+        margin-bottom:8px;
       }
 
       .company-create-section-head>div{
@@ -428,7 +423,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       .company-create-section-head strong{
         display:block;
         color:#26352d;
-        font-size:13px;
+        font-size:12px;
       }
 
       .company-create-section-head small{
@@ -474,7 +469,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
         min-width:0;
         padding:0 12px;
         border:1px solid #ccd7d1;
-        border-radius:9px;
+        border-radius:8px;
         background:#fff;
         color:#24332b;
         outline:0;
@@ -551,7 +546,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-password-field :global(.password-toggle){
-        top:21px;
+        top:18px;
       }
 
       .company-department-field{
@@ -579,7 +574,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
         grid-column:2;
         grid-row:1/3;
         display:grid;
-        grid-template-columns:34px 46px 34px;
+        grid-template-columns:30px 40px 30px;
         align-items:center;
         overflow:hidden;
         border:1px solid #d7d0dd;
@@ -589,11 +584,11 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-department-stepper button{
-        height:38px;
+        height:32px;
         border:0;
         background:#f5f1f8;
         color:#72429b;
-        font-size:19px;
+        font-size:17px;
         font-weight:500;
       }
 
@@ -614,7 +609,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       .company-create-info{
         display:flex;
         align-items:flex-start;
-        gap:9px;
+        gap:6px;
         margin-top:12px;
         padding:10px 12px;
         border:1px solid #d9e9e1;
@@ -643,7 +638,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-create-permissions{
-        padding-left:18px;
+        padding-left:14px;
         border-left:1px solid #ece8ef;
       }
 
@@ -671,7 +666,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-permission-card :global(.permission-tree){
-        height:248px;
+        height:210px;
         border-color:#d8d1dc;
         border-radius:9px;
         padding:7px;
@@ -687,7 +682,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-permission-card :global(.permission-scope-note){
-        padding:8px 9px;
+        padding:6px 8px;
         border-radius:7px;
         background:#f0edf3;
         color:#6e6574;
@@ -747,36 +742,39 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-create-submit{
-        min-width:138px;
+        min-width:132px;
         box-shadow:0 7px 16px rgba(124,70,172,.2);
+      }
+
+      @media(max-height:640px) and (min-width:761px){
+        .company-create-modal{max-height:94vh;overflow:auto}
       }
 
       @media(max-width:760px){
         .company-create-backdrop{padding:12px}
-        .company-create-modal{width:min(100%,680px);max-height:94vh;border-radius:14px}
-        .company-create-header{padding:18px}
+        .company-create-modal{width:min(100%,680px);max-height:94vh;overflow:auto;border-radius:14px}
+        .company-create-header{padding:14px 16px}
         .company-create-heading h2{font-size:20px}
         .company-create-heading p{font-size:11px}
-        .company-create-form{grid-template-columns:1fr;padding:17px 18px 0}
+        .company-create-form{grid-template-columns:1fr;padding:12px 16px 0}
         .company-create-permissions{padding-left:0;padding-top:3px;border-left:0;border-top:1px solid #ece8ef}
-        .company-create-fields{grid-template-columns:1fr;padding:13px}
+        .company-create-fields{grid-template-columns:1fr;padding:11px}
         .company-name-field{grid-column:auto}
         .company-department-field{grid-column:auto}
-        .company-create-footer{margin:2px -18px 0;padding:13px 18px;align-items:flex-end}
-        .company-create-footer-note{display:none}
+        .company-create-footer{margin:2px -16px 0;padding:10px 16px;align-items:flex-end}
         .company-create-actions{width:100%;justify-content:flex-end}
       }
 
       @media(max-width:480px){
         .company-create-heading{gap:10px}
         .company-create-icon{width:36px;height:36px;flex-basis:36px;border-radius:10px;font-size:15px}
-        .company-create-header{gap:12px;padding:15px}
-        .company-create-form{padding:14px 15px 0}
-        .company-create-fields{padding:11px}
+        .company-create-header{gap:10px;padding:12px}
+        .company-create-form{padding:10px 12px 0}
+        .company-create-fields{padding:10px}
         .company-department-field{grid-template-columns:1fr}
         .company-department-field>small{grid-column:1}
         .company-department-stepper{grid-column:1;grid-row:auto;justify-self:start;margin-top:3px}
-        .company-create-footer{margin:2px -15px 0;padding:12px 15px}
+        .company-create-footer{margin:2px -12px 0;padding:9px 12px}
         .company-create-actions{display:grid;grid-template-columns:1fr 1fr}
         .company-create-actions .secondary-button,
         .company-create-actions .primary-button{width:100%}
