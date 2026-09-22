@@ -80,88 +80,88 @@ export default function CompanyList({
       <div className="portfolio-divider" />
     </> : searchControl}
 
-    {filteredCompanies.length ? <div className="entity-list">
-    {filteredCompanies.map((company, index) => {
-      const people = company.employees.filter((person) => !person.isPlaceholder);
-      const employeeCount = people.filter((person) => person.category !== "OWNER").length;
-      const ownerCount = people.filter((person) => person.category === "OWNER").length;
-      const userId = company.users[0]?.userId || "-";
-      const password = company.users[0]?.password || "";
-      const registeredVehicles = company.vehicles.length;
+    {filteredCompanies.length ? <div className={styles.companyList}>
+      {filteredCompanies.map((company, index) => {
+        const people = company.employees.filter((person) => !person.isPlaceholder);
+        const employeeCount = people.filter((person) => person.category !== "OWNER").length;
+        const ownerCount = people.filter((person) => person.category === "OWNER").length;
+        const userId = company.users[0]?.userId || "-";
+        const password = company.users[0]?.password || "";
+        const registeredVehicles = company.vehicles.length;
+        const ownerShare = company.parkingAllocation > 0
+          ? Math.min(100, Math.max(0, (company.ownerParkingAllocation / company.parkingAllocation) * 100))
+          : 0;
 
-      return <article className={`entity-row ${styles.row} ${index % 2 === 1 ? styles.rowBlue : styles.rowWhite}`} key={company.id}>
-        <div className={styles.companyIdentity}>
-          <div className="entity-company-details">
-            <strong>{company.name}</strong>
-            <span>Company account and allocation summary</span>
+        return <article className={`${styles.companyCard} ${index % 2 === 1 ? styles.cardBlue : styles.cardWhite}`} key={company.id}>
+          <header className={styles.cardHeader}>
+            <div className={styles.companyTitleBlock}>
+              <div className={styles.companyAvatar} aria-hidden="true">{company.name.slice(0, 1).toUpperCase()}</div>
+              <div>
+                <h3>{company.name}</h3>
+                <span>Company parking account</span>
+              </div>
+            </div>
+
+            <div className={styles.headerActions}>
+              {canManageStatus
+                ? <CompanyStatusControl companyId={company.id} companyName={company.name} enabled={company.enabled !== false} />
+                : <span className={`${styles.statusBadge} ${company.enabled === false ? styles.statusDisabled : styles.statusEnabled}`}>
+                    {company.enabled === false ? "Disabled" : "Enabled"}
+                  </span>}
+              {showPassword ? <CompanyAdminSettingsModal companyId={company.id} companyName={company.name} parkingAllocation={company.parkingAllocation} /> : null}
+            </div>
+          </header>
+
+          <div className={styles.cardBody}>
+            <section className={styles.infoSection} aria-label={`${company.name} account information`}>
+              <div className={styles.sectionHeading}>
+                <span>ACCOUNT</span>
+                <small>Login details</small>
+              </div>
+
+              {showUserId ? <div className={styles.accountIdRow}>
+                <span>User ID</span>
+                <strong>{userId}</strong>
+              </div> : null}
+
+              {showPassword ? <CompanyPasswordField companyId={company.id} password={password} /> : null}
+            </section>
+
+            <section className={styles.infoSection} aria-label={`${company.name} people summary`}>
+              <div className={styles.sectionHeading}>
+                <span>PEOPLE</span>
+                <small>Registered users</small>
+              </div>
+              <dl className={styles.statList}>
+                <div><dt>Total people</dt><dd>{people.length}</dd></div>
+                <div><dt>Employees</dt><dd>{employeeCount}</dd></div>
+                <div><dt>Company owners</dt><dd>{ownerCount}</dd></div>
+              </dl>
+            </section>
+
+            <section className={`${styles.infoSection} ${styles.parkingSection}`} aria-label={`${company.name} parking summary`}>
+              <div className={styles.sectionHeading}>
+                <span>PARKING</span>
+                <small>Allocation split</small>
+              </div>
+
+              <div className={styles.parkingTotal}>
+                <div><span>Total parking</span><strong>{company.parkingAllocation}</strong></div>
+                <div className={styles.parkingBar} aria-hidden="true">
+                  <span className={styles.ownerBar} style={{ width: `${ownerShare}%` }} />
+                  <span className={styles.employeeBar} style={{ width: `${100 - ownerShare}%` }} />
+                </div>
+              </div>
+
+              <dl className={styles.parkingList}>
+                <div><dt>Owner parking</dt><dd>{company.ownerParkingAllocation}</dd></div>
+                <div><dt>Employee parking</dt><dd>{company.employeeParkingAllocation}</dd></div>
+                <div><dt>Registered vehicles</dt><dd>{registeredVehicles}</dd></div>
+              </dl>
+            </section>
           </div>
-          {showUserId ? <div className={styles.companyUserId}>
-            <span>User ID</span>
-            <strong>{userId}</strong>
-          </div> : null}
-          {showPassword ? <CompanyPasswordField companyId={company.id} password={password} /> : null}
-          <div className={styles.companyActions}>
-            {canManageStatus ? <CompanyStatusControl companyId={company.id} companyName={company.name} enabled={company.enabled !== false} /> : null}
-            {showPassword ? <CompanyAdminSettingsModal companyId={company.id} companyName={company.name} parkingAllocation={company.parkingAllocation} /> : null}
-          </div>
-        </div>
-
-        <div className={styles.summaryPanel}>
-          <section className={styles.summaryGroup} aria-label={`${company.name} people summary`}>
-            <div className={styles.groupTitle}>
-              <span>PEOPLE</span>
-              <small>Registered people and current roles</small>
-            </div>
-            <div className={styles.peopleGrid}>
-              <div className={styles.metricCard}>
-                <span>Total People</span>
-                <strong>{people.length}</strong>
-                <small>Registered people</small>
-              </div>
-              <div className={styles.metricCard}>
-                <span>Employees</span>
-                <strong>{employeeCount}</strong>
-                <small>Employee roster</small>
-              </div>
-              <div className={styles.metricCard}>
-                <span>Company Owners</span>
-                <strong>{ownerCount}</strong>
-                <small>Owner roster</small>
-              </div>
-            </div>
-          </section>
-
-          <section className={styles.summaryGroup} aria-label={`${company.name} parking summary`}>
-            <div className={styles.groupTitle}>
-              <span>PARKING</span>
-              <small>Admin allocation and Company/User split</small>
-            </div>
-            <div className={styles.parkingGrid}>
-              <div className={`${styles.metricCard} ${styles.primaryMetric}`}>
-                <span>Total Parking</span>
-                <strong>{company.parkingAllocation}</strong>
-                <small>Assigned by Admin</small>
-              </div>
-              <div className={styles.metricCard}>
-                <span>Owner Parking</span>
-                <strong>{company.ownerParkingAllocation}</strong>
-                <small>For Company Owners</small>
-              </div>
-              <div className={styles.metricCard}>
-                <span>Employee Parking</span>
-                <strong>{company.employeeParkingAllocation}</strong>
-                <small>For Employees</small>
-              </div>
-              <div className={styles.metricCard}>
-                <span>Registered Vehicles</span>
-                <strong>{registeredVehicles}</strong>
-                <small>Vehicles with allocation</small>
-              </div>
-            </div>
-          </section>
-        </div>
-      </article>;
-    })}
-  </div> : <div className={styles.noResults}>No companies match “{query}”.</div>}
+        </article>;
+      })}
+    </div> : <div className={styles.noResults}>No companies match “{query}”.</div>}
   </>;
 }
