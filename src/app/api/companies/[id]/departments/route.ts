@@ -27,7 +27,13 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (!user) return NextResponse.json({ ok: false, message: "You do not have access to this company's departments." }, { status: 403 });
 
   const [departments, company] = await Promise.all([
-    prisma.companyDepartment.findMany({ where: { companyId }, orderBy: { name: "asc" } }),
+    prisma.companyDepartment.findMany({
+      where: {
+        companyId,
+        NOT: { name: { startsWith: "__ARCHIVED__" } },
+      },
+      orderBy: { name: "asc" },
+    }),
     prisma.company.findUnique({ where: { id: companyId }, select: { maximumDepartments: true } }),
   ]);
   return NextResponse.json({ ok: true, departments, maximumDepartments: company?.maximumDepartments ?? 0 });
@@ -47,8 +53,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!name) return NextResponse.json({ ok: false, message: "Enter a department name." }, { status: 400 });
     if (name.length > 80) return NextResponse.json({ ok: false, message: "Department name must be 80 characters or less." }, { status: 400 });
 
-    const company = await prisma.company.findUnique({ where: { id: companyId }, select: { id: true } });
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { id: true, enabled: true },
+    });
     if (!company) throw new Error("COMPANY_NOT_FOUND");
+    if (!company.enabled) {
+      return NextResponse.json({ ok: false, message: "Enable this company before creating departments." }, { status: 409 });
+    }
 
     const department = await prisma.companyDepartment.create({ data: { companyId, name } });
 
