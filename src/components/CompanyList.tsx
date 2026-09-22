@@ -62,7 +62,6 @@ export default function CompanyList({
         aria-label="Search companies"
       />
     </div>
-    <span className={styles.searchCount}>{filteredCompanies.length} of {companies.length}</span>
   </div>;
 
   return <>
