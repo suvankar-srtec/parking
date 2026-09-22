@@ -293,30 +293,26 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
     <style>{`
       .company-create-backdrop{
         z-index:12000;
-        padding:24px;
+        padding:18px;
         background:rgba(22,25,31,.52);
         backdrop-filter:blur(4px);
       }
 
       .company-create-modal{
-        width:min(900px,calc(100vw - 36px));
-        max-height:92vh;
-        overflow:auto;
+        width:min(900px,calc(100vw - 32px));
+        overflow:hidden;
         border:1px solid #ded8e6;
-        border-radius:18px;
+        border-radius:16px;
         background:#fff;
         box-shadow:0 30px 90px rgba(29,20,38,.28);
       }
 
       .company-create-header{
-        position:sticky;
-        top:0;
-        z-index:3;
         display:flex;
         align-items:flex-start;
-        justify-content:flex-end;
-        gap:24px;
-        padding:15px 20px 13px;
+        justify-content:space-between;
+        gap:18px;
+        padding:13px 18px 11px;
         border-bottom:1px solid #ece7f0;
         background:linear-gradient(180deg,#fff 0%,#fcfaff 100%);
       }
@@ -324,34 +320,34 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       .company-create-heading{
         display:flex;
         align-items:flex-start;
-        gap:14px;
+        gap:10px;
         min-width:0;
       }
 
       .company-create-icon{
-        width:42px;
-        height:36px;
-        flex:0 0 42px;
+        width:34px;
+        height:34px;
+        flex:0 0 34px;
         display:grid;
         place-items:center;
-        border-radius:12px;
+        border-radius:9px;
         background:linear-gradient(135deg,#7c46ac,#9d69c4);
         color:#fff;
-        font-size:16px;
+        font-size:15px;
         font-weight:900;
-        box-shadow:0 8px 20px rgba(124,70,172,.23);
+        box-shadow:0 6px 16px rgba(124,70,172,.2);
       }
 
       .company-create-heading .section-kicker{
-        margin-top:1px;
-        font-size:10px;
-        letter-spacing:.75px;
+        margin-top:0;
+        font-size:9px;
+        letter-spacing:.7px;
       }
 
       .company-create-heading h2{
-        margin:3px 0 5px;
+        margin:2px 0 2px;
         color:#1c2721;
-        font-size:23px;
+        font-size:19px;
         line-height:1.15;
       }
 
@@ -359,14 +355,14 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
         max-width:610px;
         margin:0;
         color:#6d7771;
-        font-size:12px;
-        line-height:1.5;
+        font-size:10px;
+        line-height:1.35;
       }
 
       .company-create-close{
-        width:34px;
-        height:34px;
-        flex:0 0 34px;
+        width:30px;
+        height:30px;
+        flex:0 0 30px;
         display:grid;
         place-items:center;
         padding:0;
@@ -374,7 +370,7 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
         border-radius:50%;
         background:#fff8f7;
         color:#df5a50;
-        font-size:20px;
+        font-size:18px;
         line-height:1;
         transition:background .15s,border-color .15s,transform .15s;
       }
@@ -388,8 +384,8 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       .company-create-form{
         display:grid;
         grid-template-columns:minmax(0,1.05fr) minmax(310px,.95fr);
-        gap:18px;
-        padding:20px 24px 0;
+        gap:14px;
+        padding:11px 18px 0;
       }
 
       .company-create-details,
@@ -398,24 +394,24 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-create-section-head{
-        margin-bottom:8px;
+        margin-bottom:7px;
       }
 
       .company-create-section-head>div{
         display:flex;
         align-items:center;
-        gap:10px;
+        gap:8px;
       }
 
       .company-create-section-icon{
-        width:28px;
-        height:28px;
+        width:24px;
+        height:24px;
         display:grid;
         place-items:center;
-        border-radius:8px;
+        border-radius:7px;
         background:#f2eaf8;
         color:#73409e;
-        font-size:9px;
+        font-size:8px;
         font-weight:900;
         letter-spacing:.3px;
       }
@@ -423,57 +419,51 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       .company-create-section-head strong{
         display:block;
         color:#26352d;
-        font-size:12px;
+        font-size:11px;
       }
 
       .company-create-section-head small{
         display:block;
-        margin-top:2px;
+        margin-top:1px;
         color:#7b857f;
-        font-size:9px;
+        font-size:8px;
       }
 
       .company-create-fields{
         display:grid;
         grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:13px;
+        gap:8px 10px;
         margin:0;
-        padding:16px;
+        padding:11px;
         border:1px solid #e3e7e4;
-        border-radius:13px;
+        border-radius:11px;
         background:#fbfcfb;
       }
 
       .company-create-field{
         display:grid;
         align-content:start;
-        gap:7px;
+        gap:4px;
         min-width:0;
         color:#34473d;
-        font-size:11px;
+        font-size:10px;
         font-weight:800;
       }
 
-      .company-create-field>span{
-        display:block;
-      }
-
-      .company-create-field em{
-        color:#d45757;
-        font-style:normal;
-      }
+      .company-create-field>span{display:block}
+      .company-create-field em{color:#d45757;font-style:normal}
 
       .company-create-field input{
         width:100%;
-        height:42px;
+        height:34px;
         min-width:0;
-        padding:0 12px;
+        padding:0 10px;
         border:1px solid #ccd7d1;
-        border-radius:8px;
+        border-radius:7px;
         background:#fff;
         color:#24332b;
         outline:0;
-        font-size:12px;
+        font-size:10.5px;
         font-weight:600;
         transition:border-color .15s,box-shadow .15s,background .15s;
       }
@@ -488,17 +478,11 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
         font-weight:500;
       }
 
-      .company-name-field{
-        grid-column:1/-1;
-      }
-
-      .company-generated-field,
-      .company-number-field{
-        position:relative;
-      }
+      .company-name-field{grid-column:1/-1}
+      .company-generated-field,.company-number-field{position:relative}
 
       .company-generated-field input{
-        padding-right:58px;
+        padding-right:53px;
         background:#f5f2f8;
         border-color:#ddd5e4;
         color:#665a70;
@@ -507,157 +491,145 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       .company-generated-field small{
         position:absolute;
         top:50%;
-        right:8px;
+        right:7px;
         transform:translateY(-50%);
-        padding:4px 6px;
-        border-radius:5px;
+        padding:3px 5px;
+        border-radius:4px;
         background:#ebe1f3;
         color:#75449d;
-        font-size:8px;
+        font-size:7px;
         font-weight:900;
-        letter-spacing:.35px;
+        letter-spacing:.3px;
       }
 
-      .company-number-field input{
-        padding-right:54px;
-      }
+      .company-number-field input{padding-right:48px}
 
       .company-number-field small{
         position:absolute;
         top:50%;
-        right:11px;
+        right:9px;
         transform:translateY(-50%);
         color:#8a958e;
-        font-size:9px;
+        font-size:8px;
         font-weight:700;
       }
 
       .company-password-field :global(.password-field){
-        gap:7px;
+        gap:4px;
         color:#34473d;
-        font-size:11px;
+        font-size:10px;
       }
 
       .company-password-field :global(.password-input-wrap input){
-        height:42px;
-        border-radius:9px;
-        font-size:12px;
+        height:34px;
+        border-radius:7px;
+        font-size:10.5px;
         font-weight:600;
       }
 
       .company-password-field :global(.password-toggle){
-        top:18px;
+        width:30px;
+        height:30px;
+        right:2px;
       }
 
       .company-department-field{
         grid-column:1/-1;
         grid-template-columns:minmax(0,1fr) auto;
         align-items:center;
-        column-gap:12px;
-        padding-top:3px;
+        column-gap:10px;
+        padding-top:1px;
       }
 
-      .company-department-field>span{
-        grid-column:1;
-      }
+      .company-department-field>span{grid-column:1}
 
       .company-department-field>small{
         grid-column:1;
-        margin-top:-4px;
+        margin-top:-2px;
         color:#87918b;
-        font-size:8.5px;
+        font-size:7.5px;
         font-weight:500;
-        line-height:1.4;
+        line-height:1.3;
       }
 
       .company-department-stepper{
         grid-column:2;
         grid-row:1/3;
         display:grid;
-        grid-template-columns:30px 40px 30px;
+        grid-template-columns:28px 38px 28px;
         align-items:center;
         overflow:hidden;
         border:1px solid #d7d0dd;
-        border-radius:9px;
+        border-radius:8px;
         background:#fff;
-        box-shadow:0 2px 6px rgba(42,29,51,.04);
       }
 
       .company-department-stepper button{
-        height:32px;
+        height:30px;
         border:0;
         background:#f5f1f8;
         color:#72429b;
-        font-size:17px;
+        font-size:16px;
         font-weight:500;
       }
 
-      .company-department-stepper button:hover:not(:disabled){
-        background:#eadef3;
-      }
+      .company-department-stepper button:hover:not(:disabled){background:#eadef3}
 
       .company-department-stepper strong{
         display:grid;
         place-items:center;
-        height:38px;
+        height:30px;
         border-left:1px solid #e1dbe5;
         border-right:1px solid #e1dbe5;
         color:#26352d;
-        font-size:14px;
+        font-size:12px;
       }
 
       .company-create-info{
         display:flex;
         align-items:flex-start;
-        gap:6px;
-        margin-top:12px;
-        padding:10px 12px;
+        gap:7px;
+        margin-top:7px;
+        padding:6px 8px;
         border:1px solid #d9e9e1;
-        border-radius:10px;
+        border-radius:8px;
         background:#f5faf7;
       }
 
       .company-create-info>span{
-        width:18px;
-        height:18px;
-        flex:0 0 18px;
+        width:15px;
+        height:15px;
+        flex:0 0 15px;
         display:grid;
         place-items:center;
         border-radius:50%;
         background:#dcefe5;
         color:#297257;
-        font-size:10px;
+        font-size:8px;
         font-weight:900;
       }
 
       .company-create-info p{
         margin:0;
         color:#5f7167;
-        font-size:9px;
-        line-height:1.45;
+        font-size:7.5px;
+        line-height:1.35;
       }
 
       .company-create-permissions{
-        padding-left:14px;
+        padding-left:12px;
         border-left:1px solid #ece8ef;
       }
 
       .company-permission-card{
-        min-height:100%;
-        padding:14px;
+        padding:9px;
         border:1px solid #dfd8e5;
-        border-radius:13px;
+        border-radius:11px;
         background:linear-gradient(180deg,#fdfcff 0%,#faf8fc 100%);
       }
 
-      .company-permission-card :global(.permission-panel){
-        gap:9px;
-      }
-
-      .company-permission-card :global(.permission-title-row){
-        padding-bottom:3px;
-        font-size:11px;
-      }
+      .company-permission-card :global(.permission-panel){gap:5px}
+      .company-permission-card :global(.permission-title-row){padding-bottom:1px;font-size:10px}
 
       .company-permission-card :global(.permission-title-row>span){
         border-color:#d9cbe3;
@@ -666,115 +638,87 @@ export default function AdminCompanyModal({ buildingId }: { buildingId: string }
       }
 
       .company-permission-card :global(.permission-tree){
-        height:210px;
+        height:176px;
         border-color:#d8d1dc;
-        border-radius:9px;
-        padding:7px;
+        border-radius:7px;
+        padding:5px;
         background:#fff;
       }
 
-      .company-permission-card :global(.permission-tree-item){
-        border-radius:5px;
-      }
-
-      .company-permission-card :global(.permission-actions){
-        padding-top:3px;
-      }
+      .company-permission-card :global(.permission-tree-item){border-radius:4px}
+      .company-permission-card :global(.permission-actions){padding-top:1px}
 
       .company-permission-card :global(.permission-scope-note){
-        padding:6px 8px;
-        border-radius:7px;
+        margin-top:1px;
+        padding:5px 6px;
+        border-radius:6px;
         background:#f0edf3;
         color:#6e6574;
+        font-size:7.5px;
+        line-height:1.3;
       }
 
       .company-create-footer{
-        position:sticky;
-        bottom:0;
-        z-index:3;
         grid-column:1/-1;
         display:flex;
         align-items:center;
-        justify-content:space-between;
-        gap:16px;
-        margin:2px -24px 0;
-        padding:14px 24px 16px;
+        justify-content:flex-end;
+        gap:10px;
+        margin:1px -18px 0;
+        padding:9px 18px 10px;
         border-top:1px solid #e9e5eb;
-        background:rgba(255,255,255,.97);
-        backdrop-filter:blur(8px);
-      }
-
-      .company-create-footer-note{
-        display:flex;
-        align-items:center;
-        gap:7px;
-        color:#79847e;
-      }
-
-      .company-create-footer-note>span{
-        width:20px;
-        height:20px;
-        display:grid;
-        place-items:center;
-        border-radius:50%;
-        background:#e8f6ee;
-        color:#25845e;
-        font-size:10px;
-        font-weight:900;
-      }
-
-      .company-create-footer-note small{
-        font-size:9px;
+        background:#fff;
       }
 
       .company-create-actions{
         display:flex;
         align-items:center;
-        gap:9px;
+        gap:8px;
         flex-shrink:0;
       }
 
       .company-create-actions .secondary-button,
       .company-create-actions .primary-button{
-        min-height:40px;
-        padding:9px 16px;
-        border-radius:8px;
+        min-height:34px;
+        padding:7px 13px;
+        border-radius:7px;
+        font-size:11px;
       }
 
       .company-create-submit{
-        min-width:132px;
-        box-shadow:0 7px 16px rgba(124,70,172,.2);
-      }
-
-      @media(max-height:640px) and (min-width:761px){
-        .company-create-modal{max-height:94vh;overflow:auto}
+        min-width:124px;
+        box-shadow:0 6px 14px rgba(124,70,172,.18);
       }
 
       @media(max-width:760px){
-        .company-create-backdrop{padding:12px}
-        .company-create-modal{width:min(100%,680px);max-height:94vh;overflow:auto;border-radius:14px}
-        .company-create-header{padding:14px 16px}
-        .company-create-heading h2{font-size:20px}
-        .company-create-heading p{font-size:11px}
-        .company-create-form{grid-template-columns:1fr;padding:12px 16px 0}
-        .company-create-permissions{padding-left:0;padding-top:3px;border-left:0;border-top:1px solid #ece8ef}
-        .company-create-fields{grid-template-columns:1fr;padding:11px}
+        .company-create-backdrop{padding:10px;overflow:auto}
+        .company-create-modal{
+          width:min(100%,680px);
+          overflow:visible;
+          border-radius:13px;
+        }
+        .company-create-header{padding:12px 14px}
+        .company-create-heading h2{font-size:18px}
+        .company-create-heading p{font-size:9.5px}
+        .company-create-form{grid-template-columns:1fr;padding:10px 14px 0}
+        .company-create-permissions{padding-left:0;padding-top:8px;border-left:0;border-top:1px solid #ece8ef}
+        .company-create-fields{grid-template-columns:1fr;padding:10px}
         .company-name-field{grid-column:auto}
         .company-department-field{grid-column:auto}
-        .company-create-footer{margin:2px -16px 0;padding:10px 16px;align-items:flex-end}
+        .company-create-footer{margin:1px -14px 0;padding:9px 14px}
         .company-create-actions{width:100%;justify-content:flex-end}
       }
 
       @media(max-width:480px){
-        .company-create-heading{gap:10px}
-        .company-create-icon{width:36px;height:36px;flex-basis:36px;border-radius:10px;font-size:15px}
-        .company-create-header{gap:10px;padding:12px}
-        .company-create-form{padding:10px 12px 0}
-        .company-create-fields{padding:10px}
+        .company-create-heading{gap:8px}
+        .company-create-icon{width:32px;height:32px;flex-basis:32px;font-size:14px}
+        .company-create-header{gap:8px;padding:10px}
+        .company-create-form{padding:8px 10px 0}
+        .company-create-fields{padding:9px}
         .company-department-field{grid-template-columns:1fr}
         .company-department-field>small{grid-column:1}
-        .company-department-stepper{grid-column:1;grid-row:auto;justify-self:start;margin-top:3px}
-        .company-create-footer{margin:2px -12px 0;padding:9px 12px}
+        .company-department-stepper{grid-column:1;grid-row:auto;justify-self:start;margin-top:2px}
+        .company-create-footer{margin:1px -10px 0;padding:8px 10px}
         .company-create-actions{display:grid;grid-template-columns:1fr 1fr}
         .company-create-actions .secondary-button,
         .company-create-actions .primary-button{width:100%}
