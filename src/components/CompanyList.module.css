@@ -1,264 +1,67 @@
 .integratedHeader{display:flex;align-items:center;justify-content:space-between;gap:14px}.integratedHeader h2{margin:2px 0 0}.headerTools{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}.searchBar{display:flex;align-items:center;gap:7px;margin:0}.searchField{display:flex;align-items:center;gap:6px;width:210px;min-height:34px;padding:0 9px;border:1px solid #cfdad4;border-radius:8px;background:#fff}.searchField>span{color:#7b8780;font-size:14px}.searchField input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:10px}.searchField input::placeholder{color:#8b9690}.searchCount{padding:4px 7px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:8px;font-weight:900;white-space:nowrap}.noResults{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:12px}
-.rowWhite { background: #ffffff !important; }
-.rowBlue { background: #edf6ff !important; border-color: #c8dff4 !important; }
 
-.row {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: stretch !important;
-  gap: 14px !important;
-  width: 100%;
-  padding: 15px !important;
+.companyList{display:grid;gap:14px}
+.companyCard{overflow:hidden;border:1px solid #d9e3de;border-radius:12px;box-shadow:0 1px 0 rgba(27,47,37,.02)}
+.cardWhite{background:#fff}
+.cardBlue{background:#f3f8ff;border-color:#cfe0f1}
+
+.cardHeader{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border-bottom:1px solid rgba(207,218,212,.9)}
+.companyTitleBlock{display:flex;align-items:center;gap:11px;min-width:0}
+.companyAvatar{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#7d46ab;color:#fff;font-size:16px;font-weight:900}
+.companyTitleBlock h3{margin:0;color:#182920;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
+.companyTitleBlock span{display:block;margin-top:3px;color:#748078;font-size:9px}
+.headerActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.statusBadge{display:inline-flex;align-items:center;min-height:24px;padding:4px 9px;border-radius:999px;font-size:9px;font-weight:900}
+.statusEnabled{background:#e7f7ee;color:#16714f}
+.statusDisabled{background:#fdebea;color:#ad3935}
+
+.cardBody{display:grid;grid-template-columns:minmax(230px,.85fr) minmax(210px,.75fr) minmax(320px,1.4fr);gap:0}
+.infoSection{min-width:0;padding:14px 16px}
+.infoSection+.infoSection{border-left:1px solid rgba(215,225,220,.9)}
+.sectionHeading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px}
+.sectionHeading>span{color:#7442a0;font-size:9px;font-weight:900;letter-spacing:.65px}
+.sectionHeading>small{color:#87918b;font-size:8px}
+
+.accountIdRow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding:9px 10px;border:1px solid #dce6f2;border-radius:8px;background:#f8fbff}
+.accountIdRow>span{color:#697f97;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}
+.accountIdRow>strong{color:#1768be;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums}
+
+.infoSection :global(.company-password-box){width:100%!important;min-width:0!important;max-width:none!important;flex:none!important}
+
+.statList,.parkingList{display:grid;margin:0}
+.statList>div,.parkingList>div{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;border-bottom:1px solid rgba(220,228,224,.9)}
+.statList>div:last-child,.parkingList>div:last-child{border-bottom:0}
+.statList dt,.parkingList dt{color:#617067;font-size:10px;font-weight:700}
+.statList dd,.parkingList dd{margin:0;color:#713fa0;font-size:17px;font-weight:900;font-variant-numeric:tabular-nums}
+
+.parkingSection{background:rgba(255,255,255,.35)}
+.parkingTotal{margin-bottom:7px;padding:9px 10px;border:1px solid #ded4e8;border-radius:9px;background:rgba(250,247,252,.9)}
+.parkingTotal>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.parkingTotal span{color:#5f6e65;font-size:10px;font-weight:800}
+.parkingTotal strong{color:#713fa0;font-size:21px;font-weight:900}
+.parkingBar{display:flex;height:6px;margin-top:8px;overflow:hidden;border-radius:999px;background:#e7ece9}
+.ownerBar{display:block;background:#9a6ec0;min-width:0}
+.employeeBar{display:block;background:#76a9d8;min-width:0}
+
+.headerActions :global(.company-status-control){gap:6px}
+.headerActions :global(.company-status-control .secondary-button),.headerActions>:global(.secondary-button){min-width:auto!important;white-space:nowrap}
+
+@media(max-width:1100px){
+  .cardBody{grid-template-columns:1fr 1fr}
+  .parkingSection{grid-column:1/-1;border-left:0!important;border-top:1px solid rgba(215,225,220,.9)}
 }
-
-.companyIdentity {
-  display: grid;
-  grid-template-columns: minmax(190px, 1.2fr) 150px minmax(230px, 280px) auto;
-  grid-template-areas: "details userid password action";
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  padding-bottom: 13px;
-  border-bottom: 1px solid #e2e8e4;
+@media(max-width:760px){
+  .integratedHeader{align-items:flex-start;flex-direction:column}
+  .headerTools{width:100%;justify-content:flex-end}
+  .searchField{width:min(210px,100%)}
+  .cardHeader{align-items:flex-start;flex-direction:column}
+  .headerActions{width:100%;justify-content:flex-start}
+  .cardBody{grid-template-columns:1fr}
+  .infoSection+.infoSection{border-left:0;border-top:1px solid rgba(215,225,220,.9)}
+  .parkingSection{grid-column:auto}
 }
-
-.companyIdentity > :global(.entity-company-details) {
-  grid-area: details;
-  min-width: 0;
-}
-
-.companyIdentity > :global(.entity-company-details) strong {
-  display: block;
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.25;
-  color: #1e2f26;
-  overflow-wrap: anywhere;
-}
-
-.companyIdentity > :global(.entity-company-details) span {
-  display: block;
-  margin-top: 4px;
-  font-size: 9px;
-  line-height: 1.35;
-  color: #78857e;
-}
-
-.companyUserId {
-  grid-area: userid;
-  min-width: 0;
-  display: grid;
-  align-content: center;
-  gap: 4px;
-  min-height: 58px;
-  padding: 9px 11px;
-  border: 1px solid #d8e5f3;
-  border-radius: 9px;
-  background: #f7fbff;
-}
-
-.companyUserId > span {
-  margin: 0;
-  font-size: 8px;
-  line-height: 1.2;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: #68829f;
-}
-
-.companyUserId > strong {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.2;
-  font-weight: 900;
-  color: #1769c2;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-.companyIdentity > :global(.company-password-box) {
-  grid-area: password;
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  flex: none !important;
-}
-
-.companyActions {
-  grid-area: action;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.companyActions > :global(.secondary-button) {
-  min-width: 126px;
-  white-space: nowrap;
-}
-
-.summaryPanel {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
-  gap: 12px;
-  min-width: 0;
-}
-
-.summaryGroup {
-  min-width: 0;
-  padding: 11px;
-  border: 1px solid #dfe7e3;
-  border-radius: 10px;
-  background: #fbfcfb;
-}
-
-.groupTitle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 9px;
-}
-
-.groupTitle > span {
-  font-size: 8.5px;
-  font-weight: 900;
-  letter-spacing: .75px;
-  color: #7645a0;
-}
-
-.groupTitle > small {
-  font-size: 8px;
-  color: #7a8780;
-  text-align: right;
-}
-
-.peopleGrid,
-.parkingGrid {
-  display: grid;
-  gap: 8px;
-}
-
-.peopleGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.parkingGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.metricCard {
-  min-width: 0;
-  min-height: 82px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px;
-  border: 1px solid #e2e8e5;
-  border-radius: 8px;
-  background: #fff;
-}
-
-.primaryMetric {
-  border-color: #dfd0ea;
-  background: #faf7fc;
-}
-
-.metricCard > span {
-  font-size: 8.5px;
-  line-height: 1.25;
-  font-weight: 800;
-  color: #637169;
-}
-
-.metricCard > strong {
-  font-size: 18px;
-  line-height: 1.05;
-  color: #713da1;
-  font-variant-numeric: tabular-nums;
-}
-
-.metricCard > small {
-  font-size: 7.5px;
-  line-height: 1.3;
-  color: #7b8780;
-}
-
-@media (max-width: 1120px) {
-  .companyIdentity {
-    grid-template-columns: minmax(180px, 1fr) 145px minmax(210px, 250px);
-    grid-template-areas:
-      "details userid password"
-      "action action action";
-  }
-
-  .companyActions {
-    justify-content: flex-end;
-  }
-
-  .summaryPanel {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 760px) {
-  .companyIdentity {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas:
-      "details details"
-      "userid password"
-      "action action";
-  }
-
-  .peopleGrid,
-  .parkingGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .companyActions {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .companyActions > * {
-    flex: 1 1 auto;
-  }
-}
-
-@media (max-width: 520px) {
-  .row {
-    padding: 12px !important;
-  }
-
-  .companyIdentity {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "details"
-      "userid"
-      "password"
-      "action";
-  }
-
-  .peopleGrid,
-  .parkingGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .groupTitle {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .groupTitle > small {
-    text-align: left;
-  }
-}
-
-@media (max-width: 760px) {
-  .integratedHeader { align-items: flex-start; flex-direction: column; }
-  .headerTools { width: 100%; justify-content: flex-end; }
-  .searchField { width: min(210px, 100%); }
+@media(max-width:520px){
+  .infoSection{padding:12px}
+  .companyAvatar{width:34px;height:34px;flex-basis:34px}
+  .headerActions>*{max-width:100%}
 }
