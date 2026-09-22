@@ -68,14 +68,54 @@ export default function SidebarReaderStatus({
       </div>;
     })}
     <style>{`
-      .sidebar-reader-status{margin-top:auto;padding:10px 7px 2px;border-top:1px solid rgba(255,255,255,.14);display:grid;gap:7px}
-      .sidebar-reader-title{color:#fff!important;text-decoration:none;font-size:10px;font-weight:800;line-height:1.2}
-      .sidebar-reader-item{display:flex;align-items:center;gap:8px;color:#fff;font-size:10px;font-weight:500;line-height:1.2;min-height:16px}
-      .sidebar-reader-item strong{font-weight:800;color:#fff}
-      .sidebar-reader-item i{width:8px;height:8px;border-radius:50%;flex:0 0 8px;box-shadow:0 0 0 2px rgba(255,255,255,.05)}
+      .sidebar-reader-status{
+        margin-top:auto;
+        padding:10px 5px 2px;
+        border-top:1px solid #d9e6f3;
+        display:grid;
+        gap:6px;
+      }
+      .sidebar-reader-title{
+        color:#1769c2!important;
+        text-decoration:none;
+        font-size:9.5px;
+        font-weight:900;
+        line-height:1.2;
+        letter-spacing:.35px;
+        text-transform:uppercase;
+      }
+      .sidebar-reader-item{
+        display:flex;
+        align-items:center;
+        gap:7px;
+        min-height:24px;
+        padding:4px 6px;
+        border:1px solid #e3edf7;
+        border-radius:7px;
+        background:#f8fbff;
+        color:#1769c2!important;
+        font-size:9.5px;
+        font-weight:650;
+        line-height:1.2;
+      }
+      .sidebar-reader-item span{color:#1769c2!important}
+      .sidebar-reader-item strong{
+        font-weight:900;
+        color:#0f4f97!important;
+      }
+      .sidebar-reader-item i{
+        width:8px;
+        height:8px;
+        border-radius:50%;
+        flex:0 0 8px;
+        box-shadow:0 0 0 2px rgba(23,105,194,.08);
+      }
       .sidebar-reader-item i.online{background:#20bf6b}
       .sidebar-reader-item i.offline{background:#e5484d}
-      .sidebar-reader-empty{color:rgba(255,255,255,.62);font-size:9px}
+      .sidebar-reader-empty{
+        color:#7897b8!important;
+        font-size:9px;
+      }
     `}</style>
   </div>;
 }
