@@ -37,9 +37,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const employee = await tx.employee.findFirst({ where: { id: employeeId, companyId, ...(adminRegistration ? { company: companyCardScope(user) } : {}) }, select: { id: true, isPlaceholder: true } });
       if (!employee) throw new ParkingError("Employee or company owner was not found in this company.", 404);
       if (employee.isPlaceholder) throw new ParkingError("Complete this employee roster slot before registering a vehicle.");
-      const company = await tx.company.findUnique({ where: { id: companyId }, select: { buildingId: true } });
+      const company = await tx.company.findUnique({
+        where: { id: companyId },
+        select: { buildingId: true, enabled: true },
+      });
       if (!company) throw new ParkingError("Company was not found.", 404);
-      const companyDepartment = await tx.companyDepartment.findFirst({ where: { companyId, name: department }, select: { id: true } });
+      if (!company.enabled) throw new ParkingError("Enable this company before registering vehicles.", 409);
+      const companyDepartment = await tx.companyDepartment.findFirst({
+        where: {
+          companyId,
+          name: department,
+          NOT: { name: { startsWith: "__ARCHIVED__" } },
+        },
+        select: { id: true },
+      });
       if (!companyDepartment) throw new ParkingError("Select a valid department for this company.", 400);
       await lockBuildingParking(tx, company.buildingId);
       const employeeUsed = await tx.vehicle.count({ where: { employeeId } });
