@@ -1,3 +1,4 @@
+.searchBar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}.searchField{display:flex;align-items:center;gap:8px;width:min(430px,100%);min-height:42px;padding:0 12px;border:1px solid #cfdad4;border-radius:9px;background:#fff}.searchField>span{color:#7b8780;font-size:18px}.searchField input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:12px}.searchField input::placeholder{color:#8b9690}.searchCount{padding:5px 8px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:9px;font-weight:900;white-space:nowrap}.noResults{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:12px}
 .row {
   display: flex !important;
   flex-direction: column !important;
