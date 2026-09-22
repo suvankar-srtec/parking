@@ -11,6 +11,10 @@
 .companyTitleBlock h3{margin:0;color:#182920;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
 .companyTitleBlock span{display:block;margin-top:3px;color:#748078;font-size:9px}
 .headerActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.expandButton{display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid #ccd8d1;border-radius:8px;background:#fff;color:#5d6a63;font-size:20px;line-height:1;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.expandButton:hover{background:#f3eef8;border-color:#baa0cf;color:#73429d}
+.expandButton>span{display:block;transform:rotate(0deg);transition:transform .18s ease}
+.expandButtonOpen>span{transform:rotate(180deg)}
 .statusBadge{display:inline-flex;align-items:center;min-height:24px;padding:4px 9px;border-radius:999px;font-size:9px;font-weight:900}
 .statusEnabled{background:#e7f7ee;color:#16714f}
 .statusDisabled{background:#fdebea;color:#ad3935}
