@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import AppLink from "@/components/AppLink";
 import Sidebar from "@/components/Sidebar";
 import SignOutButton from "@/components/SignOutButton";
-import RegisterEmployeeCard from "@/components/RegisterEmployeeCard";
+import RegisterCardsEmployeeSearch from "@/components/RegisterCardsEmployeeSearch";
 import EmployeeCreateModal from "@/components/EmployeeCreateModal";
 import { getCurrentUser } from "@/lib/session";
 import { effectivePermissions, hasPermission } from "@/lib/permissions";
@@ -56,27 +56,32 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
         </div>
         <div className="portfolio-divider" />
         {!company.building.enabled && <p className={styles.notice}>This building is disabled. Enable it before registering cards.</p>}
-        {company.employees.length ? <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <caption className="sr-only">Employees and RFID cards for {company.name}</caption>
-            <thead><tr><th scope="col">Employee</th><th scope="col">Vehicle</th><th scope="col">RFID card number</th><th scope="col">Registration</th></tr></thead>
-            <tbody>{company.employees.flatMap(employee => {
-              const vehicles = employee.vehicles.length ? employee.vehicles : [null];
-              return vehicles.map((vehicle, index) => <tr key={vehicle?.id || employee.id}>
-                {index === 0 && <th scope="row" rowSpan={vehicles.length} className={styles.person}>
-                  <strong>{employee.name}</strong><span>{employee.userId} · {employee.category === "OWNER" ? "Company owner" : "Employee"}</span><span>{employee.department}</span>
-                </th>}
-                <td>{vehicle?.plateNumber || <span className={styles.muted}>No vehicle added</span>}</td>
-                <td>{vehicle?.rfidCardNo ? <code className={styles.cardNumber}>{vehicle.rfidCardNo}</code> : <span className={styles.missing}>Not registered</span>}</td>
-                <td>{vehicle?.rfidCardNo ? <span className={styles.registered}>Registered</span> : <RegisterEmployeeCard
-                  companyId={company.id} buildingId={company.buildingId} employee={employee}
-                  vehicle={vehicle || undefined} departments={company.departments} maximumDepartments={company.maximumDepartments} disabled={!company.building.enabled}
-                />}</td>
-              </tr>);
-            })}</tbody>
-          </table>
-        </div> : <div className={styles.empty}>No employees have been added to this company yet. Use Add Employee above to get started.</div>}
+        {company.employees.length ? <RegisterCardsEmployeeSearch
+          companyId={company.id}
+          buildingId={company.buildingId}
+          employees={company.employees}
+          departments={company.departments}
+          maximumDepartments={company.maximumDepartments}
+          disabled={!company.building.enabled}
+        /> : <div className={styles.empty}>No employees have been added to this company yet.</div>}
       </section>
     </section>
+    <style>{`
+      .rfid-employee-search{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+      .rfid-employee-search-field{display:flex;align-items:center;gap:8px;width:min(520px,100%);min-height:42px;padding:0 12px;border:1px solid #cfdad4;border-radius:9px;background:#fff}
+      .rfid-employee-search-field>span{color:#7b8780;font-size:18px}
+      .rfid-employee-search-field input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:12px}
+      .rfid-employee-search>span{padding:5px 8px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:9px;font-weight:900;white-space:nowrap}
+      .rfid-employee-table-wrap{overflow:auto}
+      .rfid-employee-table{width:100%;border-collapse:collapse}
+      .rfid-employee-table th,.rfid-employee-table td{padding:14px;border-bottom:1px solid #e2e8e5;text-align:left;font-size:12px}
+      .rfid-employee-table thead th{background:#f1f5f3;color:#536159;font-size:9px;text-transform:uppercase;letter-spacing:.04em}
+      .rfid-employee-person strong{display:block;font-size:15px;color:#1d2f25}
+      .rfid-employee-person span{display:block;margin-top:3px;color:#718078;font-size:10px;font-weight:400}
+      .rfid-muted,.rfid-missing{color:#7b8780}
+      .rfid-card-number{padding:5px 8px;border-radius:999px;background:#eaf7ef;color:#16824f;font-size:10px}
+      .rfid-registered{display:inline-flex;padding:5px 8px;border-radius:999px;background:#eaf7ef;color:#16824f;font-size:10px;font-weight:800}
+      .rfid-employee-empty{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:12px}
+    `}</style>
   </main>;
 }
