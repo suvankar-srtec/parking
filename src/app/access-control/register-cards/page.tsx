@@ -29,6 +29,7 @@ export default async function RegisterCardsPage() {
         take: 1,
       },
       vehicles: {
+        where: { employee: { isPlaceholder: false } },
         select: { id: true, rfidCardNo: true },
       },
     },
