@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
 
+const ARCHIVED_DEPARTMENT_PREFIX = "__ARCHIVED__";
+
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const user = await getCurrentUser();
@@ -35,7 +37,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           parkingAllocation: true,
           ownerParkingAllocation: true,
           employeeParkingAllocation: true,
-          _count: { select: { vehicles: true } },
         },
       });
 
@@ -60,6 +61,51 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         }
 
         const released = company.parkingAllocation;
+
+        // Archive the current operating roster without deleting historical records.
+        // Archived employees keep their name/User ID/department and vehicle history,
+        // but are excluded from all active employee and RFID views.
+        await tx.employee.updateMany({
+          where: { companyId: company.id, isPlaceholder: false },
+          data: {
+            isPlaceholder: true,
+            slotNumber: null,
+            parkingLimit: 0,
+          },
+        });
+
+        // Release assigned RFID cards so the physical cards can be registered again
+        // to the new employee roster after the company is re-enabled.
+        await tx.vehicle.updateMany({
+          where: { companyId: company.id },
+          data: { rfidCardNo: null },
+        });
+
+        await tx.rfidEnrollment.updateMany({
+          where: {
+            companyId: company.id,
+            status: { in: ["WAITING", "CAPTURED"] },
+          },
+          data: { status: "CANCELLED" },
+        });
+
+        // Keep old department rows for history, but move them out of the active
+        // namespace so the Admin starts with a fresh department list on re-enable.
+        const departments = await tx.companyDepartment.findMany({
+          where: {
+            companyId: company.id,
+            NOT: { name: { startsWith: ARCHIVED_DEPARTMENT_PREFIX } },
+          },
+          select: { id: true, name: true },
+        });
+        const archiveStamp = Date.now().toString(36);
+        for (const department of departments) {
+          const archivedName = `${ARCHIVED_DEPARTMENT_PREFIX}${archiveStamp}_${department.id.slice(-6)}_${department.name.slice(0, 40)}`;
+          await tx.companyDepartment.update({
+            where: { id: department.id },
+            data: { name: archivedName },
+          });
+        }
 
         await tx.building.update({
           where: { id: company.buildingId },
@@ -113,9 +159,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         );
       }
 
-      if (parkingAllocation < company._count.vehicles) {
+      const activeVehicleCount = await tx.vehicle.count({
+        where: {
+          companyId: company.id,
+          employee: { isPlaceholder: false },
+        },
+      });
+      if (parkingAllocation < activeVehicleCount) {
         throw new ParkingError(
-          `This company already has ${company._count.vehicles} registered vehicle${company._count.vehicles === 1 ? "" : "s"}. Allocate at least ${company._count.vehicles} parking space${company._count.vehicles === 1 ? "" : "s"}.`,
+          `This company already has ${activeVehicleCount} active registered vehicle${activeVehicleCount === 1 ? "" : "s"}. Allocate at least ${activeVehicleCount} parking space${activeVehicleCount === 1 ? "" : "s"}.`,
         );
       }
 
@@ -167,7 +219,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       ok: true,
       message: result.enabled
         ? `${result.companyName} enabled with ${result.allocated} parking space${result.allocated === 1 ? "" : "s"}.`
-        : `${result.companyName} disabled. ${result.released} parking space${result.released === 1 ? "" : "s"} moved to Owner Parking.`,
+        : `${result.companyName} disabled. ${result.released} parking space${result.released === 1 ? "" : "s"} moved to Owner Parking. Existing employees were archived and RFID card assignments were released.`,
     });
   } catch (error) {
     console.error("UPDATE_COMPANY_STATUS_FAILED", error);
