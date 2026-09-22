@@ -87,17 +87,18 @@ export default async function DashboardPage() {
         <BuildingCredentialsEditor buildingId={building.id} userId={user.userId} buildingName={building.name} initialPassword={user.password} />
         <div className="building-parking-summary">
           <div className="building-parking-row building-parking-row-primary">
+            <div className="large-stat"><span>Total parking</span><strong>{building.totalParking}</strong></div>
             <div className="large-stat"><span>Owner parking</span><strong>{building.ownerParking}</strong></div>
+            <div className="large-stat"><span>Company parking</span><strong>{building.companyParking}</strong></div>
             <div className="large-stat"><span>Maximum Gates</span><strong>{building.maximumGate}</strong></div>
           </div>
           <div className="building-parking-row building-parking-row-secondary">
-            <div className="large-stat"><span>Company parking</span><strong>{building.companyParking}</strong></div>
             <div className="large-stat"><span>Allotted</span><strong>{allocated}</strong></div>
             <div className="large-stat"><span>Available</span><strong>{available}</strong></div>
           </div>
         </div>
         <style>{`
-          .building-parking-summary{display:grid;gap:10px;margin-top:10px}.building-parking-row{display:grid;gap:10px}.building-parking-row-primary{grid-template-columns:repeat(2,minmax(0,1fr))}.building-parking-row-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}.building-parking-summary .large-stat{min-width:0}.owner-parking-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px}.owner-parking-stats{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:10px;flex:1}.owner-vehicle-list{display:grid;gap:8px;margin-top:14px}.owner-vehicle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #dbe3df;border-radius:10px;background:#fafcfb}.owner-vehicle-row span{font-size:12px;color:#647168}.owner-vehicle-row strong{font-size:13px}@media(max-width:760px){.building-parking-row-primary,.building-parking-row-secondary{grid-template-columns:1fr}.owner-parking-toolbar{align-items:stretch;flex-direction:column}.owner-parking-stats{grid-template-columns:1fr}}
+          .building-parking-summary{display:grid;gap:10px;margin-top:10px}.building-parking-row{display:grid;gap:10px}.building-parking-row-primary{grid-template-columns:repeat(4,minmax(0,1fr))}.building-parking-row-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}.building-parking-summary .large-stat{min-width:0}.owner-parking-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px}.owner-parking-stats{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:10px;flex:1}.owner-vehicle-list{display:grid;gap:8px;margin-top:14px}.owner-vehicle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #dbe3df;border-radius:10px;background:#fafcfb}.owner-vehicle-row span{font-size:12px;color:#647168}.owner-vehicle-row strong{font-size:13px}@media(max-width:1000px){.building-parking-row-primary{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.building-parking-row-primary,.building-parking-row-secondary{grid-template-columns:1fr}.owner-parking-toolbar{align-items:stretch;flex-direction:column}.owner-parking-stats{grid-template-columns:1fr}}
         `}</style>
       </section>
 
