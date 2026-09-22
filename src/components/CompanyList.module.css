@@ -1,24 +1,24 @@
 .integratedHeader{display:flex;align-items:center;justify-content:space-between;gap:14px}.integratedHeader h2{margin:2px 0 0}.headerTools{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}.searchBar{display:flex;align-items:center;gap:7px;margin:0}.searchField{display:flex;align-items:center;gap:6px;width:210px;min-height:34px;padding:0 9px;border:1px solid #cfdad4;border-radius:8px;background:#fff}.searchField>span{color:#7b8780;font-size:14px}.searchField input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:10px}.searchField input::placeholder{color:#8b9690}.searchCount{padding:4px 7px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:8px;font-weight:900;white-space:nowrap}.noResults{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:12px}
 
-.companyList{display:grid;gap:14px}
+.companyList{display:grid;gap:10px}
 .companyCard{overflow:hidden;border:1px solid #d9e3de;border-radius:12px;box-shadow:0 1px 0 rgba(27,47,37,.02)}
 .cardWhite{background:#fff}
 .cardBlue{background:#f3f8ff;border-color:#cfe0f1}
 
-.cardHeader{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border-bottom:1px solid rgba(207,218,212,.9)}
-.companyTitleBlock{display:flex;align-items:center;gap:11px;min-width:0}
-.companyAvatar{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#7d46ab;color:#fff;font-size:16px;font-weight:900}
-.companyTitleBlock h3{margin:0;color:#182920;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
-.companyTitleBlock span{display:block;margin-top:3px;color:#748078;font-size:9px}
-.headerActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.expandButton{display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;background:transparent;color:#7d46ab;cursor:pointer;transition:transform .18s ease,color .18s ease}
+.cardHeader{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 14px;border-bottom:1px solid rgba(207,218,212,.9)}
+.companyTitleBlock{display:flex;align-items:center;gap:9px;min-width:0}
+.companyAvatar{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:#7d46ab;color:#fff;font-size:14px;font-weight:900}
+.companyTitleBlock h3{margin:0;color:#182920;font-size:15px;line-height:1.15;overflow-wrap:anywhere}
+.companyTitleBlock span{display:block;margin-top:2px;color:#748078;font-size:8px}
+.headerActions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.expandButton{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;background:transparent;color:#7d46ab;cursor:pointer;transition:transform .18s ease,color .18s ease}
 .expandButton:hover{background:transparent;color:#5f2c8c;transform:translateY(2px)}
 .expandButton:focus-visible{outline:2px solid #b990d9;outline-offset:3px;border-radius:50%}
 .expandButton>span{display:block;width:11px;height:11px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;font-size:0;transform:translateY(-2px) rotate(45deg);transition:transform .2s ease,color .18s ease}
 .expandButtonOpen{transform:none}
 .expandButtonOpen:hover{transform:translateY(-2px)}
 .expandButtonOpen>span{transform:translateY(2px) rotate(225deg)}
-.statusBadge{display:inline-flex;align-items:center;min-height:24px;padding:4px 9px;border-radius:999px;font-size:9px;font-weight:900}
+.statusBadge{display:inline-flex;align-items:center;min-height:20px;padding:3px 8px;border-radius:999px;font-size:8px;font-weight:900}
 .statusEnabled{background:#e7f7ee;color:#16714f}
 .statusDisabled{background:#fdebea;color:#ad3935}
 
@@ -51,7 +51,8 @@
 .employeeBar{display:block;background:#76a9d8;min-width:0}
 
 .headerActions :global(.company-status-control){gap:6px}
-.headerActions :global(.company-status-control .secondary-button),.headerActions>:global(.secondary-button){min-width:auto!important;white-space:nowrap}
+.headerActions :global(.company-status-control>span){min-height:20px;padding:3px 7px;font-size:8px}
+.headerActions :global(.company-status-control .secondary-button),.headerActions>:global(.secondary-button){min-width:auto!important;min-height:32px;padding:6px 12px!important;font-size:12px!important;white-space:nowrap}
 
 @media(max-width:1100px){
   .cardBody{grid-template-columns:1fr 1fr}
@@ -69,6 +70,6 @@
 }
 @media(max-width:520px){
   .infoSection{padding:12px}
-  .companyAvatar{width:34px;height:34px;flex-basis:34px}
+  .companyAvatar{width:30px;height:30px;flex-basis:30px}
   .headerActions>*{max-width:100%}
 }
