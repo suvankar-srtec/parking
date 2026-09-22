@@ -20,7 +20,11 @@ export default async function CompanyCardsPage({ params }: { params: Promise<{ c
     select: {
       id: true, name: true, buildingId: true, maximumDepartments: true,
       building: { select: { name: true, enabled: true } },
-      departments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+      departments: {
+        where: { NOT: { name: { startsWith: "__ARCHIVED__" } } },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      },
       employees: {
         where: { isPlaceholder: false }, orderBy: [{ name: "asc" }, { id: "asc" }],
         select: {
