@@ -18,6 +18,7 @@ export default async function CompanyParkingPage() {
     select: {
       id: true,
       name: true,
+      enabled: true,
       parkingAllocation: true,
       ownerParkingAllocation: true,
       employeeParkingAllocation: true,
@@ -25,7 +26,7 @@ export default async function CompanyParkingPage() {
       employees: { where: { isPlaceholder: false }, select: { category: true } },
     },
   });
-  if (!company) redirect("/dashboard");
+  if (!company || !company.enabled) redirect("/dashboard");
 
   const ownerAssigned = company.employees.filter((person) => person.category === "OWNER").length;
   const employeeAssigned = company.employees.filter((person) => person.category !== "OWNER").length;
