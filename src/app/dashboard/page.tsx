@@ -57,7 +57,10 @@ export default async function DashboardPage() {
             orderBy: { createdAt: "asc" },
             include: {
               users: { where: { role: "COMPANY_ADMIN" }, select: { userId: true, username: true, password: true }, take: 1 },
-              vehicles: { select: { id: true } },
+              vehicles: {
+                where: { employee: { isPlaceholder: false } },
+                select: { id: true },
+              },
               employees: { where: { isPlaceholder: false }, select: { id: true, category: true } },
             },
           },
@@ -132,7 +135,26 @@ export default async function DashboardPage() {
   if (user.role === "COMPANY_ADMIN" || user.role === "BUILDING_OWNER") {
     if (!user.companyId) return <main className="dashboard-page"><Sidebar role={user.role} permissions={permissions} /><section className="dashboard-main"><header className="topbar"><div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>Dashboard</h1></div><SignOutButton /></header><AssignmentRequired title="Company not assigned" message="This account must be linked to a company before parking allocation is available." /></section></main>;
 
-    const company = await prisma.company.findUnique({ where: { id: user.companyId }, include: { building: { select: { name: true } }, departments: { orderBy: { name: "asc" } }, employees: { orderBy: { createdAt: "asc" }, include: { vehicles: true } } } });
+    const company = await prisma.company.findUnique({
+      where: { id: user.companyId },
+      include: {
+        building: { select: { name: true } },
+        departments: {
+          where: { NOT: { name: { startsWith: "__ARCHIVED__" } } },
+          orderBy: { name: "asc" },
+        },
+        employees: {
+          where: {
+            OR: [
+              { isPlaceholder: false },
+              { isPlaceholder: true, slotNumber: { not: null } },
+            ],
+          },
+          orderBy: { createdAt: "asc" },
+          include: { vehicles: true },
+        },
+      },
+    });
     if (!company) redirect("/");
 
     if (!company.enabled) {
