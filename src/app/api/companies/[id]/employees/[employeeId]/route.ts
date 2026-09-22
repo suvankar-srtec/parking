@@ -42,7 +42,7 @@ export async function PATCH(
 
     const result = await prisma.$transaction(async (tx) => {
       const employee = await tx.employee.findFirst({
-        where: { id: employeeId, companyId },
+        where: { id: employeeId, companyId, isPlaceholder: false },
         include: {
           company: { include: { building: { select: { superAdminId: true } } } },
           _count: { select: { vehicles: true } },
@@ -51,7 +51,14 @@ export async function PATCH(
       if (!employee) throw new EmployeeUpdateError("Employee or company owner not found.", 404);
       if (!canEditEmployee(user, employee)) throw new EmployeeUpdateError("You do not have permission to edit this person.", 403);
 
-      const departmentExists = await tx.companyDepartment.findFirst({ where: { companyId, name: department }, select: { id: true } });
+      const departmentExists = await tx.companyDepartment.findFirst({
+        where: {
+          companyId,
+          name: department,
+          NOT: { name: { startsWith: "__ARCHIVED__" } },
+        },
+        select: { id: true },
+      });
       if (!departmentExists) throw new EmployeeUpdateError("Select a department created for this company.");
       if (employee._count.vehicles > 1) throw new EmployeeUpdateError("This person has more than one registered vehicle. Remove the extra vehicle allocation before editing this person.");
 
