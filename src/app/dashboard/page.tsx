@@ -134,6 +134,20 @@ export default async function DashboardPage() {
 
     const company = await prisma.company.findUnique({ where: { id: user.companyId }, include: { building: { select: { name: true } }, departments: { orderBy: { name: "asc" } }, employees: { orderBy: { createdAt: "asc" }, include: { vehicles: true } } } });
     if (!company) redirect("/");
+
+    if (!company.enabled) {
+      return <main className="dashboard-page"><Sidebar role={user.role} permissions={permissions} /><section className="dashboard-main">
+        <header className="topbar">
+          <div><div className="section-kicker">{roleLabel(user.role).toUpperCase()}</div><h1>Company disabled</h1></div>
+          <div className="topbar-right"><div className="summary-card"><span>Building</span><strong>{company.building.name}</strong></div><SignOutButton /></div>
+        </header>
+        <AssignmentRequired
+          title="Company disabled"
+          message="This company is currently disabled. Its employees, company owners, vehicles and parking allocation are hidden from the active dashboard, but all existing company and employee data remains stored in the database and will appear again when the Building Admin enables the company."
+        />
+      </section></main>;
+    }
+
     const peopleCount = company.employees.filter((employee) => !employee.isPlaceholder).length;
     const used = company.employees.reduce((total, employee) => total + employee.vehicles.length, 0);
     const available = Math.max(company.parkingAllocation - used, 0);
