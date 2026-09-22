@@ -4,13 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { hasPermission } from "@/lib/permissions";
 import { lockBuildingParking, ParkingError } from "@/lib/building-parking";
+import { isPrimarySuperAdmin } from "@/lib/super-admin-scope";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     const user = await getCurrentUser();
-    if (!user || user.role !== "BUILDING_ADMIN" || !user.buildingId || !hasPermission(user, "building.allocateCompanyParking")) {
-      return NextResponse.json({ ok: false, message: "Only the assigned Building Admin can edit company capacity." }, { status: 403 });
+    const buildingAdminAllowed = user?.role === "BUILDING_ADMIN"
+      && Boolean(user.buildingId)
+      && hasPermission(user, "building.allocateCompanyParking");
+    const superAdminAllowed = user?.role === "SUPER_ADMIN";
+
+    if (!user || (!buildingAdminAllowed && !superAdminAllowed)) {
+      return NextResponse.json({ ok: false, message: "You do not have permission to edit company capacity." }, { status: 403 });
     }
 
     const body = await request.json().catch(() => null);
@@ -26,9 +32,30 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           parkingAllocation: true,
           ownerParkingAllocation: true,
           employeeParkingAllocation: true,
+          building: { select: { superAdminId: true } },
         },
       });
-      if (!company || company.buildingId !== user.buildingId) throw new ParkingError("Company not found in your building.", 404);
+      if (!company) throw new ParkingError("Company not found.", 404);
+
+      if (user.role === "BUILDING_ADMIN" && company.buildingId !== user.buildingId) {
+        throw new ParkingError("Company not found in your building.", 404);
+      }
+      if (
+        user.role === "SUPER_ADMIN"
+        && !isPrimarySuperAdmin(user)
+        && company.building.superAdminId !== user.id
+      ) {
+        throw new ParkingError("This company is outside your Super Admin scope.", 403);
+      }
+
+      if (parkingAllocation < company.parkingAllocation) {
+        const vehiclesInside = await tx.vehicle.count({
+          where: { companyId: company.id, isInside: true },
+        });
+        if (vehiclesInside > 0) {
+          throw new ParkingError("Vehicle already in parking. Wait until exit.");
+        }
+      }
 
       const splitAssigned = company.ownerParkingAllocation + company.employeeParkingAllocation;
       if (parkingAllocation < splitAssigned) throw new ParkingError(`${splitAssigned} parking spaces are already divided between Company Owners and Employees. Company parking cannot be lower than ${splitAssigned}.`);
