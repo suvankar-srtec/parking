@@ -63,27 +63,29 @@ export default function BuildingParkingEditor({
   }
 
   return <form className="parking-editor" aria-label={canEditMaximumGate ? "Building parking and gate settings" : "Building parking allocation"} aria-busy={pending} noValidate onSubmit={save}>
-    <ParkingInputs fields={fields} onChange={setFields} disabled={pending} />
-    {canEditMaximumGate ? <div className="maximum-gate-editor">
-      <label className="parking-input-card">
-        <span>Maximum Gate</span>
-        <div className="parking-input-wrap">
-          <input
-            type="number"
-            aria-label="Maximum Gate"
-            name="maximumGate"
-            min="1"
-            max="2147483647"
-            step="1"
-            required
-            disabled={pending}
-            value={maximumGate}
-            onChange={(event) => setMaximumGate(event.target.value)}
-          />
-          <span aria-hidden="true">gates</span>
-        </div>
-      </label>
-    </div> : null}
+    <div className={canEditMaximumGate ? "building-parking-primary-grid" : undefined}>
+      <ParkingInputs fields={fields} onChange={setFields} disabled={pending} />
+      {canEditMaximumGate ? <div className="maximum-gate-editor">
+        <label className="parking-input-card">
+          <span>Maximum Gate</span>
+          <div className="parking-input-wrap">
+            <input
+              type="number"
+              aria-label="Maximum Gate"
+              name="maximumGate"
+              min="1"
+              max="2147483647"
+              step="1"
+              required
+              disabled={pending}
+              value={maximumGate}
+              onChange={(event) => setMaximumGate(event.target.value)}
+            />
+            <span aria-hidden="true">gates</span>
+          </div>
+        </label>
+      </div> : null}
+    </div>
     <div className="parking-editor-footer">
       <div className="parking-edit-actions">
         <button type="button" className="secondary-button" disabled={pending || !changed} onClick={() => {
