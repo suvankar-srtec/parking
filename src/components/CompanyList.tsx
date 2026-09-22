@@ -103,7 +103,7 @@ export default function CompanyList({
 
             <div className={styles.headerActions}>
               {canManageStatus
-                ? <CompanyStatusControl companyId={company.id} companyName={company.name} enabled={company.enabled !== false} />
+                ? <CompanyStatusControl companyId={company.id} companyName={company.name} enabled={company.enabled !== false} parkingAllocation={company.parkingAllocation} />
                 : <span className={`${styles.statusBadge} ${company.enabled === false ? styles.statusDisabled : styles.statusEnabled}`}>
                     {company.enabled === false ? "Disabled" : "Enabled"}
                   </span>}
