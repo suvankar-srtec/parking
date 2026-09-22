@@ -91,12 +91,13 @@ export default function CompanyList({
 
     {filteredCompanies.length ? <div className={styles.companyList}>
       {filteredCompanies.map((company, index) => {
-        const people = company.employees.filter((person) => !person.isPlaceholder);
+        const companyEnabled = company.enabled !== false;
+        const people = companyEnabled ? company.employees.filter((person) => !person.isPlaceholder) : [];
         const employeeCount = people.filter((person) => person.category !== "OWNER").length;
         const ownerCount = people.filter((person) => person.category === "OWNER").length;
         const userId = company.users[0]?.userId || "-";
         const password = company.users[0]?.password || "";
-        const registeredVehicles = company.vehicles.length;
+        const registeredVehicles = companyEnabled ? company.vehicles.length : 0;
         const ownerShare = company.parkingAllocation > 0
           ? Math.min(100, Math.max(0, (company.ownerParkingAllocation / company.parkingAllocation) * 100))
           : 0;
@@ -133,7 +134,7 @@ export default function CompanyList({
             </div>
           </header>
 
-          {expanded ? <div id={`company-details-${company.id}`} className={styles.cardBody}>
+          {expanded ? companyEnabled ? <div id={`company-details-${company.id}`} className={styles.cardBody}>
             <section className={styles.infoSection} aria-label={`${company.name} account information`}>
               <div className={styles.sectionHeading}>
                 <span>ACCOUNT</span>
@@ -180,6 +181,9 @@ export default function CompanyList({
                 <div><dt>Registered vehicles</dt><dd>{registeredVehicles}</dd></div>
               </dl>
             </section>
+          </div> : <div id={`company-details-${company.id}`} className={styles.disabledDetails}>
+            <strong>Company disabled</strong>
+            <p>Employees, company owners, vehicles and parking details are hidden while this company is disabled. Nothing has been deleted from the database.</p>
           </div> : null}
         </article>;
       })}
