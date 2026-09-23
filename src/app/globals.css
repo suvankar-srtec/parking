@@ -138,3 +138,176 @@ button[aria-busy="true"]{cursor:wait}
 @media(max-width:640px){
   .building-parking-primary-grid{grid-template-columns:minmax(0,1fr)}
 }
+
+
+/* Building management redesign. */
+.building-settings-card{
+  padding:20px;
+}
+.building-management-header{
+  align-items:center;
+  padding:2px 0 2px;
+}
+.building-management-header>div:first-child{
+  min-width:0;
+}
+.building-management-header h2{
+  margin:4px 0 3px!important;
+  font-size:22px!important;
+}
+.building-management-header p{
+  max-width:720px;
+  color:#66736c;
+  line-height:1.45;
+}
+.building-settings-stack{
+  display:grid;
+  gap:14px;
+}
+.building-settings-stack .building-credentials-editor{
+  margin:0;
+  border:1px solid #dce4df;
+  border-radius:12px;
+  background:#fbfcfb;
+  box-shadow:0 2px 8px rgba(35,54,44,.03);
+}
+.building-settings-panel{
+  padding:13px;
+  border:1px solid #dce4df;
+  border-radius:12px;
+  background:#fbfcfb;
+  box-shadow:0 2px 8px rgba(35,54,44,.03);
+}
+.building-settings-panel-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:11px;
+}
+.building-settings-step{
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  flex:0 0 28px;
+  border-radius:8px;
+  background:#efe8f6;
+  color:#7542a0;
+  font-size:9px;
+  font-weight:900;
+}
+.building-settings-panel-head strong{
+  display:block;
+  color:#24332b;
+  font-size:13px;
+}
+.building-settings-panel-head small{
+  display:block;
+  margin-top:2px;
+  color:#7a867f;
+  font-size:9px;
+}
+.building-settings-panel .parking-editor{
+  margin:0;
+}
+.building-settings-panel .parking-editor-footer{
+  margin-top:10px;
+}
+
+@media(max-width:950px){
+  .building-management-header{
+    flex-direction:row;
+    align-items:center;
+    justify-content:space-between;
+  }
+}
+
+@media(max-width:640px){
+  .building-settings-card{
+    padding:12px;
+  }
+  .building-management-header{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:8px;
+  }
+  .building-management-header .section-kicker{
+    font-size:8px;
+  }
+  .building-management-header h2{
+    font-size:18px!important;
+    line-height:1.15;
+  }
+  .building-management-header p{
+    display:none;
+  }
+  .building-management-header .secondary-button,
+  .building-management-header .primary-button,
+  .building-management-header .add-building-button{
+    min-height:32px;
+    padding:6px 8px;
+    font-size:9px;
+    white-space:nowrap;
+  }
+  .building-settings-stack{
+    gap:10px;
+  }
+  .building-settings-stack .building-credentials-editor,
+  .building-settings-panel{
+    padding:10px;
+    border-radius:9px;
+  }
+  .building-settings-panel-head{
+    margin-bottom:8px;
+  }
+  .building-settings-panel-head small{
+    display:none;
+  }
+  .building-settings-panel .building-parking-primary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+  }
+  .building-settings-panel .parking-input-card{
+    padding:8px;
+  }
+  .building-settings-panel .parking-input-card>span{
+    margin-bottom:5px;
+    font-size:9px;
+  }
+  .building-settings-panel .parking-input-wrap{
+    padding:0 7px;
+  }
+  .building-settings-panel .parking-input-wrap input{
+    height:32px;
+    font-size:16px;
+  }
+  .building-settings-panel .parking-input-wrap>span{
+    font-size:8px;
+  }
+  .building-settings-panel .parking-editor-footer{
+    margin-top:8px;
+  }
+  .building-settings-panel .parking-edit-actions{
+    width:100%;
+    justify-content:flex-end;
+  }
+  .building-settings-panel .parking-edit-actions .secondary-button,
+  .building-settings-panel .parking-edit-actions .primary-button{
+    min-height:32px;
+    padding:6px 9px;
+    font-size:9px;
+  }
+}
+
+@media(max-width:380px){
+  .building-management-header{
+    grid-template-columns:1fr;
+  }
+  .building-management-header>div:last-child{
+    justify-self:start;
+  }
+  .building-settings-panel .building-parking-primary-grid{
+    grid-template-columns:1fr;
+  }
+}
