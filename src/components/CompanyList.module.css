@@ -59,9 +59,52 @@
   .parkingSection{grid-column:1/-1;border-left:0!important;border-top:1px solid rgba(215,225,220,.9)}
 }
 @media(max-width:760px){
-  .integratedHeader{align-items:flex-start;flex-direction:column}
-  .headerTools{width:100%;justify-content:flex-end}
-  .searchField{width:min(210px,100%)}
+  .integratedHeader{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:8px;
+  }
+  .integratedHeader :global(.section-kicker){display:none}
+  .integratedHeader h2{
+    margin:0;
+    font-size:20px;
+    line-height:1.1;
+  }
+  .headerTools{
+    width:auto;
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:6px;
+    flex-wrap:nowrap;
+  }
+  .searchBar{min-width:0}
+  .searchField{
+    width:128px;
+    min-height:30px;
+    padding:0 7px;
+    gap:4px;
+    border-radius:7px;
+  }
+  .searchField>span{font-size:12px}
+  .searchField input{
+    min-width:0;
+    font-size:8.5px;
+  }
+  .headerTools :global(.add-building-button){
+    min-height:30px;
+    padding:5px 7px;
+    gap:5px;
+    border-radius:7px;
+    font-size:9.5px;
+    white-space:nowrap;
+  }
+  .headerTools :global(.plus-icon){
+    width:16px;
+    height:16px;
+    font-size:13px;
+  }
   .cardHeader{align-items:flex-start;flex-direction:column}
   .headerActions{width:100%;justify-content:flex-start}
   .cardBody{grid-template-columns:1fr}
