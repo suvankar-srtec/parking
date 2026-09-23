@@ -3,8 +3,9 @@
 import type { UserRole } from "@prisma/client";
 import Link from "@/components/AppLink";
 import { useEffect, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import SidebarReaderStatus from "./SidebarReaderStatus";
+import SignOutButton from "./SignOutButton";
 import { dashboardLabel, roleLabel } from "@/lib/roles";
 import { defaultPermissionsForRole } from "@/lib/permissions";
 
@@ -73,6 +74,8 @@ export default function Sidebar({
   permissions?: string[];
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const assigned = new Set(permissions ?? defaultPermissionsForRole(role));
   const isSuperAdmin = role === "SUPER_ADMIN";
 
@@ -98,7 +101,17 @@ export default function Sidebar({
       dashboard: dashboardGroupActive ? true : current.dashboard,
       access: accessGroupActive ? true : current.access,
     }));
-  }, [dashboardGroupActive, accessGroupActive]);
+    setMobileOpen(false);
+  }, [pathname, dashboardGroupActive, accessGroupActive]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
 
   function toggle(section: keyof typeof expanded) {
     setExpanded((current) => ({ ...current, [section]: !current[section] }));
@@ -125,18 +138,65 @@ export default function Sidebar({
       ? "activity"
       : "dashboard";
 
-  return <aside className={`sidebar sidebar-shell ${roleClass}`}>
+  return <>
+    <header className="mobile-site-nav">
+      <button
+        type="button"
+        className="mobile-menu-button"
+        aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen((open) => !open)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      <strong className="mobile-site-name">SRTEC Access Control</strong>
+
+      <div className="mobile-site-actions">
+        <button type="button" className="mobile-back-button" onClick={() => router.back()}>
+          <span aria-hidden="true">←</span>
+          Back
+        </button>
+        <SignOutButton className="mobile-signout-button" />
+      </div>
+    </header>
+
+    {mobileOpen ? <button
+      type="button"
+      className="mobile-nav-backdrop"
+      aria-label="Close navigation menu"
+      onClick={() => setMobileOpen(false)}
+    /> : null}
+
+    <aside className={`sidebar sidebar-shell ${roleClass}${mobileOpen ? " mobile-open" : ""}`}>
     <div className="sidebar-brand">
       <div className="logo-box" aria-hidden="true">S</div>
       <div className="sidebar-brand-copy">
         <strong>SRTEC Access Control</strong>
         <span className="sidebar-role-pill">{roleLabel(role)}</span>
       </div>
+      <button
+        type="button"
+        className="sidebar-mobile-close"
+        aria-label="Close navigation menu"
+        onClick={() => setMobileOpen(false)}
+      >
+        ×
+      </button>
     </div>
 
     <div className="sidebar-divider" />
 
-    <nav className="sidebar-nav" aria-label="Main navigation">
+    <nav
+      className="sidebar-nav"
+      aria-label="Main navigation"
+      onClick={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest("a")) setMobileOpen(false);
+      }}
+    >
       <div className="sidebar-nav-group">
         <button
           type="button"
@@ -256,6 +316,10 @@ export default function Sidebar({
       : null}
 
     <style>{`
+      .mobile-site-nav,
+      .mobile-nav-backdrop,
+      .sidebar-mobile-close{display:none}
+
       .sidebar-shell{
         --sidebar-bg:#ffffff;
         --sidebar-blue:#1769c2;
@@ -559,24 +623,158 @@ export default function Sidebar({
       }
 
       @media(max-width:950px){
-        .sidebar-shell{
-          height:auto;
-          min-height:auto;
-          position:relative;
-          overflow:visible;
-          border-radius:0 0 14px 14px;
-          border-right:0;
-          border-bottom:1px solid #dfe9f4;
+        .mobile-site-nav{
+          position:sticky;
+          top:0;
+          z-index:10001;
+          display:grid;
+          grid-template-columns:40px minmax(0,1fr) auto;
+          align-items:center;
+          gap:9px;
+          min-height:58px;
+          padding:8px 10px;
+          border-bottom:1px solid #d7e4f1;
+          background:rgba(255,255,255,.97);
+          box-shadow:0 5px 18px rgba(37,76,116,.10);
+          backdrop-filter:blur(10px);
         }
 
+        .mobile-menu-button{
+          width:38px;
+          height:38px;
+          display:grid;
+          align-content:center;
+          justify-items:center;
+          gap:4px;
+          padding:0;
+          border:1px solid #c8dcf1;
+          border-radius:9px;
+          background:#eef6ff;
+          color:#1769c2;
+        }
+
+        .mobile-menu-button span{
+          width:17px;
+          height:2px;
+          border-radius:999px;
+          background:currentColor;
+          transition:transform .18s ease,opacity .18s ease;
+        }
+
+        .mobile-menu-button[aria-expanded="true"] span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+        .mobile-menu-button[aria-expanded="true"] span:nth-child(2){opacity:0}
+        .mobile-menu-button[aria-expanded="true"] span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+        .mobile-site-name{
+          min-width:0;
+          overflow:hidden;
+          color:#0f4f97;
+          font-size:12px;
+          font-weight:900;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+
+        .mobile-site-actions{
+          display:flex;
+          align-items:center;
+          gap:6px;
+        }
+
+        .mobile-back-button,
+        .mobile-signout-button{
+          min-height:34px!important;
+          padding:7px 9px!important;
+          border:1px solid #c7d8e9!important;
+          border-radius:8px!important;
+          background:#fff!important;
+          color:#1769c2!important;
+          font-size:10px!important;
+          font-weight:800!important;
+          white-space:nowrap;
+          box-shadow:none!important;
+        }
+
+        .mobile-back-button{
+          display:inline-flex;
+          align-items:center;
+          gap:4px;
+        }
+
+        .mobile-nav-backdrop{
+          position:fixed;
+          inset:0;
+          z-index:10002;
+          display:block;
+          padding:0;
+          border:0;
+          background:rgba(16,35,54,.36);
+          backdrop-filter:blur(2px);
+        }
+
+        .sidebar-shell{
+          position:fixed;
+          top:0;
+          bottom:0;
+          left:0;
+          z-index:10003;
+          width:min(86vw,300px);
+          height:100dvh;
+          min-height:100dvh;
+          overflow:hidden;
+          padding:14px 12px 11px;
+          border-right:1px solid #dfe9f4;
+          border-bottom:0;
+          border-radius:0 14px 14px 0;
+          box-shadow:18px 0 45px rgba(20,53,84,.20);
+          transform:translateX(-105%);
+          transition:transform .22s ease;
+        }
+
+        .sidebar-shell.mobile-open{transform:translateX(0)}
+
+        .sidebar-shell .sidebar-brand{
+          padding-right:38px;
+        }
+
+        .sidebar-mobile-close{
+          position:absolute;
+          top:14px;
+          right:12px;
+          width:30px;
+          height:30px;
+          place-items:center;
+          padding:0;
+          border:1px solid #d3e1ef;
+          border-radius:50%;
+          background:#f5f9ff;
+          color:#1769c2;
+          font-size:20px;
+          line-height:1;
+        }
+
+        .sidebar-shell.mobile-open .sidebar-mobile-close{display:grid}
+
         .sidebar-shell .sidebar-nav{
-          overflow:visible;
-          padding-bottom:4px;
+          overflow-y:auto;
+          overflow-x:hidden;
+          padding-bottom:8px;
         }
 
         .sidebar-shell :global(.sidebar-reader-status){
           margin-top:10px!important;
         }
+
+        .dashboard-main .topbar{
+          gap:8px;
+          padding-bottom:12px;
+        }
+
+        .dashboard-main .topbar .section-kicker{display:none}
+        .dashboard-main .topbar h1{margin:0;font-size:22px}
+        .dashboard-main .topbar .summary-card{display:none}
+        .dashboard-main .topbar .topbar-right form[action="/api/logout"]{display:none}
+        .dashboard-main .topbar .topbar-right .link-button{display:none}
       }
 
       @media(prefers-reduced-motion:reduce){
@@ -586,5 +784,6 @@ export default function Sidebar({
         .sidebar-chevron{transition:none}
       }
     `}</style>
-  </aside>;
+    </aside>
+  </>;
 }
