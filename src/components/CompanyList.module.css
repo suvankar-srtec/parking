@@ -61,7 +61,7 @@
 @media(max-width:760px){
   .integratedHeader{
     display:grid;
-    grid-template-columns:minmax(0,1fr);
+    grid-template-columns:auto minmax(0,1fr);
     align-items:center;
     gap:8px;
   }
@@ -72,19 +72,20 @@
     line-height:1.1;
   }
   .headerTools{
-    width:100%;
+    width:min(190px,100%);
+    justify-self:end;
     display:grid;
     grid-template-columns:minmax(0,1fr) auto;
     align-items:center;
-    justify-content:stretch;
-    gap:6px;
+    gap:5px;
     min-width:0;
   }
   .searchBar{min-width:0}
   .searchField{
     width:100%;
-    min-height:30px;
-    padding:0 7px;
+    min-width:0;
+    min-height:29px;
+    padding:0 6px;
     gap:4px;
     border-radius:7px;
   }
@@ -95,11 +96,11 @@
   }
   .headerTools :global(.add-building-button){
     min-width:0;
-    min-height:30px;
-    padding:5px 7px;
-    gap:5px;
+    min-height:29px;
+    padding:4px 6px;
+    gap:4px;
     border-radius:7px;
-    font-size:9.5px;
+    font-size:9px;
     white-space:nowrap;
   }
   .headerTools :global(.plus-icon){
@@ -183,19 +184,37 @@
   .parkingSection{grid-column:auto}
 }
 @media(max-width:380px){
-  .integratedHeader h2{font-size:18px}
-  .headerTools{grid-template-columns:minmax(0,1fr) auto;gap:5px}
-  .searchField{min-height:28px;padding:0 6px}
-  .searchField input{font-size:8px}
+  .integratedHeader{
+    grid-template-columns:auto minmax(0,1fr);
+    gap:6px;
+  }
+  .integratedHeader h2{
+    font-size:17px;
+    white-space:nowrap;
+  }
+  .headerTools{
+    width:min(176px,100%);
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:4px;
+  }
+  .searchField{
+    min-height:27px;
+    padding:0 5px;
+  }
+  .searchField>span{font-size:10px}
+  .searchField input{
+    font-size:7.5px;
+  }
   .headerTools :global(.add-building-button){
-    min-height:28px;
-    padding:4px 6px;
-    font-size:8.5px;
+    min-height:27px;
+    padding:3px 5px;
+    gap:3px;
+    font-size:8px;
   }
   .headerTools :global(.plus-icon){
-    width:15px;
-    height:15px;
-    font-size:12px;
+    width:14px;
+    height:14px;
+    font-size:11px;
   }
 }
 
