@@ -8,7 +8,6 @@ import Sidebar from "@/components/Sidebar";
 import CompanyList from "@/components/CompanyList";
 import BuildingParkingEditor from "@/components/BuildingParkingEditor";
 import BuildingAdminPanel from "@/components/BuildingAdminPanel";
-import BuildingStatusControl from "@/components/BuildingStatusControl";
 import SupervisorManager from "@/components/SupervisorManager";
 import BuildingCredentialsEditor from "@/components/BuildingCredentialsEditor";
 
@@ -50,15 +49,32 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
         <div><div className="section-kicker">BUILDING PARKING</div><h1>{building.name}</h1></div>
         <div className="topbar-right"><Link className="logout-button link-button" href="/dashboard">← All buildings</Link><SignOutButton /></div>
       </header>
-      <section className="portfolio-card building-management">
-        <div className="portfolio-header">
-          <div><div className="section-kicker">SUPER ADMIN</div><h2>Building management</h2><p>Manage the Admin scope, company parking, Supervisor account and access for this building.</p></div>
+      <section className="portfolio-card building-management building-settings-card">
+        <div className="portfolio-header building-management-header">
+          <div>
+            <div className="section-kicker">SUPER ADMIN</div>
+            <h2>Building management</h2>
+            <p>Manage the Admin account, parking allocation, gates and Supervisor for this building.</p>
+          </div>
           <SupervisorManager buildingId={building.id} currentUserId={supervisor?.userId} />
         </div>
+
         <div className="portfolio-divider" />
-        {buildingAdmin ? <BuildingCredentialsEditor buildingId={building.id} userId={buildingAdmin.userId} buildingName={building.name} initialPassword={buildingAdmin.password} canEditBuildingName /> : null}
-        <BuildingStatusControl buildingId={building.id} buildingName={building.name} enabled={building.enabled} />
-        <BuildingParkingEditor buildingId={building.id} initialValues={{ totalParking: building.totalParking, ownerParking: building.ownerParking, companyParking: building.companyParking, maximumGate: building.maximumGate }} />
+
+        <div className="building-settings-stack">
+          {buildingAdmin ? <BuildingCredentialsEditor buildingId={building.id} userId={buildingAdmin.userId} buildingName={building.name} initialPassword={buildingAdmin.password} canEditBuildingName /> : null}
+
+          <section className="building-settings-panel">
+            <div className="building-settings-panel-head">
+              <span className="building-settings-step" aria-hidden="true">02</span>
+              <div>
+                <strong>Parking &amp; gate settings</strong>
+                <small>Set the total parking split and maximum number of gates.</small>
+              </div>
+            </div>
+            <BuildingParkingEditor buildingId={building.id} initialValues={{ totalParking: building.totalParking, ownerParking: building.ownerParking, companyParking: building.companyParking, maximumGate: building.maximumGate }} />
+          </section>
+        </div>
       </section>
       <section className="portfolio-card building-management">
         <CompanyList
