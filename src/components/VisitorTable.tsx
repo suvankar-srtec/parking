@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { requestJson } from "@/lib/client-request";
 import { useFeedback, useMutation } from "@/components/FeedbackProvider";
 import { ActionButton } from "@/components/LoadingIndicator";
@@ -16,15 +16,23 @@ export type VisitorTableRow = {
 };
 
 export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[] }) {
+  const [rows, setRows] = useState(visitors);
   const [query, setQuery] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
+  const [emailDraft, setEmailDraft] = useState("");
   const { notify } = useFeedback();
-  const { pending, execute } = useMutation();
+  const { pending: sending, execute: executeSend } = useMutation();
+  const { pending: updatingEmail, execute: executeEmailUpdate } = useMutation();
   const search = query.trim().toLowerCase();
 
+  useEffect(() => {
+    setRows(visitors);
+  }, [visitors]);
+
   const filtered = useMemo(() => {
-    if (!search) return visitors;
-    return visitors.filter((visitor) => [
+    if (!search) return rows;
+    return rows.filter((visitor) => [
       visitor.dateTime,
       visitor.name,
       visitor.phoneNumber,
@@ -32,12 +40,12 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       visitor.vehicleNumber,
       visitor.accessory,
     ].some((value) => value.toLowerCase().includes(search)));
-  }, [visitors, search]);
+  }, [rows, search]);
 
   function sendQr(visitor: VisitorTableRow) {
-    if (pending) return;
+    if (sending) return;
     setSendingId(visitor.id);
-    void execute(async () => {
+    void executeSend(async () => {
       try {
         const result = await requestJson<{ ok: true; message: string }>(
           `/api/visitors/${visitor.id}/send-qr`,
@@ -47,6 +55,40 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       } finally {
         setSendingId(null);
       }
+    });
+  }
+
+  function startEmailEdit(visitor: VisitorTableRow) {
+    if (updatingEmail) return;
+    setEditingEmailId(visitor.id);
+    setEmailDraft(visitor.email);
+  }
+
+  function cancelEmailEdit() {
+    if (updatingEmail) return;
+    setEditingEmailId(null);
+    setEmailDraft("");
+  }
+
+  function saveEmail(visitor: VisitorTableRow) {
+    const nextEmail = emailDraft.trim().toLowerCase();
+    if (!nextEmail) {
+      notify("Enter the visitor email address.", "error");
+      return;
+    }
+
+    void executeEmailUpdate(async () => {
+      const result = await requestJson<{ ok: true; message: string; visitor: { id: string; email: string } }>(
+        `/api/visitors/${visitor.id}`,
+        "PATCH",
+        { email: nextEmail },
+      );
+      setRows((current) => current.map((row) =>
+        row.id === visitor.id ? { ...row, email: result.visitor.email } : row
+      ));
+      setEditingEmailId(null);
+      setEmailDraft("");
+      notify(result.message || "Visitor email updated successfully.");
     });
   }
 
@@ -69,13 +111,13 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
             autoComplete="off"
           />
         </label>
-        <span className="visitor-count">{visitors.length} {visitors.length === 1 ? "visitor" : "visitors"}</span>
+        <span className="visitor-count">{rows.length} {rows.length === 1 ? "visitor" : "visitors"}</span>
       </div>
     </div>
 
     <div className="portfolio-divider" />
 
-    {visitors.length === 0 ? <div className="visitor-empty">No visitors added yet.</div>
+    {rows.length === 0 ? <div className="visitor-empty">No visitors added yet.</div>
       : filtered.length === 0 ? <div className="visitor-empty">No visitors match “{query}”.</div>
       : <div className="visitor-table-wrap">
         <table className="visitor-table">
@@ -95,16 +137,51 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
               <td className="visitor-date">{visitor.dateTime}</td>
               <td><strong>{visitor.name}</strong></td>
               <td>{visitor.phoneNumber}</td>
-              <td>{visitor.email}</td>
+              <td>
+                {editingEmailId === visitor.id ? <div className="visitor-email-editor">
+                  <input
+                    type="email"
+                    value={emailDraft}
+                    onChange={(event) => setEmailDraft(event.target.value)}
+                    disabled={updatingEmail}
+                    aria-label={`Edit email for ${visitor.name}`}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        saveEmail(visitor);
+                      }
+                      if (event.key === "Escape") cancelEmailEdit();
+                    }}
+                    autoFocus
+                  />
+                  <button type="button" className="visitor-email-save" disabled={updatingEmail} onClick={() => saveEmail(visitor)} aria-label={`Save email for ${visitor.name}`}>✓</button>
+                  <button type="button" className="visitor-email-cancel" disabled={updatingEmail} onClick={cancelEmailEdit} aria-label="Cancel email edit">×</button>
+                </div> : <div className="visitor-email-cell">
+                  <span>{visitor.email}</span>
+                  <button
+                    type="button"
+                    className="visitor-email-edit"
+                    aria-label={`Edit email for ${visitor.name}`}
+                    title="Edit email"
+                    disabled={updatingEmail}
+                    onClick={() => startEmailEdit(visitor)}
+                  >
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                    </svg>
+                  </button>
+                </div>}
+              </td>
               <td>{visitor.vehicleNumber}</td>
               <td>{visitor.accessory}</td>
               <td>
                 <ActionButton
                   type="button"
                   className="visitor-send-qr"
-                  pending={pending && sendingId === visitor.id}
+                  pending={sending && sendingId === visitor.id}
                   pendingText="Sending..."
-                  disabled={pending}
+                  disabled={sending || updatingEmail}
                   onClick={() => sendQr(visitor)}
                 >
                   Send QR
@@ -133,6 +210,16 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       .visitor-table tbody tr:last-child td{border-bottom:0}
       .visitor-table tbody tr:hover{background:#faf8fc}
       .visitor-table td strong{color:#111713;font-size:11px;font-weight:900}
+      .visitor-email-cell{display:flex;align-items:center;gap:6px;min-width:0}
+      .visitor-email-cell>span{min-width:0}
+      .visitor-email-edit{width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;padding:0;border:1px solid #d4ddd8;border-radius:5px;background:#fff;color:#6f3da0;cursor:pointer}
+      .visitor-email-edit:hover:not(:disabled){background:#f2ebf7;border-color:#c9b2dc}
+      .visitor-email-editor{display:flex;align-items:center;gap:4px;min-width:220px}
+      .visitor-email-editor input{min-width:0;width:180px;height:29px;padding:5px 7px;border:1px solid #bfcfc6;border-radius:5px;background:#fff;color:#17231d;outline:0;font-size:10px}
+      .visitor-email-editor input:focus{border-color:#7c46ac;box-shadow:0 0 0 2px rgba(124,70,172,.09)}
+      .visitor-email-save,.visitor-email-cancel{width:27px;height:27px;display:grid;place-items:center;padding:0;border-radius:5px;font-size:12px;font-weight:900}
+      .visitor-email-save{border:1px solid #7c46ac;background:#7c46ac;color:#fff}
+      .visitor-email-cancel{border:1px solid #ccd7d1;background:#fff;color:#66736c}
       .visitor-send-qr{min-width:76px;min-height:29px;padding:5px 9px;border:1px solid #70409a;border-radius:6px;background:#7c46ac;color:#fff;font-size:9px;font-weight:900;white-space:nowrap}
       .visitor-send-qr:hover:not(:disabled){background:#693492}
       .visitor-date{white-space:nowrap;color:#5f6d65!important;font-size:10px}
