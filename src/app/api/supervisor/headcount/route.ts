@@ -58,7 +58,7 @@ export async function GET(request: Request) {
 
   const companyFilter = companyId ? { companyId } : {};
   const vehicleCompanyFilter = companyId ? { id: companyId } : { buildingId };
-  const [building, company, totalIn, totalOut, insideVehicles, ownerVehiclesInside, recentEvents, parkingCompanies] = await Promise.all([
+  const [building, company, totalIn, totalOut, insideVehicles, ownerVehiclesInside, insideVisitors, recentEvents, parkingCompanies] = await Promise.all([
     prisma.building.findUnique({ where: { id: buildingId }, select: { name: true } }),
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
     prisma.rfidEvent.count({ where: { buildingId, ...companyFilter, action: "ENTRY", createdAt: { gte: start, lt: end } } }),
@@ -80,6 +80,17 @@ export async function GET(request: Request) {
       where: { buildingId, isInside: true },
       select: { id: true, plateNumber: true, ownerName: true, rfidCardNo: true, lastAccessAt: true },
     }),
+    prisma.visitor.findMany({
+      where: { buildingId, ...(companyId ? { companyId } : {}), isInside: true },
+      select: {
+        id: true,
+        name: true,
+        vehicleNumber: true,
+        accessory: true,
+        lastAccessAt: true,
+        company: { select: { name: true } },
+      },
+    }),
     prisma.rfidEvent.findMany({
       where: { buildingId, ...companyFilter, action: { in: ["ENTRY", "EXIT", "IGNORED", "DENIED"] } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 5000,
@@ -100,6 +111,7 @@ export async function GET(request: Request) {
           },
         },
         ownerVehicle: { select: { plateNumber: true, ownerName: true } },
+        visitor: { select: { name: true, vehicleNumber: true, accessory: true } },
         company: { select: { name: true } },
       },
     }),
@@ -145,34 +157,43 @@ export async function GET(request: Request) {
   const employeeParkingByCompany = parkingCompanies.map((parkingCompany) => ({ companyId: parkingCompany.id, companyName: parkingCompany.name, spacesAllotted: parkingCompany.employees.reduce((sum, employee) => sum + employee.parkingLimit, 0), vehiclesInside: parkingCompany.vehicles.length }));
   const employeeSpacesAllotted = employeeParkingByCompany.reduce((sum, item) => sum + item.spacesAllotted, 0);
   const employeeVehiclesInside = employeeParkingByCompany.reduce((sum, item) => sum + item.vehiclesInside, 0);
-  const normalizedRecentEvents = recentEvents.map(({ ownerVehicle, ...event }) => {
-    const personType = ownerVehicle
-      ? "OWNER"
-      : event.vehicle?.employee.category === "OWNER"
-        ? "OWNER"
-        : event.vehicle
-          ? "EMPLOYEE"
-          : "UNKNOWN";
-
-    const vehicle = event.vehicle
-      ? {
-          plateNumber: event.vehicle.plateNumber,
-          ownerName: event.vehicle.ownerName,
-          department: event.vehicle.department,
-        }
+  const normalizedRecentEvents = recentEvents.map(({ ownerVehicle, visitor, ...event }) => {
+    const personType = visitor
+      ? "VISITOR"
       : ownerVehicle
+        ? "OWNER"
+        : event.vehicle?.employee.category === "OWNER"
+          ? "OWNER"
+          : event.vehicle
+            ? "EMPLOYEE"
+            : "UNKNOWN";
+
+    const vehicle = visitor
+      ? {
+          plateNumber: visitor.vehicleNumber || "-",
+          ownerName: visitor.name,
+          department: visitor.accessory || "-",
+        }
+      : event.vehicle
         ? {
-            plateNumber: ownerVehicle.plateNumber,
-            ownerName: ownerVehicle.ownerName,
-            department: "-",
+            plateNumber: event.vehicle.plateNumber,
+            ownerName: event.vehicle.ownerName,
+            department: event.vehicle.department,
           }
-        : null;
+        : ownerVehicle
+          ? {
+              plateNumber: ownerVehicle.plateNumber,
+              ownerName: ownerVehicle.ownerName,
+              department: "-",
+            }
+          : null;
 
     return {
       ...event,
+      cardNo: visitor ? "VISITOR QR" : event.cardNo,
       vehicle,
       personType,
-      company: event.company || (ownerVehicle ? { name: "Building owner" } : null),
+      company: event.company || (visitor ? { name: "Building visitor" } : ownerVehicle ? { name: "Building owner" } : null),
     };
   });
 
@@ -182,7 +203,7 @@ export async function GET(request: Request) {
     companyName: company?.name || null,
     totalIn: allowTotalIn ? totalIn : null,
     totalOut: allowTotalOut ? totalOut : null,
-    totalOnSite: allowTotalOnSite ? insideVehicles.length + ownerVehiclesInside.length : null,
+    totalOnSite: allowTotalOnSite ? insideVehicles.length + ownerVehiclesInside.length + insideVisitors.length : null,
     activeCards: allowTotalOnSite ? activeCards : [],
     employeeSpacesAllotted: allowEmployeeParking ? employeeSpacesAllotted : null,
     employeeVehiclesInside: allowEmployeeParking ? employeeVehiclesInside : null,

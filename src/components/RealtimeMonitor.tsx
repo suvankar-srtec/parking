@@ -15,7 +15,7 @@ type ScanEvent = {
   deviceNumber: string;
   createdAt: string;
   vehicle: { plateNumber: string; ownerName: string; department: string } | null;
-  personType: "OWNER" | "EMPLOYEE" | "UNKNOWN";
+  personType: "OWNER" | "EMPLOYEE" | "VISITOR" | "UNKNOWN";
   company: { name: string } | null;
 };
 
@@ -181,7 +181,7 @@ export default function RealtimeMonitor({
       <div className={styles.scanTableHeader}><div><div className="section-kicker">RFID ACTIVITY</div><h2>Live Dashboard</h2></div></div>
       <div className={styles.tableWrap}>
         <table className={styles.scanTable}>
-          <thead><tr><th>Time</th><th>Device</th><th>RFID</th><th>Vehicle</th><th>Owner</th><th>Employee</th><th>Company</th><th>Action</th><th>Result</th></tr></thead>
+          <thead><tr><th>Time</th><th>Device</th><th>RFID / QR</th><th>Vehicle</th><th>Owner</th><th>Employee</th><th>Visitor</th><th>Company</th><th>Action</th><th>Result</th></tr></thead>
           <tbody>{data?.recentEvents?.length ? data.recentEvents.map((event) => <tr key={event.id}>
             <td>{new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", month: "short", day: "2-digit" })}</td>
             <td>{event.deviceNumber || "-"}</td>
@@ -189,10 +189,11 @@ export default function RealtimeMonitor({
             <td>{event.vehicle?.plateNumber || "-"}</td>
             <td className={event.personType === "OWNER" ? styles.ownerPerson : undefined}>{event.personType === "OWNER" ? event.vehicle?.ownerName || "-" : "-"}</td>
             <td className={event.personType === "EMPLOYEE" ? styles.employeePerson : undefined}>{event.personType === "EMPLOYEE" ? event.vehicle?.ownerName || "-" : "-"}</td>
+            <td className={event.personType === "VISITOR" ? styles.visitorPerson : undefined}>{event.personType === "VISITOR" ? event.vehicle?.ownerName || "-" : "-"}</td>
             <td>{event.company?.name || "-"}</td>
             <td><span className={`${styles.actionBadge} ${event.action === "ENTRY" ? styles.entryBadge : event.action === "EXIT" ? styles.exitBadge : styles.deniedBadge}`}>{event.action}</span></td>
             <td className={event.code === "0000" ? styles.successResult : styles.deniedResult}>{event.code === "0000" ? event.action === "ENTRY" ? "Entry allowed" : event.action === "EXIT" ? "Exit allowed" : event.message : event.message || "Denied"}</td>
-          </tr>) : <tr><td colSpan={9} className={styles.emptyTable}>No RFID activity has been recorded yet.</td></tr>}</tbody>
+          </tr>) : <tr><td colSpan={10} className={styles.emptyTable}>No RFID / QR activity has been recorded yet.</td></tr>}</tbody>
         </table>
       </div>
     </section>

@@ -11,7 +11,7 @@ export async function GET() {
         ? { companyId: user.companyId! }
         : { buildingId: user.buildingId! };
 
-    const [events, inside] = await Promise.all([
+    const [events, insideVehicles, insideVisitors] = await Promise.all([
       prisma.rfidEvent.findMany({
         where: scope,
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -19,6 +19,7 @@ export async function GET() {
         include: {
           reader: { select: { name: true } },
           vehicle: { select: { plateNumber: true } },
+          visitor: { select: { name: true, vehicleNumber: true } },
           building: { select: { name: true } },
           company: { select: { name: true } },
         },
@@ -33,9 +34,19 @@ export async function GET() {
               : { company: { buildingId: user.buildingId! } }),
         },
       }),
+      prisma.visitor.count({
+        where: {
+          isInside: true,
+          ...(user.role === "SUPER_ADMIN"
+            ? {}
+            : user.role === "COMPANY_ADMIN"
+              ? { companyId: user.companyId! }
+              : { buildingId: user.buildingId! }),
+        },
+      }),
     ]);
 
-    return NextResponse.json({ ok: true, events, inside }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ok: true, events, inside: insideVehicles + insideVisitors }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return rfidApiError(error);
   }

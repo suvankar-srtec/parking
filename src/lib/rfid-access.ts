@@ -264,7 +264,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       });
       return record(
         READER_SUCCESS_CODE,
-        enter ? "Visitor entry allowed" : "Visitor exit recorded",
+        enter ? "Parking allowed - Visitor" : "Visitor checked out",
         enter ? "ENTRY" : "EXIT",
         undefined,
         visitor.companyId || undefined,
