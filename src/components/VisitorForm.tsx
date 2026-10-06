@@ -8,7 +8,7 @@ import styles from "./VisitorForm.module.css";
 
 export default function VisitorForm() {
   const formRef = useRef<HTMLFormElement>(null);
-  const { notify } = useFeedback();
+  const { notify, refresh } = useFeedback();
   const { pending, execute } = useMutation();
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -38,6 +38,7 @@ export default function VisitorForm() {
       );
       formRef.current?.reset();
       notify(result.message || "Visitor details saved successfully.");
+      refresh();
     });
   }
 
