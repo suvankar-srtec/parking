@@ -32,7 +32,7 @@ export async function updateBuildingParking(buildingId: string, values: ParkingV
     const building = await tx.building.update({
       where: { id: buildingId },
       data: { ...values, maximumGate },
-      select: { id: true, totalParking: true, ownerParking: true, companyParking: true, maximumGate: true },
+      select: { id: true, totalParking: true, ownerParking: true, visitorParking: true, companyParking: true, maximumGate: true },
     });
 
     // If Super Admin lowers Maximum Gate, remove obsolete gate-direction rows.

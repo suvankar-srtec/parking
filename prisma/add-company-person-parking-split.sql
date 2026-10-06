@@ -14,10 +14,10 @@ SET "totalPersons" = GREATEST(
       COALESCE((SELECT COUNT(*)::INTEGER FROM employees e WHERE e."companyId" = c.id), 0)
     ),
     "employeeParkingAllocation" = CASE
-      WHEN c."ownerParkingAllocation" + c."employeeParkingAllocation" = 0 THEN c."parkingAllocation"
+      WHEN c."ownerParkingAllocation" + c."visitorParkingAllocation" + c."employeeParkingAllocation" = 0 THEN c."parkingAllocation"
       ELSE c."employeeParkingAllocation"
     END
 WHERE c."totalPersons" = 0
-   OR c."ownerParkingAllocation" + c."employeeParkingAllocation" = 0;
+   OR c."ownerParkingAllocation" + c."visitorParkingAllocation" + c."employeeParkingAllocation" = 0;
 
 COMMIT;

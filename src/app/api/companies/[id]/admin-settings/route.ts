@@ -31,6 +31,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           buildingId: true,
           parkingAllocation: true,
           ownerParkingAllocation: true,
+          visitorParkingAllocation: true,
           employeeParkingAllocation: true,
           building: { select: { superAdminId: true } },
         },
@@ -57,8 +58,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         }
       }
 
-      const splitAssigned = company.ownerParkingAllocation + company.employeeParkingAllocation;
-      if (parkingAllocation < splitAssigned) throw new ParkingError(`${splitAssigned} parking spaces are already divided between Company Owners and Employees. Company parking cannot be lower than ${splitAssigned}.`);
+      const splitAssigned = company.ownerParkingAllocation + company.visitorParkingAllocation + company.employeeParkingAllocation;
+      if (parkingAllocation < splitAssigned) throw new ParkingError(`${splitAssigned} parking spaces are already divided between Company Owners, Visitors and Employees. Company parking cannot be lower than ${splitAssigned}.`);
 
       const building = await lockBuildingParking(tx, company.buildingId);
       const others = await tx.company.aggregate({ where: { buildingId: company.buildingId, NOT: { id } }, _sum: { parkingAllocation: true } });
@@ -68,7 +69,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       const result = await tx.company.update({
         where: { id },
         data: { parkingAllocation },
-        select: { id: true, parkingAllocation: true, ownerParkingAllocation: true, employeeParkingAllocation: true },
+        select: { id: true, parkingAllocation: true, ownerParkingAllocation: true, visitorParkingAllocation: true, employeeParkingAllocation: true },
       });
       return result;
     });

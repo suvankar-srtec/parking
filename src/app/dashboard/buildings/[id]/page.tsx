@@ -69,10 +69,10 @@ export default async function BuildingPage({ params }: { params: Promise<{ id: s
               <span className="building-settings-step" aria-hidden="true">02</span>
               <div>
                 <strong>Parking &amp; gate settings</strong>
-                <small>Set the total parking split and maximum number of gates.</small>
+                <small>Set Owner, Visitor and Company parking plus the maximum number of gates.</small>
               </div>
             </div>
-            <BuildingParkingEditor buildingId={building.id} initialValues={{ totalParking: building.totalParking, ownerParking: building.ownerParking, companyParking: building.companyParking, maximumGate: building.maximumGate }} />
+            <BuildingParkingEditor buildingId={building.id} initialValues={{ totalParking: building.totalParking, ownerParking: building.ownerParking, visitorParking: building.visitorParking, companyParking: building.companyParking, maximumGate: building.maximumGate }} />
           </section>
         </div>
       </section>

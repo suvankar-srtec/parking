@@ -61,6 +61,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
           name,
           parkingAllocation,
           ownerParkingAllocation: 0,
+          visitorParkingAllocation: 0,
           employeeParkingAllocation: parkingAllocation,
           maximumDepartments,
           buildingId,

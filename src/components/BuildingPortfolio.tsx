@@ -11,6 +11,7 @@ type Building = {
   name: string;
   totalParking: number;
   ownerParking: number;
+  visitorParking: number;
   companyParking: number;
   _count: { companies: number };
   users: { userId: string; username: string }[];
@@ -79,6 +80,7 @@ export default function BuildingPortfolio({ buildings }: { buildings: Building[]
           <div className="stats-grid">
             <div className="stat-box"><span>Total parking</span><strong>{building.totalParking}</strong></div>
             <div className="stat-box"><span>Owner reserve</span><strong>{building.ownerParking}</strong></div>
+            <div className="stat-box"><span>Visitor parking</span><strong>{building.visitorParking}</strong></div>
             <div className="stat-box"><span>Company parking</span><strong>{building.companyParking}</strong></div>
           </div>
 

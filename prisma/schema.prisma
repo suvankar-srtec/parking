@@ -56,6 +56,7 @@ model Building {
   name           String @unique
   totalParking   Int
   ownerParking   Int
+  visitorParking Int    @default(0)
   companyParking Int
   maximumGate    Int    @default(1)
   superAdminId   String?
@@ -99,6 +100,7 @@ model Company {
   parkingAllocation         Int    @default(0)
   totalPersons              Int    @default(0)
   ownerParkingAllocation    Int    @default(0)
+  visitorParkingAllocation  Int    @default(0)
   employeeParkingAllocation Int    @default(0)
   maximumDepartments        Int    @default(10)
 

@@ -36,8 +36,9 @@ export async function POST(request: Request) {
     }
     const totalParking = body.totalParking;
     const ownerParking = body.ownerParking;
-    const companyParking = body.companyParking ?? (totalParking - ownerParking);
-    const parking = validateParking({ totalParking, ownerParking, companyParking });
+    const visitorParking = body.visitorParking ?? 0;
+    const companyParking = body.companyParking ?? (totalParking - ownerParking - visitorParking);
+    const parking = validateParking({ totalParking, ownerParking, visitorParking, companyParking });
     if (!parking.ok) {
       return NextResponse.json({ ok: false, message: parking.message }, { status: 400 });
     }

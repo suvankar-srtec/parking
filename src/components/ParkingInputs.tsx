@@ -11,6 +11,7 @@ export default function ParkingInputs({ fields, onChange, disabled = false }: {
     {([
       ["totalParking", "Total parking"],
       ["ownerParking", "Owner parking"],
+      ["visitorParking", "Visitor parking"],
       ["companyParking", "Company parking"],
     ] as Array<[keyof ParkingValues, string]>).map(([field, label]) => (
       <label className={`parking-input-card parking-input-${field}`} key={field}>

@@ -12,6 +12,7 @@ type CompanySummary = {
   parkingAllocation: number;
   enabled?: boolean;
   ownerParkingAllocation: number;
+  visitorParkingAllocation: number;
   employeeParkingAllocation: number;
   vehicles: { id: string }[];
   employees: { id: string; category: string; isPlaceholder?: boolean }[];
@@ -177,6 +178,7 @@ export default function CompanyList({
 
               <dl className={styles.parkingList}>
                 <div><dt>Owner parking</dt><dd>{company.ownerParkingAllocation}</dd></div>
+                <div><dt>Visitor parking</dt><dd>{company.visitorParkingAllocation}</dd></div>
                 <div><dt>Employee parking</dt><dd>{company.employeeParkingAllocation}</dd></div>
                 <div><dt>Registered vehicles</dt><dd>{registeredVehicles}</dd></div>
               </dl>

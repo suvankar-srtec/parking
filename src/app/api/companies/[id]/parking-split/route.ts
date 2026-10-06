@@ -15,9 +15,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     const body = await request.json().catch(() => null);
     const ownerParkingAllocation = Number(body?.ownerParkingAllocation);
+    const visitorParkingAllocation = Number(body?.visitorParkingAllocation ?? 0);
     const employeeParkingAllocation = Number(body?.employeeParkingAllocation);
-    if (!Number.isInteger(ownerParkingAllocation) || ownerParkingAllocation < 0 || !Number.isInteger(employeeParkingAllocation) || employeeParkingAllocation < 0) {
-      return NextResponse.json({ ok: false, message: "Owner and Employee parking must be whole numbers of 0 or greater." }, { status: 400 });
+    if (
+      !Number.isInteger(ownerParkingAllocation) || ownerParkingAllocation < 0
+      || !Number.isInteger(visitorParkingAllocation) || visitorParkingAllocation < 0
+      || !Number.isInteger(employeeParkingAllocation) || employeeParkingAllocation < 0
+    ) {
+      return NextResponse.json({ ok: false, message: "Owner, Visitor and Employee parking must be whole numbers of 0 or greater." }, { status: 400 });
     }
 
     const company = await prisma.company.findUnique({
@@ -28,14 +33,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       },
     });
     if (!company) return NextResponse.json({ ok: false, message: "Company not found." }, { status: 404 });
-    if (ownerParkingAllocation + employeeParkingAllocation !== company.parkingAllocation) {
-      return NextResponse.json({ ok: false, message: `Owner parking + Employee parking must equal the company parking allocation of ${company.parkingAllocation}.` }, { status: 400 });
+    if (ownerParkingAllocation + visitorParkingAllocation + employeeParkingAllocation !== company.parkingAllocation) {
+      return NextResponse.json({
+        ok: false,
+        message: `Company Owner parking + Visitor parking + Employee parking must equal the company parking allocation of ${company.parkingAllocation}.`,
+      }, { status: 400 });
     }
 
     const currentOwners = company.vehicles.filter((vehicle) => vehicle.employee?.category === "OWNER").length;
     const currentEmployees = company.vehicles.filter((vehicle) => vehicle.employee?.category !== "OWNER").length;
     if (ownerParkingAllocation < currentOwners) {
-      return NextResponse.json({ ok: false, message: `${currentOwners} Company Owner vehicles are currently inside. Owner parking cannot be lower than ${currentOwners} until a vehicle exits.` }, { status: 400 });
+      return NextResponse.json({ ok: false, message: `${currentOwners} Company Owner vehicles are currently inside. Company Owner parking cannot be lower than ${currentOwners} until a vehicle exits.` }, { status: 400 });
     }
     if (employeeParkingAllocation < currentEmployees) {
       return NextResponse.json({ ok: false, message: `${currentEmployees} Employee vehicles are currently inside. Employee parking cannot be lower than ${currentEmployees} until a vehicle exits.` }, { status: 400 });
@@ -43,8 +51,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     const updated = await prisma.company.update({
       where: { id },
-      data: { ownerParkingAllocation, employeeParkingAllocation },
-      select: { id: true, parkingAllocation: true, ownerParkingAllocation: true, employeeParkingAllocation: true },
+      data: { ownerParkingAllocation, visitorParkingAllocation, employeeParkingAllocation },
+      select: {
+        id: true,
+        parkingAllocation: true,
+        ownerParkingAllocation: true,
+        visitorParkingAllocation: true,
+        employeeParkingAllocation: true,
+      },
     });
 
     revalidatePath("/dashboard");

@@ -40,7 +40,7 @@ export default function CreateEntityModal({
   const [departmentBusy, setDepartmentBusy] = useState(false);
   const pending = saving || departmentBusy;
   const [open, setOpen] = useState(false);
-  const [parking, setParking] = useState(() => parkingFields({ totalParking: 100, ownerParking: 15, companyParking: 85 }));
+  const [parking, setParking] = useState(() => parkingFields({ totalParking: 100, ownerParking: 15, visitorParking: 0, companyParking: 85 }));
   const isBuilding = kind === "building";
   const creationRole: UserRole | null = isBuilding ? "BUILDING_ADMIN" : kind === "company" ? "COMPANY_ADMIN" : null;
   const title = isBuilding ? "Create building" : kind === "company" ? "Create company" : "Add Employee";
@@ -64,7 +64,7 @@ export default function CreateEntityModal({
   useEffect(() => { setDepartmentOptions(departments); }, [departments]);
 
   function show() {
-    setParking(parkingFields({ totalParking: 100, ownerParking: 15, companyParking: 85 }));
+    setParking(parkingFields({ totalParking: 100, ownerParking: 15, visitorParking: 0, companyParking: 85 }));
     setName("");
     setGeneratedUserId("");
     setReservationId("");
@@ -152,7 +152,7 @@ export default function CreateEntityModal({
       delete body.userId;
       const maximumGate = Number(formData.get("maximumGate"));
       if (!Number.isInteger(maximumGate) || maximumGate < 1) { notify("Maximum Gate must be at least 1.", "error"); return; }
-      const parsed = validateParking({ totalParking: Number(parking.totalParking), ownerParking: Number(parking.ownerParking), companyParking: Number(parking.companyParking) });
+      const parsed = validateParking({ totalParking: Number(parking.totalParking), ownerParking: Number(parking.ownerParking), visitorParking: Number(parking.visitorParking), companyParking: Number(parking.companyParking) });
       if (!parsed.ok) { notify(parsed.message, "error"); return; }
       body = { ...body, ...parsed.values, maximumGate };
     } else if (kind === "company") {
@@ -267,7 +267,7 @@ export default function CreateEntityModal({
               </div>
               {accountFields}
               {isBuilding ? <div className="parking-section">
-                <div className="subsection-title"><span className="setup-step">02</span><strong>Parking allocation</strong><small>Total parking is split between Owner and Company parking.</small></div>
+                <div className="subsection-title"><span className="setup-step">02</span><strong>Parking allocation</strong><small>Visitor parking is reserved from the Owner parking share.</small></div>
                 <ParkingInputs fields={parking} onChange={setParking} disabled={pending} />
               </div> : null}
             </div>
@@ -315,7 +315,7 @@ export default function CreateEntityModal({
       .parking-section{display:grid;gap:8px;padding-top:3px}
       .subsection-title{justify-content:flex-start;border-top:1px solid #e6ece8;padding-top:11px}
       .subsection-title small{margin-left:auto;text-align:right}
-      .permission-layout-form .parking-editor-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+      .permission-layout-form .parking-editor-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}
       .permission-layout-form .parking-input-card{padding:8px!important;border-radius:8px!important}
       .permission-layout-form .parking-input-card input{min-height:36px!important;padding:6px 8px!important;font-size:19px!important}
       .permission-side-panel{min-width:0;padding:15px 17px 14px;overflow:hidden;background:#f9fbfa}

@@ -21,6 +21,7 @@ export default async function AdminParkingAllocationPage() {
         name: true,
         totalParking: true,
         ownerParking: true,
+        visitorParking: true,
         companyParking: true,
         maximumGate: true,
       },
@@ -48,7 +49,7 @@ export default async function AdminParkingAllocationPage() {
           <div>
             <div className="section-kicker">BUILDING PARKING</div>
             <h2>Parking allocation</h2>
-            <p>Update Total parking, Owner parking, Company parking, and Maximum Gate for this building. These values are shared with Super Admin.</p>
+            <p>Update Total parking, Owner parking, Visitor parking, Company parking, and Maximum Gate for this building. Visitor parking is reserved from Owner parking.</p>
           </div>
         </div>
         <div className="portfolio-divider" />
@@ -57,6 +58,7 @@ export default async function AdminParkingAllocationPage() {
           initialValues={{
             totalParking: building.totalParking,
             ownerParking: building.ownerParking,
+            visitorParking: building.visitorParking,
             companyParking: building.companyParking,
             maximumGate: building.maximumGate,
           }}

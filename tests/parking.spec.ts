@@ -146,10 +146,11 @@ test("Neon stores companyParking and enforces the parking total constraint", asy
 });
 
 test("changing either parking allocation calculates its counterpart", () => {
-  const current = { totalParking: "100", ownerParking: "20", companyParking: "80" };
-  expect(syncParkingField(current, "ownerParking", "35")).toEqual({ totalParking: "100", ownerParking: "35", companyParking: "65" });
-  expect(syncParkingField(current, "companyParking", "60")).toEqual({ totalParking: "100", ownerParking: "40", companyParking: "60" });
-  expect(syncParkingField(current, "totalParking", "120")).toEqual({ totalParking: "120", ownerParking: "20", companyParking: "100" });
-  expect(syncParkingField(current, "totalParking", "10")).toEqual({ totalParking: "10", ownerParking: "10", companyParking: "0" });
+  const current = { totalParking: "100", ownerParking: "20", visitorParking: "0", companyParking: "80" };
+  expect(syncParkingField(current, "ownerParking", "35")).toEqual({ totalParking: "100", ownerParking: "35", visitorParking: "0", companyParking: "65" });
+  expect(syncParkingField(current, "companyParking", "60")).toEqual({ totalParking: "100", ownerParking: "40", visitorParking: "0", companyParking: "60" });
+  expect(syncParkingField(current, "visitorParking", "5")).toEqual({ totalParking: "100", ownerParking: "15", visitorParking: "5", companyParking: "80" });
+  expect(syncParkingField(current, "totalParking", "120")).toEqual({ totalParking: "120", ownerParking: "20", visitorParking: "0", companyParking: "100" });
+  expect(syncParkingField(current, "totalParking", "10")).toEqual({ totalParking: "10", ownerParking: "10", visitorParking: "0", companyParking: "0" });
   expect(syncParkingField(current, "ownerParking", "").ownerParking).toBe("");
 });

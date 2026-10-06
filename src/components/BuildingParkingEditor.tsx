@@ -34,6 +34,7 @@ export default function BuildingParkingEditor({
     const parsed = validateParking({
       totalParking: Number(fields.totalParking),
       ownerParking: Number(fields.ownerParking),
+      visitorParking: Number(fields.visitorParking),
       companyParking: Number(fields.companyParking),
     });
     if (!parsed.ok) { notify(parsed.message, "error"); return; }
