@@ -11,10 +11,12 @@ type ReportRow = {
   buildingName: string;
   companyId: string | null;
   companyName: string;
+  accessType: "Vehicle" | "Visitor";
   vehicleNumber: string;
   rfidUid: string;
   rider: string;
   department: string;
+  accessory: string;
   inTime: string;
   outTime: string | null;
   parkedFor: string;
@@ -22,12 +24,14 @@ type ReportRow = {
 };
 
 type ColumnKey =
+  | "accessType"
   | "vehicleNumber"
   | "rfidUid"
   | "rider"
   | "buildingName"
   | "companyName"
   | "department"
+  | "accessory"
   | "inTime"
   | "outTime"
   | "parkedFor"
@@ -46,12 +50,14 @@ function formatDateTime(value: string | null) {
 }
 
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
+  { key: "accessType", label: "Type", pdfWidth: 8, value: (row) => row.accessType },
   { key: "vehicleNumber", label: "Vehicle number", pdfWidth: 13, value: (row) => row.vehicleNumber },
-  { key: "rfidUid", label: "RFID UID", pdfWidth: 12, value: (row) => row.rfidUid },
-  { key: "rider", label: "Rider", pdfWidth: 14, value: (row) => row.rider },
+  { key: "rfidUid", label: "RFID / QR", pdfWidth: 12, value: (row) => row.rfidUid },
+  { key: "rider", label: "Person", pdfWidth: 14, value: (row) => row.rider },
   { key: "buildingName", label: "Building", pdfWidth: 16, value: (row) => row.buildingName },
   { key: "companyName", label: "Company", pdfWidth: 16, value: (row) => row.companyName },
   { key: "department", label: "Department", pdfWidth: 14, value: (row) => row.department },
+  { key: "accessory", label: "Accessory", pdfWidth: 12, value: (row) => row.accessory },
   { key: "inTime", label: "IN time", pdfWidth: 20, value: (row) => formatDateTime(row.inTime) },
   { key: "outTime", label: "OUT time", pdfWidth: 20, value: (row) => formatDateTime(row.outTime) },
   { key: "parkedFor", label: "Parked for", pdfWidth: 10, value: (row) => row.parkedFor },
@@ -185,7 +191,9 @@ export default function ReportsDashboard({
   const filtered = useMemo(() => rows.filter((row) => {
     if (buildingId && row.buildingId !== buildingId) return false;
     if (companyId === "__owner__") {
-      if (row.companyId) return false;
+      if (row.companyId || row.accessType !== "Vehicle") return false;
+    } else if (companyId === "__visitor__") {
+      if (row.companyId || row.accessType !== "Visitor") return false;
     } else if (companyId && row.companyId !== companyId) return false;
     if (!withinDate(row.inTime, fromDate, toDate)) return false;
 
@@ -256,7 +264,9 @@ export default function ReportsDashboard({
     const buildingName = buildingId ? buildings.find((building) => building.id === buildingId)?.name || "Selected building" : "All buildings";
     const companyName = companyId === "__owner__"
       ? "Building owner"
-      : companyId
+      : companyId === "__visitor__"
+        ? "Building visitors"
+        : companyId
         ? companies.find((company) => company.id === companyId)?.name || "Selected company"
         : "All companies";
     const dateRange = `${fromDate || "Any date"} to ${toDate || "Any date"}`;
@@ -308,7 +318,7 @@ export default function ReportsDashboard({
       <label>From date<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
       <label>To date<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
       {role === "SUPER_ADMIN" && <label>Building<select value={buildingId} onChange={(event) => { setBuildingId(event.target.value); setCompanyId(""); }}><option value="">All buildings</option>{buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}</select></label>}
-      {role !== "COMPANY_ADMIN" && <label>Company / owner<select value={companyId} onChange={(event) => setCompanyId(event.target.value)}><option value="">All companies</option><option value="__owner__">Building owner</option>{allowedCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>}
+      {role !== "COMPANY_ADMIN" && <label>Company / owner<select value={companyId} onChange={(event) => setCompanyId(event.target.value)}><option value="">All companies</option><option value="__owner__">Building owner</option><option value="__visitor__">Building visitors</option>{allowedCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>}
       {role === "COMPANY_ADMIN" && <label>Company<select value={companyId} disabled>{companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>}
       <div className={styles.columnFilter}>
         <span>Columns</span>

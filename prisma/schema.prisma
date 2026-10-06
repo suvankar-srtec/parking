@@ -257,16 +257,24 @@ model Visitor {
   buildingId      String
   companyId       String?
   createdByUserId String?
+  validFrom       DateTime
+  validUntil      DateTime
+  isInside        Boolean  @default(false)
+  lastAccessAt    DateTime?
+  lastAccessDevice String?
 
   building  Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   createdBy User?    @relation("VisitorCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  rfidEvents RfidEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([buildingId, createdAt])
   @@index([companyId, createdAt])
+  @@index([buildingId, isInside])
+  @@index([companyId, isInside])
   @@index([createdByUserId])
   @@map("visitors")
 }
@@ -334,6 +342,7 @@ model RfidEvent {
   companyId      String?
   vehicleId      String?
   ownerVehicleId String?
+  visitorId      String?
   deviceNumber   String
   cardNo         String
   action         String
@@ -346,10 +355,12 @@ model RfidEvent {
   company      Company?              @relation(fields: [companyId], references: [id], onDelete: SetNull)
   vehicle      Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   ownerVehicle BuildingOwnerVehicle? @relation(fields: [ownerVehicleId], references: [id], onDelete: SetNull)
+  visitor      Visitor?              @relation(fields: [visitorId], references: [id], onDelete: SetNull)
 
   @@index([buildingId, createdAt])
   @@index([companyId, createdAt])
   @@index([readerId, createdAt])
   @@index([ownerVehicleId])
+  @@index([visitorId])
   @@map("rfid_events")
 }

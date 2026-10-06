@@ -22,12 +22,32 @@ export default function VisitorForm() {
     }
 
     const data = new FormData(event.currentTarget);
+    const validFromText = String(data.get("validFrom") ?? "");
+    const validUntilText = String(data.get("validUntil") ?? "");
+    const validFrom = new Date(validFromText);
+    const validUntil = new Date(validUntilText);
+
+    if (!validFromText || Number.isNaN(validFrom.getTime())) {
+      notify("Please enter Valid From date and time.", "error");
+      return;
+    }
+    if (!validUntilText || Number.isNaN(validUntil.getTime())) {
+      notify("Please enter Valid Until date and time.", "error");
+      return;
+    }
+    if (validUntil <= validFrom) {
+      notify("Valid Until must be later than Valid From.", "error");
+      return;
+    }
+
     const body = {
       name: String(data.get("name") ?? "").trim(),
       phoneNumber: String(data.get("phoneNumber") ?? "").trim(),
       email: String(data.get("email") ?? "").trim(),
       vehicleNumber: String(data.get("vehicleNumber") ?? "").trim(),
       accessory: String(data.get("accessory") ?? "").trim(),
+      validFrom: validFrom.toISOString(),
+      validUntil: validUntil.toISOString(),
     };
 
     void execute(async () => {
@@ -65,9 +85,19 @@ export default function VisitorForm() {
           <input name="vehicleNumber" type="text" autoCapitalize="characters" maxLength={40} placeholder="e.g. WB 24 AB 1234" />
         </label>
 
-        <label className={`${styles.field} ${styles.fullWidth}`}>
+        <label className={styles.field}>
           <span>Accessory</span>
           <input name="accessory" type="text" maxLength={250} required placeholder="e.g. Laptop, bag, tools" />
+        </label>
+
+        <label className={styles.field}>
+          <span>Valid From</span>
+          <input name="validFrom" type="datetime-local" required />
+        </label>
+
+        <label className={styles.field}>
+          <span>Valid Until</span>
+          <input name="validUntil" type="datetime-local" required />
         </label>
       </div>
     </fieldset>

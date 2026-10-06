@@ -58,6 +58,8 @@ export async function POST(request: Request) {
     const email = cleanText(data.email, 180).toLowerCase();
     const vehicleNumber = cleanText(data.vehicleNumber, 40).toUpperCase();
     const accessory = cleanText(data.accessory, 250);
+    const validFrom = new Date(String(data.validFrom ?? ""));
+    const validUntil = new Date(String(data.validUntil ?? ""));
     const phoneDigits = phoneNumber.replace(/\D/g, "");
 
     if (!name || !phoneNumber || !email || !accessory) {
@@ -69,6 +71,12 @@ export async function POST(request: Request) {
     if (!validEmail(email)) {
       return NextResponse.json({ ok: false, message: "Enter a valid Mail address." }, { status: 400 });
     }
+    if (Number.isNaN(validFrom.getTime()) || Number.isNaN(validUntil.getTime())) {
+      return NextResponse.json({ ok: false, message: "Valid From and Valid Until are required." }, { status: 400 });
+    }
+    if (validUntil <= validFrom) {
+      return NextResponse.json({ ok: false, message: "Valid Until must be later than Valid From." }, { status: 400 });
+    }
 
     const visitor = await prisma.visitor.create({
       data: {
@@ -77,6 +85,8 @@ export async function POST(request: Request) {
         email,
         vehicleNumber: vehicleNumber || null,
         accessory,
+        validFrom,
+        validUntil,
         buildingId,
         companyId,
         createdByUserId: user.id,

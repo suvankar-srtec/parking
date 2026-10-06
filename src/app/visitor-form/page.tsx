@@ -64,6 +64,8 @@ export default async function VisitorFormPage() {
       email: true,
       vehicleNumber: true,
       accessory: true,
+      validFrom: true,
+      validUntil: true,
       createdAt: true,
     },
   });
@@ -76,6 +78,8 @@ export default async function VisitorFormPage() {
     email: visitor.email,
     vehicleNumber: visitor.vehicleNumber || "—",
     accessory: visitor.accessory,
+    validFrom: formatVisitorTime(visitor.validFrom),
+    validUntil: formatVisitorTime(visitor.validUntil),
   }));
 
   return <main className="dashboard-page">
@@ -97,7 +101,7 @@ export default async function VisitorFormPage() {
           <div>
             <div className="section-kicker">VISITOR ACCESS</div>
             <h2>Visitor details</h2>
-            <p>Vehicle Number is optional. All other fields are required.</p>
+            <p>Vehicle Number is optional. Set the exact time window in which the QR can be used for both entry and exit.</p>
           </div>
         </div>
         <div className="portfolio-divider" />

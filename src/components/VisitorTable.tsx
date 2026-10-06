@@ -13,6 +13,8 @@ export type VisitorTableRow = {
   email: string;
   vehicleNumber: string;
   accessory: string;
+  validFrom: string;
+  validUntil: string;
 };
 
 export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[] }) {
@@ -39,6 +41,8 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       visitor.email,
       visitor.vehicleNumber,
       visitor.accessory,
+      visitor.validFrom,
+      visitor.validUntil,
     ].some((value) => value.toLowerCase().includes(search)));
   }, [rows, search]);
 
@@ -129,6 +133,8 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
               <th>Mail</th>
               <th>Vehicle Number</th>
               <th>Accessory</th>
+              <th>Valid From</th>
+              <th>Valid Until</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -175,6 +181,8 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
               </td>
               <td>{visitor.vehicleNumber}</td>
               <td>{visitor.accessory}</td>
+              <td className="visitor-date">{visitor.validFrom}</td>
+              <td className="visitor-date">{visitor.validUntil}</td>
               <td>
                 <ActionButton
                   type="button"
@@ -230,7 +238,7 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
         .visitor-search{width:100%}
         .visitor-search input{height:29px;font-size:9px}
         .visitor-count{min-height:24px;padding:3px 7px;font-size:8px}
-        .visitor-table{min-width:880px}
+        .visitor-table{min-width:1080px}
       }
       @media(max-width:520px){
         .visitor-list-heading{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}

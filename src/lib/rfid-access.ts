@@ -37,7 +37,10 @@ export async function expireEnrollments(tx: Prisma.TransactionClient) {
 }
 
 export async function processReaderScan(input: ParsedRfidReaderMessage) {
-  const cardNo = normalizeCard(input.decodedResult);
+  const rawScan = input.decodedResult.trim();
+  const visitorMatch = /^SRTEC-VISITOR\|ID:([^|]{1,80})$/i.exec(rawScan);
+  const visitorId = visitorMatch?.[1]?.trim() || null;
+  const cardNo = visitorId ? "VISITOR-QR" : normalizeCard(input.decodedResult);
   const receivedAt = Date.now();
   return prisma.$transaction(async (tx) => {
     await lockRfid(tx);
@@ -65,6 +68,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       vehicleId?: string,
       companyId?: string,
       ownerVehicleId?: string,
+      scannedVisitorId?: string,
     ) {
       const readerCode = code === READER_SUCCESS_CODE ? READER_SUCCESS_CODE : READER_NO_SUCCESS_CODE;
       await tx.rfidEvent.create({ data: {
@@ -78,6 +82,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
         vehicleId,
         companyId,
         ownerVehicleId,
+        visitorId: scannedVisitorId,
       } });
       return { code: readerCode, message };
     }
@@ -155,6 +160,114 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
         "CAPTURE",
         enrollment.vehicleId || undefined,
         enrollment.companyId || undefined,
+      );
+    }
+
+    if (visitorId) {
+      const visitor = await tx.visitor.findUnique({
+        where: { id: visitorId },
+        include: { company: { select: { id: true, enabled: true, buildingId: true, visitorParkingAllocation: true } } },
+      });
+      if (!visitor) return record(READER_NO_SUCCESS_CODE, "Visitor QR is not registered", "DENIED", undefined, undefined, undefined, visitorId);
+      if (visitor.buildingId !== reader.buildingId) {
+        return record(READER_NO_SUCCESS_CODE, "Visitor QR belongs to another building", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+      if (visitor.company && (!visitor.company.enabled || visitor.company.buildingId !== reader.buildingId)) {
+        return record(READER_NO_SUCCESS_CODE, "Visitor company is not active in this building", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+
+      const buildingGates = await tx.gate.findMany({
+        where: { buildingId: reader.buildingId },
+        select: { gateNumber: true, direction: true },
+        orderBy: { gateNumber: "asc" },
+      });
+      const allottedGate = buildingGates
+        .map((gate) => ({ gate, config: parseGateConfig(gate.direction) }))
+        .find(({ config }) => config.entryReaderId === reader.id || config.exitReaderId === reader.id);
+      if (!allottedGate) {
+        return record(READER_NO_SUCCESS_CODE, "Reader is not allotted to a gate.", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+
+      let effectiveMode = allottedGate.config.direction;
+      if (allottedGate.config.direction === "ENTRY_EXIT") {
+        if (allottedGate.config.entryReaderId === reader.id && allottedGate.config.exitReaderId === reader.id) effectiveMode = "ENTRY_EXIT";
+        else if (allottedGate.config.entryReaderId === reader.id) effectiveMode = "ENTRY";
+        else if (allottedGate.config.exitReaderId === reader.id) effectiveMode = "EXIT";
+      }
+      if (!["ENTRY_EXIT", "ENTRY", "EXIT"].includes(effectiveMode)) {
+        return record(READER_NO_SUCCESS_CODE, "Gate direction must be configured before scanning.", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+
+      if (now < visitor.validFrom) {
+        return record(READER_NO_SUCCESS_CODE, "Visitor QR is not valid yet", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+      if (now > visitor.validUntil) {
+        return record(READER_NO_SUCCESS_CODE, "Visitor QR validity has expired", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+      if (visitor.lastAccessAt && receivedAt - visitor.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
+        return record(READER_NO_SUCCESS_CODE, "Duplicate scan ignored", "IGNORED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+
+      let enter: boolean;
+      if (effectiveMode === "ENTRY_EXIT") {
+        enter = !visitor.isInside;
+      } else if (effectiveMode === "ENTRY") {
+        if (visitor.isInside) return record(READER_NO_SUCCESS_CODE, "Visitor is already inside. Exit before another Entry.", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+        enter = true;
+      } else {
+        if (!visitor.isInside) return record(READER_NO_SUCCESS_CODE, "Visitor is already outside.", "IGNORED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+        enter = false;
+      }
+
+      if (enter && !buildingStatus.enabled) {
+        return record(READER_NO_SUCCESS_CODE, "Building is disabled. Entry is not allowed.", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+
+      if (enter) {
+        const [companyVehicleInside, companyVisitorInside, ownerInside, adminVisitorInside, building] = await Promise.all([
+          tx.vehicle.count({ where: { isInside: true, company: { buildingId: reader.buildingId } } }),
+          tx.visitor.count({ where: { buildingId: reader.buildingId, companyId: { not: null }, isInside: true } }),
+          tx.buildingOwnerVehicle.count({ where: { buildingId: reader.buildingId, isInside: true } }),
+          tx.visitor.count({ where: { buildingId: reader.buildingId, companyId: null, isInside: true } }),
+          tx.building.findUniqueOrThrow({
+            where: { id: reader.buildingId },
+            select: { companyParking: true, visitorParking: true, totalParking: true },
+          }),
+        ]);
+        const companyPoolInside = companyVehicleInside + companyVisitorInside;
+        const totalInside = companyPoolInside + ownerInside + adminVisitorInside;
+
+        if (visitor.companyId) {
+          const sameCompanyVisitorsInside = await tx.visitor.count({
+            where: { companyId: visitor.companyId, isInside: true },
+          });
+          if (
+            sameCompanyVisitorsInside >= (visitor.company?.visitorParkingAllocation ?? 0) ||
+            companyPoolInside >= building.companyParking ||
+            totalInside >= building.totalParking
+          ) {
+            return record(READER_NO_SUCCESS_CODE, "Company Visitor parking allocation is full", "DENIED", undefined, visitor.companyId, undefined, visitor.id);
+          }
+        } else if (
+          adminVisitorInside >= building.visitorParking ||
+          totalInside >= building.totalParking
+        ) {
+          return record(READER_NO_SUCCESS_CODE, "Visitor parking allocation is full", "DENIED", undefined, undefined, undefined, visitor.id);
+        }
+      }
+
+      await tx.visitor.update({
+        where: { id: visitor.id },
+        data: { isInside: enter, lastAccessAt: now, lastAccessDevice: reader.deviceNumber },
+      });
+      return record(
+        READER_SUCCESS_CODE,
+        enter ? "Visitor entry allowed" : "Visitor exit recorded",
+        enter ? "ENTRY" : "EXIT",
+        undefined,
+        visitor.companyId || undefined,
+        undefined,
+        visitor.id,
       );
     }
 
@@ -238,15 +351,18 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     }
 
     if (enter) {
-      const [companyInsideTotal, ownerInside, building] = await Promise.all([
+      const [companyVehicleInside, companyVisitorInside, ownerInside, adminVisitorInside, building] = await Promise.all([
         tx.vehicle.count({ where: { isInside: true, company: { buildingId: reader.buildingId } } }),
+        tx.visitor.count({ where: { buildingId: reader.buildingId, companyId: { not: null }, isInside: true } }),
         tx.buildingOwnerVehicle.count({ where: { buildingId: reader.buildingId, isInside: true } }),
+        tx.visitor.count({ where: { buildingId: reader.buildingId, companyId: null, isInside: true } }),
         tx.building.findUniqueOrThrow({
           where: { id: reader.buildingId },
           select: { companyParking: true, ownerParking: true, totalParking: true },
         }),
       ]);
-      const totalInside = companyInsideTotal + ownerInside;
+      const companyInsideTotal = companyVehicleInside + companyVisitorInside;
+      const totalInside = companyInsideTotal + ownerInside + adminVisitorInside;
 
       if (ownerVehicle) {
         if (ownerInside >= building.ownerParking || totalInside >= building.totalParking) {

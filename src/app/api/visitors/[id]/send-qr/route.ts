@@ -2,6 +2,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 
+function formatIndia(value: Date) {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(value);
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -48,6 +60,10 @@ export async function POST(
       return NextResponse.json({ ok: false, message: "You do not have access to this visitor." }, { status: 403 });
     }
 
+    if (visitor.validUntil <= new Date()) {
+      return NextResponse.json({ ok: false, message: "This visitor QR validity has expired. Create a new visitor pass with a new time window." }, { status: 409 });
+    }
+
     const resendApiKey = process.env.RESEND_API_KEY?.trim();
     const emailFrom = process.env.EMAIL_FROM?.trim();
     if (!resendApiKey || !emailFrom) {
@@ -57,12 +73,7 @@ export async function POST(
       }, { status: 503 });
     }
 
-    const qrPayload = [
-      "SRTEC-VISITOR",
-      `ID:${visitor.id}`,
-      `BUILDING:${visitor.buildingId}`,
-      `COMPANY:${visitor.companyId ?? "ADMIN"}`,
-    ].join("|");
+    const qrPayload = `SRTEC-VISITOR|ID:${visitor.id}`;
 
     const qrResponse = await fetch("https://quickchart.io/qr", {
       method: "POST",
@@ -90,6 +101,8 @@ export async function POST(
     const safePhone = escapeHtml(visitor.phoneNumber);
     const safeVehicle = escapeHtml(visitor.vehicleNumber || "Not provided");
     const safeAccessory = escapeHtml(visitor.accessory);
+    const safeValidFrom = escapeHtml(formatIndia(visitor.validFrom));
+    const safeValidUntil = escapeHtml(formatIndia(visitor.validUntil));
 
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -111,8 +124,10 @@ export async function POST(
               <tr><td style="padding:5px 14px 5px 0"><strong>Phone</strong></td><td>${safePhone}</td></tr>
               <tr><td style="padding:5px 14px 5px 0"><strong>Vehicle</strong></td><td>${safeVehicle}</td></tr>
               <tr><td style="padding:5px 14px 5px 0"><strong>Accessory</strong></td><td>${safeAccessory}</td></tr>
+              <tr><td style="padding:5px 14px 5px 0"><strong>Valid From</strong></td><td>${safeValidFrom}</td></tr>
+              <tr><td style="padding:5px 14px 5px 0"><strong>Valid Until</strong></td><td>${safeValidUntil}</td></tr>
             </table>
-            <p>Please keep the attached QR available for access verification.</p>
+            <p>The QR can be used for both entry and exit only within the validity time shown above.</p>
           </div>
         `,
         attachments: [{
