@@ -166,7 +166,7 @@ export default function ReportsDashboard({
   const [toDate, setToDate] = useState("");
   const [buildingId, setBuildingId] = useState(role === "SUPER_ADMIN" ? "" : buildings[0]?.id || "");
   const [companyId, setCompanyId] = useState(role === "COMPANY_ADMIN" ? companies[0]?.id || "" : "");
-  const [reportType, setReportType] = useState<"vehicle" | "exitPending" | "exitPendingTime">("vehicle");
+  const [reportType, setReportType] = useState<"vehicle" | "visitor" | "exitPending" | "exitPendingTime">("vehicle");
   const [pending24Hours, setPending24Hours] = useState(true);
   const [pending48Hours, setPending48Hours] = useState(false);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<ColumnKey>>(() => new Set(ALL_COLUMN_KEYS));
@@ -197,6 +197,8 @@ export default function ReportsDashboard({
     } else if (companyId && row.companyId !== companyId) return false;
     if (!withinDate(row.inTime, fromDate, toDate)) return false;
 
+    if (reportType === "vehicle" && row.accessType !== "Vehicle") return false;
+    if (reportType === "visitor" && row.accessType !== "Visitor") return false;
     if (reportType === "exitPending" && row.status !== "Inside") return false;
     if (reportType === "exitPendingTime") {
       if (row.status !== "Inside") return false;
@@ -221,7 +223,9 @@ export default function ReportsDashboard({
     ? "Exit Pending"
     : reportType === "exitPendingTime"
       ? "Exit Pending with time"
-      : "Vehicle IN / OUT time";
+      : reportType === "visitor"
+        ? "Visitor IN / OUT time"
+        : "Vehicle IN / OUT time";
 
   function clearFilters() {
     setFromDate("");
@@ -300,8 +304,9 @@ export default function ReportsDashboard({
         <span>Generated {browserReady ? new Date().toLocaleString() : "..."} · Auto-updating every 3 seconds</span>
       </div>
       <div className={styles.toolbarActions}>
-        <select value={reportType} onChange={(event) => setReportType(event.target.value as "vehicle" | "exitPending" | "exitPendingTime")} aria-label="Report type">
+        <select value={reportType} onChange={(event) => setReportType(event.target.value as "vehicle" | "visitor" | "exitPending" | "exitPendingTime")} aria-label="Report type">
           <option value="vehicle">Vehicle IN / OUT time</option>
+          <option value="visitor">Visitor IN / OUT time</option>
           <option value="exitPending">Exit Pending</option>
           <option value="exitPendingTime">Exit Pending with time</option>
         </select>
