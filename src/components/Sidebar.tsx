@@ -18,6 +18,7 @@ type IconName =
   | "gate"
   | "card"
   | "activity"
+  | "visitor"
   | "report"
   | "admin";
 
@@ -42,6 +43,7 @@ function NavIcon({ name }: { name: IconName }) {
   if (name === "gate") return <svg {...common}><path d="M4 21V5h16v16"/><path d="M8 21V9h8v12M8 13h8M8 17h8"/></svg>;
   if (name === "card") return <svg {...common}><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 9h18M7 14h4"/></svg>;
   if (name === "activity") return <svg {...common}><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>;
+  if (name === "visitor") return <svg {...common}><circle cx="9" cy="8" r="3.5"/><path d="M3.5 20c.7-4 2.6-6 5.5-6s4.8 2 5.5 6"/><path d="M17 9v6M14 12h6"/></svg>;
   if (name === "report") return <svg {...common}><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 11h6M9 15h6M9 18h4"/></svg>;
   return <svg {...common}><circle cx="12" cy="8" r="3.5"/><path d="M5 21c.8-4.1 3.2-6 7-6s6.2 1.9 7 6"/><path d="M17.5 5.5 19 4m-1.5 6.5L19 12"/></svg>;
 }
@@ -89,6 +91,7 @@ export default function Sidebar({
   const superAdminsActive = pathname === "/super-admins" || pathname.startsWith("/super-admins/");
   const dashboardGroupActive = dashboardPageActive || superAdminsActive;
   const accessGroupActive = pathname === "/access-control" || pathname.startsWith("/access-control/");
+  const visitorFormActive = pathname === "/visitor-form" || pathname.startsWith("/visitor-form/");
   const reportsActive = pathname === "/reports" || pathname.startsWith("/reports/");
 
   const [expanded, setExpanded] = useState({
@@ -124,6 +127,7 @@ export default function Sidebar({
     && assigned.has("building.manageOwnerParking");
   const showCompanyParking = (role === "COMPANY_ADMIN" || role === "BUILDING_OWNER")
     && assigned.has("company.allocateEmployeeParking");
+  const showVisitorForm = role === "BUILDING_ADMIN" || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER";
   const showReports = isSuperAdmin
     || (role === "BUILDING_ADMIN" && assigned.has("building.viewReports"))
     || ((role === "COMPANY_ADMIN" || role === "BUILDING_OWNER") && assigned.has("company.viewReports"))
@@ -300,6 +304,13 @@ export default function Sidebar({
           </Link>
         </div>
       </div> : null}
+
+      {showVisitorForm ? <Link
+        className={`sidebar-nav-link${visitorFormActive ? " is-active" : ""}`}
+        href="/visitor-form"
+      >
+        <NavRow icon="visitor" label="Visitor Form" />
+      </Link> : null}
 
       {showReports ? <Link
         className={`sidebar-nav-link${reportsActive ? " is-active" : ""}`}

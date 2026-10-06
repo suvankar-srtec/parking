@@ -38,6 +38,7 @@ model User {
   idReservations UserIdReservation[]
   identities EntityIdentity[]
   cardEnrollments RfidEnrollment[]
+  createdVisitors Visitor[] @relation("VisitorCreatedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -67,6 +68,7 @@ model Building {
   gates Gate[]
   ownerVehicles BuildingOwnerVehicle[]
   ownerCardEnrollments RfidEnrollment[] @relation("OwnerParkingBuilding")
+  visitors Visitor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -109,6 +111,7 @@ model Company {
   vehicles Vehicle[]
   cardEnrollments RfidEnrollment[]
   rfidEvents RfidEvent[]
+  visitors Visitor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -240,6 +243,30 @@ model UserIdReservation {
   @@index([expiresAt])
   @@index([userId])
   @@map("user_id_reservations")
+}
+
+model Visitor {
+  id              String   @id @default(cuid())
+  name            String
+  phoneNumber     String
+  email           String
+  vehicleNumber   String?
+  accessory       String
+  buildingId      String
+  companyId       String?
+  createdByUserId String?
+
+  building  Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation("VisitorCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([buildingId, createdAt])
+  @@index([companyId, createdAt])
+  @@index([createdByUserId])
+  @@map("visitors")
 }
 
 model RfidReader {
