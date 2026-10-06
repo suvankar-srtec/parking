@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { requestJson } from "@/lib/client-request";
+import { useFeedback, useMutation } from "@/components/FeedbackProvider";
+import { ActionButton } from "@/components/LoadingIndicator";
 
 export type VisitorTableRow = {
   id: string;
@@ -14,6 +17,9 @@ export type VisitorTableRow = {
 
 export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[] }) {
   const [query, setQuery] = useState("");
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const { notify } = useFeedback();
+  const { pending, execute } = useMutation();
   const search = query.trim().toLowerCase();
 
   const filtered = useMemo(() => {
@@ -27,6 +33,22 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       visitor.accessory,
     ].some((value) => value.toLowerCase().includes(search)));
   }, [visitors, search]);
+
+  function sendQr(visitor: VisitorTableRow) {
+    if (pending) return;
+    setSendingId(visitor.id);
+    void execute(async () => {
+      try {
+        const result = await requestJson<{ ok: true; message: string }>(
+          `/api/visitors/${visitor.id}/send-qr`,
+          "POST",
+        );
+        notify(result.message || `QR sent to ${visitor.email}.`);
+      } finally {
+        setSendingId(null);
+      }
+    });
+  }
 
   return <>
     <div className="visitor-list-heading">
@@ -65,6 +87,7 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
               <th>Mail</th>
               <th>Vehicle Number</th>
               <th>Accessory</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -75,6 +98,18 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
               <td>{visitor.email}</td>
               <td>{visitor.vehicleNumber}</td>
               <td>{visitor.accessory}</td>
+              <td>
+                <ActionButton
+                  type="button"
+                  className="visitor-send-qr"
+                  pending={pending && sendingId === visitor.id}
+                  pendingText="Sending..."
+                  disabled={pending}
+                  onClick={() => sendQr(visitor)}
+                >
+                  Send QR
+                </ActionButton>
+              </td>
             </tr>)}
           </tbody>
         </table>
@@ -98,6 +133,8 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       .visitor-table tbody tr:last-child td{border-bottom:0}
       .visitor-table tbody tr:hover{background:#faf8fc}
       .visitor-table td strong{color:#111713;font-size:11px;font-weight:900}
+      .visitor-send-qr{min-width:76px;min-height:29px;padding:5px 9px;border:1px solid #70409a;border-radius:6px;background:#7c46ac;color:#fff;font-size:9px;font-weight:900;white-space:nowrap}
+      .visitor-send-qr:hover:not(:disabled){background:#693492}
       .visitor-date{white-space:nowrap;color:#5f6d65!important;font-size:10px}
       .visitor-empty{padding:22px 12px;text-align:center;color:#78847d;font-size:11px}
       @media(max-width:760px){
@@ -106,7 +143,7 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
         .visitor-search{width:100%}
         .visitor-search input{height:29px;font-size:9px}
         .visitor-count{min-height:24px;padding:3px 7px;font-size:8px}
-        .visitor-table{min-width:780px}
+        .visitor-table{min-width:880px}
       }
       @media(max-width:520px){
         .visitor-list-heading{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}
