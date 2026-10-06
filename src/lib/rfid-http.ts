@@ -52,7 +52,7 @@ function isHeartbeatBody(raw: string) {
 function cleanCard(value: unknown) {
   const card = String(value ?? "").trim();
   if (/^[a-zA-Z0-9_-]{1,128}$/.test(card)) return card;
-  if (/^SRTEC-VISITOR\|ID:[^|\r\n]{1,80}$/i.test(card)) return card;
+  if (/^SRTEC-VISITOR\|ID:[^|\r\n]{1,80}(?:\|[^\r\n]{1,220})?$/i.test(card)) return card;
   return "";
 }
 
@@ -90,7 +90,7 @@ function parsePathBoundReaderMessage(raw: string, deviceNumber: string, formEnco
     // Not JSON.
   }
 
-  const compact = /vgdecoder(?:r?esult|result)\s*=?\s*(SRTEC-VISITOR\|ID:[^\s&]{1,80}|[a-zA-Z0-9_-]{1,128})/i.exec(trimmed);
+  const compact = /vgdecoder(?:r?esult|result)\s*=?\s*(SRTEC-VISITOR\|ID:[^\s&]{1,240}|[a-zA-Z0-9_-]{1,128})/i.exec(trimmed);
   if (compact) {
     const card = cleanCard(compact[1]);
     if (card) return { decodedResult: card, deviceNumber };

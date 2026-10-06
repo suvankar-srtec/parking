@@ -38,7 +38,9 @@ export async function expireEnrollments(tx: Prisma.TransactionClient) {
 
 export async function processReaderScan(input: ParsedRfidReaderMessage) {
   const rawScan = input.decodedResult.trim();
-  const visitorMatch = /^SRTEC-VISITOR\|ID:([^|]{1,80})$/i.exec(rawScan);
+  // Accept the current compact visitor QR and the earlier QR format that also
+  // included BUILDING / COMPANY fields, so already-emailed passes keep working.
+  const visitorMatch = /^SRTEC-VISITOR\|ID:([^|]{1,80})(?:\|.*)?$/i.exec(rawScan);
   const visitorId = visitorMatch?.[1]?.trim() || null;
   const cardNo = visitorId ? "VISITOR-QR" : normalizeCard(input.decodedResult);
   const receivedAt = Date.now();

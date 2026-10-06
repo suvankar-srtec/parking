@@ -8,8 +8,12 @@ export function readerReply(success: boolean, message: string) {
 }
 export function parseRfidReaderMessage(raw: string, formEncoded = false): ParsedRfidReaderMessage | null {
   if (!raw || raw.length > 4096) return null;
-  const firmware = /^vgdecoder{1,2}esult([a-f0-9]{1,128})devicenumber([0-9]{1,64})otherparams$/i.exec(raw.trim());
-  if (firmware) return { decodedResult: firmware[1], deviceNumber: firmware[2] };
+  const firmware = /^vgdecoder{1,2}esult(.{1,256}?)devicenumber([0-9]{1,64})otherparams$/i.exec(raw.trim());
+  if (firmware) {
+    const decodedResult = firmware[1].trim();
+    if (!decodedResult || /[\u0000-\u001f\u007f]/.test(decodedResult)) return null;
+    return { decodedResult, deviceNumber: firmware[2] };
+  }
   const fields = new Map<string, string>();
   try {
     for (const part of raw.trim().split(/&+/)) {
