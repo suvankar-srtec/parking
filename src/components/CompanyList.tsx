@@ -78,6 +78,10 @@ export default function CompanyList({
   return <>
     {integratedHeader ? <>
       <div className={styles.integratedHeader}>
+        <div>
+          <div className="section-kicker">COMPANIES</div>
+          <h2>Companies</h2>
+        </div>
         <div className={styles.headerTools}>
           {searchControl}
           {headerAction}
