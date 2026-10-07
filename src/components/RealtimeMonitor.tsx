@@ -58,6 +58,7 @@ export default function RealtimeMonitor({
   const [clock, setClock] = useState<Date | null>(null);
   const range = useMemo(localDayRange, []);
   const requestInFlight = useRef(false);
+  const showScopeFilter = !fixedBuildingId;
 
   const visibleCompanies = useMemo(
     () => companies.filter((company) => !buildingId || company.buildingId === buildingId),
@@ -126,7 +127,7 @@ export default function RealtimeMonitor({
   return <>
     <OverstayAlert cards={data?.activeCards || []} enabled={Boolean(buildingId)} />
 
-    <section className="portfolio-card building-management" style={{ marginTop: 19 }}>
+    {showScopeFilter ? <section className="portfolio-card building-management" style={{ marginTop: 19 }}>
       <div className="portfolio-header">
         <div>
           <div className="section-kicker">FILTER REALTIME DATA</div>
@@ -139,7 +140,7 @@ export default function RealtimeMonitor({
         <label className={styles.filterField}>
           <span>Building</span>
           <div className={styles.selectShell}>
-            <select className={styles.modernSelect} value={buildingId} disabled={Boolean(fixedBuildingId)} onChange={(event) => setBuildingId(event.target.value)}>
+            <select className={styles.modernSelect} value={buildingId} onChange={(event) => setBuildingId(event.target.value)}>
               <option value="">Select building</option>
               {buildings.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}
             </select>
@@ -157,7 +158,7 @@ export default function RealtimeMonitor({
           </div>
         </label>
       </div>
-    </section>
+    </section> : null}
 
     <section className={`portfolio-card ${styles.headcount}`}>
       <div className={styles.titleRow}>
