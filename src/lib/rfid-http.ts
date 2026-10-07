@@ -46,7 +46,25 @@ async function markHttpContact(deviceNumber: string) {
 
 function isHeartbeatBody(raw: string) {
   const value = raw.trim().toLowerCase();
-  return value === "" || value === "heartbeat" || value === "heart" || value === "keepalive" || value === "ping";
+  return value === ""
+    || value === "heartbeat"
+    || value === "heart"
+    || value === "keepalive"
+    || value === "ping"
+    || /^hello&&devicenumber=[a-z0-9_-]{1,64}&&uuid=[a-z0-9_-]{1,128}$/i.test(value);
+}
+
+function scanDiagnostic(value: string) {
+  const trimmed = value.trim();
+  const visitor = /^SRTEC-VISITOR\|ID:([^|]{1,80})/i.exec(trimmed);
+  const looksLikeRfid = /^[A-F0-9]{8,32}$/i.test(trimmed);
+  const kind = visitor ? "VISITOR_QR" : looksLikeRfid ? "RFID" : "OTHER";
+  const preview = visitor
+    ? `SRTEC-VISITOR|ID:${visitor[1]}|...`
+    : looksLikeRfid
+      ? `${trimmed.slice(0, 4)}...${trimmed.slice(-4)}`
+      : trimmed.slice(0, 24);
+  return { kind, length: trimmed.length, preview };
 }
 
 function cleanCard(value: unknown) {
@@ -147,7 +165,16 @@ export async function handleRfidPost(request: Request, path?: { key: string; dev
   }
 
   try {
+    console.info("RFID_HTTP_SCAN_PACKET", {
+      deviceNumber: parsed.deviceNumber,
+      ...scanDiagnostic(parsed.decodedResult),
+    });
     const result = await processReaderScan(parsed);
+    console.info("RFID_HTTP_SCAN_RESULT", {
+      deviceNumber: parsed.deviceNumber,
+      code: result.code,
+      message: result.message,
+    });
     return reply(result.code === "0000", result.message);
   } catch {
     console.error("RFID_SCAN_FAILED", { deviceNumber: parsed.deviceNumber });
