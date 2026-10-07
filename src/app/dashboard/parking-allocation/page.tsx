@@ -49,6 +49,7 @@ export default async function AdminParkingAllocationPage() {
           <div>
             <div className="section-kicker">BUILDING PARKING</div>
             <h2>Parking allocation</h2>
+            <p className="parking-formula">Total parking = Owner + Visitor + Company</p>
           </div>
         </div>
         <div className="portfolio-divider" />
@@ -71,7 +72,7 @@ export default async function AdminParkingAllocationPage() {
       </section>
     </section>
     <style>{`
-      .admin-parking-status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid #d9e1dd}
+      .parking-formula{margin:5px 0 0;color:#52667d;font-size:13px;font-weight:700}.admin-parking-status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid #d9e1dd}
       @media(max-width:700px){.admin-parking-status{grid-template-columns:1fr}}
     `}</style>
   </main>;
