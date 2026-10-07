@@ -312,3 +312,8 @@ button[aria-busy="true"]{cursor:wait}
     grid-template-columns:1fr;
   }
 }
+
+.maximum-gate-card{background:#eaf3ff!important;border-color:#9fc5ec!important}
+.maximum-gate-card>span{color:#0f4f97!important}
+.maximum-gate-card .parking-input-wrap{border-color:#b7d2ee!important}
+.maximum-gate-card .parking-input-wrap input{color:#0f4f97!important}
