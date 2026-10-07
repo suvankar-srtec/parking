@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       await lockBuildingParking(tx, vehicle.company.buildingId);
       if (vehicle.isInside) throw new ParkingError("Record the vehicle's exit before replacing its card.", 409);
       const enrollment = await consumeCardEnrollment(tx, { enrollmentId, vehicleId, employeeId: vehicle.employeeId, companyId: vehicle.companyId, ownerId: user.id, buildingId: vehicle.company.buildingId });
-      await tx.vehicle.update({ where: { id: vehicleId }, data: { rfidCardNo: enrollment.cardNo } });
+      await tx.vehicle.update({ where: { id: vehicleId }, data: { rfidCardNo: enrollment.cardNo, rfidBlocked: false } });
       await tx.rfidEvent.create({ data: { readerId: enrollment.readerId, buildingId: vehicle.company.buildingId, companyId: vehicle.companyId, vehicleId, deviceNumber: enrollment.reader.deviceNumber, cardNo: enrollment.cardNo!, action: "REGISTER", code: "0000", message: "Card registered to vehicle." } });
     }, RFID_TRANSACTION);
     revalidatePath("/dashboard");

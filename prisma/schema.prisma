@@ -172,6 +172,7 @@ model Vehicle {
   isStaff     Boolean  @default(false)
   department  String
   rfidCardNo  String? @unique
+  rfidBlocked Boolean @default(false)
   isInside Boolean @default(false)
   lastAccessAt DateTime?
   lastAccessDevice String?
@@ -199,6 +200,7 @@ model BuildingOwnerVehicle {
   plateNumber      String
   vehicleType      String
   rfidCardNo       String?  @unique
+  rfidBlocked      Boolean  @default(false)
   isInside         Boolean  @default(false)
   lastAccessAt     DateTime?
   lastAccessDevice String?

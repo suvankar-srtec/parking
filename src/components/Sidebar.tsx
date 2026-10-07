@@ -302,6 +302,12 @@ export default function Sidebar({
           >
             <NavRow icon="activity" label="Real Time Monitor" />
           </Link>
+          {role === "BUILDING_ADMIN" ? <Link
+            className={`sidebar-submenu-link${isAccessPage("/access-control/card-block") ? " is-active" : ""}`}
+            href="/access-control/card-block"
+          >
+            <NavRow icon="card" label="Card Block" />
+          </Link> : null}
         </div>
       </div> : null}
 

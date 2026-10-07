@@ -294,6 +294,16 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
     ]);
 
     if (!vehicle && !ownerVehicle) return record(READER_NO_SUCCESS_CODE, "RFID card is not registered");
+    if (vehicle?.rfidBlocked || ownerVehicle?.rfidBlocked) {
+      return record(
+        READER_NO_SUCCESS_CODE,
+        "RFID card is blocked",
+        "DENIED",
+        vehicle?.id,
+        vehicle?.companyId,
+        ownerVehicle?.id,
+      );
+    }
     if (vehicle && (!vehicle.company.enabled || vehicle.employee.isPlaceholder)) {
       return record(READER_NO_SUCCESS_CODE, "This company employee is inactive.", "DENIED", vehicle.id, vehicle.companyId);
     }
