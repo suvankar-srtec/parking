@@ -209,12 +209,6 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
         return record(READER_NO_SUCCESS_CODE, "Gate direction must be configured before scanning.", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
       }
 
-      if (now < visitor.validFrom) {
-        return record(READER_NO_SUCCESS_CODE, "Visitor QR is not valid yet", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
-      }
-      if (now > visitor.validUntil) {
-        return record(READER_NO_SUCCESS_CODE, "Visitor QR validity has expired", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
-      }
       if (visitor.lastAccessAt && receivedAt - visitor.lastAccessAt.getTime() < SCAN_DEBOUNCE_MS) {
         return record(READER_NO_SUCCESS_CODE, "Duplicate scan ignored", "IGNORED", undefined, visitor.companyId || undefined, undefined, visitor.id);
       }
@@ -228,6 +222,15 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       } else {
         if (!visitor.isInside) return record(READER_NO_SUCCESS_CODE, "Visitor is already outside.", "IGNORED", undefined, visitor.companyId || undefined, undefined, visitor.id);
         enter = false;
+      }
+
+      // The validity window restricts ENTRY only. A visitor who entered while
+      // the QR was valid must always be able to EXIT, even after validUntil.
+      if (enter && now < visitor.validFrom) {
+        return record(READER_NO_SUCCESS_CODE, "Visitor QR is not valid yet", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+      if (enter && now > visitor.validUntil) {
+        return record(READER_NO_SUCCESS_CODE, "Visitor QR validity has expired", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
       }
 
       if (enter && !buildingStatus.enabled) {
