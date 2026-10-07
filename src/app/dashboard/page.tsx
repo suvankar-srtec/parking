@@ -10,9 +10,7 @@ import BuildingPortfolio from "@/components/BuildingPortfolio";
 import BuildingAdminPanel from "@/components/BuildingAdminPanel";
 import CompanyList from "@/components/CompanyList";
 import EmployeeList from "@/components/EmployeeList";
-import SupervisorManager from "@/components/SupervisorManager";
 import SupervisorHeadcount from "@/components/SupervisorHeadcount";
-import BuildingCredentialsEditor from "@/components/BuildingCredentialsEditor";
 import CompanyCredentialsEditor from "@/components/CompanyCredentialsEditor";
 import OwnerParkingVehicleModal from "@/components/OwnerParkingVehicleModal";
 import OwnerVehicleDetailsList from "@/components/OwnerVehicleDetailsList";
@@ -48,8 +46,7 @@ export default async function DashboardPage() {
   if (user.role === "BUILDING_ADMIN") {
     if (!user.buildingId) return <main className="dashboard-page"><Sidebar role={user.role} permissions={permissions} /><section className="dashboard-main"><header className="topbar"><div><div className="section-kicker">ADMIN</div><h1>Dashboard</h1></div><SignOutButton /></header><AssignmentRequired title="Building not assigned" message="This Admin account must be assigned to a building by a Super Admin before company management is available." /></section></main>;
 
-    const [building, supervisor] = await Promise.all([
-      prisma.building.findUnique({
+    const building = await prisma.building.findUnique({
         where: { id: user.buildingId },
         include: {
           ownerVehicles: { select: { id: true, ownerName: true, plateNumber: true, vehicleType: true, rfidCardNo: true, isInside: true }, orderBy: { createdAt: "desc" } },
@@ -65,30 +62,22 @@ export default async function DashboardPage() {
             },
           },
         },
-      }),
-      prisma.user.findFirst({
-        where: { role: "EMPLOYEE", buildingId: user.buildingId, companyId: null },
-        select: { userId: true, permissions: true, permissionsCustomized: true },
-      }),
-    ]);
+      });
     if (!building) redirect("/");
     const allocated = building.companies.reduce((total, company) => total + company.parkingAllocation, 0);
     const available = Math.max(building.companyParking - allocated, 0);
     const ownerRegistered = building.ownerVehicles.length;
     const ownerAvailable = Math.max(building.ownerParking - ownerRegistered, 0);
     const ownerInside = building.ownerVehicles.filter((vehicle) => vehicle.isInside).length;
-    const canManageSupervisor = hasPermission(user, "building.manageSupervisor");
     const canManageOwner = hasPermission(user, "building.manageOwnerParking");
     const canRegisterOwner = hasPermission(user, "building.registerOwnerParking");
     const canCreateCompanies = hasPermission(user, "building.createCompanies");
-    const supervisorPermissions = supervisor ? effectivePermissions({ role: "EMPLOYEE", permissions: supervisor.permissions, permissionsCustomized: supervisor.permissionsCustomized }) : undefined;
 
     return <main className="dashboard-page"><Sidebar role={user.role} permissions={permissions} /><section className="dashboard-main">
       <header className="topbar"><div><div className="section-kicker">ADMIN</div><h1>{building.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
       <section className="portfolio-card building-management">
-        <div className="portfolio-header"><div><div className="section-kicker">ADMIN DASHBOARD</div><h2>Parking allocation</h2><p>Your available controls are determined by the feature access assigned to this Admin account.</p></div>{canManageSupervisor ? <SupervisorManager buildingId={building.id} currentUserId={supervisor?.userId} currentPermissions={supervisorPermissions} /> : null}</div>
+        <div className="portfolio-header"><div><h2>Parking allocation</h2></div></div>
         <div className="portfolio-divider" />
-        <BuildingCredentialsEditor buildingId={building.id} userId={user.userId} buildingName={building.name} initialPassword={user.password} />
         <div className="building-parking-summary">
           <div className="building-parking-row building-parking-row-primary">
             <div className="large-stat"><span>Total parking</span><strong>{building.totalParking}</strong></div>
@@ -109,7 +98,7 @@ export default async function DashboardPage() {
 
       {(canManageOwner || canRegisterOwner) ? <section className="portfolio-card building-management">
         <div className="portfolio-header">
-          <div><div className="section-kicker">OWNER PARKING</div><h2>Owner Parking Vehicles</h2><p>Owner Parking controls available to this Admin.</p></div>
+          <div><h2>Owner Parking Vehicles</h2></div>
           {canRegisterOwner ? <OwnerParkingVehicleModal buildingId={building.id} ownerParking={building.ownerParking} registeredVehicles={ownerRegistered} /> : null}
         </div>
         <div className="portfolio-divider" />
