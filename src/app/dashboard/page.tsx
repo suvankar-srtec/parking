@@ -67,8 +67,8 @@ export default async function DashboardPage() {
     const allocated = building.companies.reduce((total, company) => total + company.parkingAllocation, 0);
     const available = Math.max(building.companyParking - allocated, 0);
     const ownerRegistered = building.ownerVehicles.length;
-    const ownerAvailable = Math.max(building.ownerParking - ownerRegistered, 0);
     const ownerInside = building.ownerVehicles.filter((vehicle) => vehicle.isInside).length;
+    const ownerAvailable = Math.max(building.ownerParking - ownerInside, 0);
     const canManageOwner = hasPermission(user, "building.manageOwnerParking");
     const canRegisterOwner = hasPermission(user, "building.registerOwnerParking");
     const canCreateCompanies = hasPermission(user, "building.createCompanies");
