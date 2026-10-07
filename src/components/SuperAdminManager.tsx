@@ -97,8 +97,6 @@ export default function SuperAdminManager() {
       <div className="portfolio-header super-admin-management-header">
         <div>
           <div className="section-kicker">SUPER ADMIN ACCOUNTS</div>
-          <h2>Super Admin management</h2>
-          <p>Create isolated Super Admin accounts. Each Super Admin manages only the buildings assigned to their own scope.</p>
         </div>
         <button className="add-building-button" type="button" onClick={() => setOpen(true)}>
           <span className="plus-icon">+</span>Create Super Admin
