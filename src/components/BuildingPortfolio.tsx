@@ -33,8 +33,6 @@ export default function BuildingPortfolio({ buildings }: { buildings: Building[]
     <div className="portfolio-header portfolio-header-search">
       <div>
         <div className="section-kicker">SUPER ADMIN</div>
-        <h2>Building portfolio</h2>
-        <p>Open a building to view its details, companies, and parking allocation.</p>
       </div>
 
       <div className="building-search" role="search">
