@@ -49,7 +49,6 @@ export default async function AdminParkingAllocationPage() {
           <div>
             <div className="section-kicker">BUILDING PARKING</div>
             <h2>Parking allocation</h2>
-            <p>Update Total parking, Owner parking, Visitor parking, Company parking, and Maximum Gate for this building. Visitor parking is reserved from Owner parking.</p>
           </div>
         </div>
         <div className="portfolio-divider" />
@@ -69,12 +68,10 @@ export default async function AdminParkingAllocationPage() {
           <div className="large-stat"><span>Already allotted</span><strong>{companyAllotted}</strong></div>
           <div className="large-stat"><span>Available</span><strong>{companyAvailable}</strong></div>
         </div>
-        <p className="parking-sync-note">Parking and Maximum Gate changes are saved to the same building record used by Super Admin. Company parking cannot be reduced below the spaces already allotted to companies.</p>
       </section>
     </section>
     <style>{`
       .admin-parking-status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid #d9e1dd}
-      .parking-sync-note{margin:12px 0 0;color:#68776f;font-size:11px;line-height:1.55}
       @media(max-width:700px){.admin-parking-status{grid-template-columns:1fr}}
     `}</style>
   </main>;
