@@ -76,7 +76,7 @@ export default async function DashboardPage() {
     return <main className="dashboard-page"><Sidebar role={user.role} permissions={permissions} /><section className="dashboard-main">
       <header className="topbar"><div><h1>{building.name}</h1></div><div className="topbar-right"><SignOutButton /></div></header>
       <section className="portfolio-card building-management">
-        <div className="portfolio-header"><div><h2>Parking allocation</h2></div></div>
+        <div className="portfolio-header"><div><h2>Parking allocation</h2><p className="parking-formula">Total parking = Owner + Visitor + Company</p></div></div>
         <div className="portfolio-divider" />
         <div className="building-parking-summary">
           <div className="building-parking-row building-parking-row-primary">
@@ -84,7 +84,7 @@ export default async function DashboardPage() {
             <div className="large-stat"><span>Owner parking</span><strong>{building.ownerParking}</strong></div>
             <div className="large-stat"><span>Visitor parking</span><strong>{building.visitorParking}</strong></div>
             <div className="large-stat"><span>Company parking</span><strong>{building.companyParking}</strong></div>
-            <div className="large-stat"><span>Maximum Gates</span><strong>{building.maximumGate}</strong></div>
+            <div className="large-stat maximum-gate-stat"><span>Maximum Gates</span><strong>{building.maximumGate}</strong></div>
           </div>
           <div className="building-parking-row building-parking-row-secondary">
             <div className="large-stat"><span>Allotted</span><strong>{allocated}</strong></div>
@@ -92,7 +92,7 @@ export default async function DashboardPage() {
           </div>
         </div>
         <style>{`
-          .building-parking-summary{display:grid;gap:10px;margin-top:10px}.building-parking-row{display:grid;gap:10px}.building-parking-row-primary{grid-template-columns:repeat(5,minmax(0,1fr))}.building-parking-row-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}.building-parking-summary .large-stat{min-width:0}.owner-parking-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px}.owner-parking-stats{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:10px;flex:1}.owner-vehicle-list{display:grid;gap:8px;margin-top:14px}.owner-vehicle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #dbe3df;border-radius:10px;background:#fafcfb}.owner-vehicle-row span{font-size:12px;color:#647168}.owner-vehicle-row strong{font-size:13px}@media(max-width:1000px){.building-parking-row-primary{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.building-parking-row-primary,.building-parking-row-secondary{grid-template-columns:1fr}.owner-parking-toolbar{align-items:stretch;flex-direction:column}.owner-parking-stats{grid-template-columns:1fr}}
+          .parking-formula{margin:5px 0 0;color:#52667d;font-size:13px;font-weight:700}.building-parking-summary{display:grid;gap:10px;margin-top:10px}.building-parking-row{display:grid;gap:10px}.building-parking-row-primary{grid-template-columns:repeat(5,minmax(0,1fr))}.building-parking-row-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}.building-parking-summary .large-stat{min-width:0}.building-parking-summary .maximum-gate-stat{background:#eaf3ff;border-color:#9fc5ec}.building-parking-summary .maximum-gate-stat span,.building-parking-summary .maximum-gate-stat strong{color:#0f4f97}.owner-parking-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px}.owner-parking-stats{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:10px;flex:1}.owner-vehicle-list{display:grid;gap:8px;margin-top:14px}.owner-vehicle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #dbe3df;border-radius:10px;background:#fafcfb}.owner-vehicle-row span{font-size:12px;color:#647168}.owner-vehicle-row strong{font-size:13px}@media(max-width:1000px){.building-parking-row-primary{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.building-parking-row-primary,.building-parking-row-secondary{grid-template-columns:1fr}.owner-parking-toolbar{align-items:stretch;flex-direction:column}.owner-parking-stats{grid-template-columns:1fr}}
         `}</style>
       </section>
 
