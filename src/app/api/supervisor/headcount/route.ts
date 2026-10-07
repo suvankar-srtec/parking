@@ -148,6 +148,16 @@ export async function GET(request: Request) {
       department: "-",
       entryTime: vehicle.lastAccessAt?.toISOString() || null,
     })),
+    ...insideVisitors.map((visitor) => ({
+      id: `visitor:${visitor.id}`,
+      rfidCardNo: "VISITOR QR",
+      vehicleNumber: visitor.vehicleNumber || "-",
+      personName: visitor.name,
+      personType: "VISITOR",
+      companyName: visitor.company?.name || "Building visitor",
+      department: visitor.accessory || "-",
+      entryTime: visitor.lastAccessAt?.toISOString() || null,
+    })),
   ].sort((a, b) => {
     const at = a.entryTime ? new Date(a.entryTime).getTime() : 0;
     const bt = b.entryTime ? new Date(b.entryTime).getTime() : 0;
