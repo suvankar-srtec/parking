@@ -1,4 +1,4 @@
-.integratedHeader{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,auto);align-items:center;gap:14px}.integratedHeader h2{margin:2px 0 0}.headerTools{display:grid;grid-template-columns:minmax(180px,210px) auto;align-items:center;justify-content:end;gap:9px;min-width:0}.searchBar{display:block;min-width:0;margin:0}.searchField{display:flex;align-items:center;gap:6px;width:100%;min-width:0;min-height:34px;padding:0 9px;border:1px solid #cfdad4;border-radius:8px;background:#fff}.searchField>span{color:#7b8780;font-size:14px}.searchField input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:10px}.searchField input::placeholder{color:#8b9690}.searchCount{padding:4px 7px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:8px;font-weight:900;white-space:nowrap}.noResults{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:12px}
+.integratedHeader{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,auto);align-items:center;gap:14px}.integratedHeader h2{margin:2px 0 0}.headerTools{display:grid;grid-template-columns:minmax(180px,210px) auto;align-items:center;justify-content:end;gap:9px;min-width:0}.searchBar{display:block;min-width:0;margin:0}.searchField{display:flex;align-items:center;gap:6px;width:100%;min-width:0;min-height:34px;padding:0 9px;border:1px solid #cfdad4;border-radius:8px;background:#fff}.searchField>span{color:#7b8780;font-size:15px}.searchField input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:12px}.searchField input::placeholder{color:#8b9690}.searchCount{padding:4px 7px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:10px;font-weight:900;white-space:nowrap}.noResults{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:13px}
 
 .companyList{display:grid;gap:10px}
 .companyCard{overflow:hidden;border:1px solid #d9e3de;border-radius:12px;box-shadow:0 1px 0 rgba(27,47,37,.02)}
@@ -7,9 +7,9 @@
 
 .cardHeader{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 14px;border-bottom:1px solid rgba(207,218,212,.9)}
 .companyTitleBlock{display:flex;align-items:center;gap:9px;min-width:0}
-.companyAvatar{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:#7d46ab;color:#fff;font-size:14px;font-weight:900}
-.companyTitleBlock h3{margin:0;color:#182920;font-size:15px;line-height:1.15;overflow-wrap:anywhere}
-.companyTitleBlock span{display:block;margin-top:2px;color:#748078;font-size:8px}
+.companyAvatar{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:#7d46ab;color:#fff;font-size:15px;font-weight:900}
+.companyTitleBlock h3{margin:0;color:#182920;font-size:16px;line-height:1.15;overflow-wrap:anywhere}
+.companyTitleBlock span{display:block;margin-top:2px;color:#748078;font-size:10px}
 .headerActions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
 .expandButton{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;background:transparent;color:#7d46ab;cursor:pointer;transition:transform .18s ease,color .18s ease}
 .expandButton:hover{background:transparent;color:#5f2c8c;transform:translateY(2px)}
@@ -18,7 +18,7 @@
 .expandButtonOpen{transform:none}
 .expandButtonOpen:hover{transform:translateY(-2px)}
 .expandButtonOpen>span{transform:translateY(2px) rotate(225deg)}
-.statusBadge{display:inline-flex;align-items:center;min-height:20px;padding:3px 8px;border-radius:999px;font-size:8px;font-weight:900}
+.statusBadge{display:inline-flex;align-items:center;min-height:20px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:900}
 .statusEnabled{background:#e7f7ee;color:#16714f}
 .statusDisabled{background:#fdebea;color:#ad3935}
 
@@ -26,33 +26,33 @@
 .infoSection{min-width:0;padding:14px 16px}
 .infoSection+.infoSection{border-left:1px solid rgba(215,225,220,.9)}
 .sectionHeading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:11px}
-.sectionHeading>span{color:#7442a0;font-size:9px;font-weight:900;letter-spacing:.65px}
-.sectionHeading>small{color:#87918b;font-size:8px}
+.sectionHeading>span{color:#7442a0;font-size:11px;font-weight:900;letter-spacing:.65px}
+.sectionHeading>small{color:#87918b;font-size:10px}
 
 .accountIdRow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding:9px 10px;border:1px solid #dce6f2;border-radius:8px;background:#f8fbff}
-.accountIdRow>span{color:#697f97;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}
-.accountIdRow>strong{color:#1768be;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums}
+.accountIdRow>span{color:#697f97;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}
+.accountIdRow>strong{color:#1768be;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums}
 
 .infoSection :global(.company-password-box){width:100%!important;min-width:0!important;max-width:none!important;flex:none!important}
 
 .statList,.parkingList{display:grid;margin:0}
 .statList>div,.parkingList>div{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px;border-bottom:1px solid rgba(220,228,224,.9)}
 .statList>div:last-child,.parkingList>div:last-child{border-bottom:0}
-.statList dt,.parkingList dt{color:#617067;font-size:10px;font-weight:700}
-.statList dd,.parkingList dd{margin:0;color:#713fa0;font-size:17px;font-weight:900;font-variant-numeric:tabular-nums}
+.statList dt,.parkingList dt{color:#617067;font-size:12px;font-weight:700}
+.statList dd,.parkingList dd{margin:0;color:#713fa0;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums}
 
 .parkingSection{background:rgba(255,255,255,.35)}
 .parkingTotal{margin-bottom:7px;padding:9px 10px;border:1px solid #ded4e8;border-radius:9px;background:rgba(250,247,252,.9)}
 .parkingTotal>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.parkingTotal span{color:#5f6e65;font-size:10px;font-weight:800}
-.parkingTotal strong{color:#713fa0;font-size:21px;font-weight:900}
+.parkingTotal span{color:#5f6e65;font-size:12px;font-weight:800}
+.parkingTotal strong{color:#713fa0;font-size:22px;font-weight:900}
 .parkingBar{display:flex;height:6px;margin-top:8px;overflow:hidden;border-radius:999px;background:#e7ece9}
 .ownerBar{display:block;background:#9a6ec0;min-width:0}
 .employeeBar{display:block;background:#76a9d8;min-width:0}
 
 .headerActions :global(.company-status-control){gap:6px}
-.headerActions :global(.company-status-control>span){min-height:20px;padding:3px 7px;font-size:8px}
-.headerActions :global(.company-status-control .secondary-button),.headerActions>:global(.secondary-button){min-width:auto!important;min-height:32px;padding:6px 12px!important;font-size:12px!important;white-space:nowrap}
+.headerActions :global(.company-status-control>span){min-height:20px;padding:3px 7px;font-size:10px}
+.headerActions :global(.company-status-control .secondary-button),.headerActions>:global(.secondary-button){min-width:auto!important;min-height:32px;padding:6px 12px!important;font-size:13px!important;white-space:nowrap}
 
 @media(max-width:1100px){
   .cardBody{grid-template-columns:1fr 1fr}
@@ -68,7 +68,7 @@
   .integratedHeader :global(.section-kicker){display:none}
   .integratedHeader h2{
     margin:0;
-    font-size:20px;
+    font-size:21px;
     line-height:1.1;
   }
   .headerTools{
@@ -89,10 +89,10 @@
     gap:4px;
     border-radius:7px;
   }
-  .searchField>span{font-size:12px}
+  .searchField>span{font-size:13px}
   .searchField input{
     min-width:0;
-    font-size:8.5px;
+    font-size:10.5px;
   }
   .headerTools :global(.add-building-button){
     min-width:0;
@@ -100,13 +100,13 @@
     padding:4px 6px;
     gap:4px;
     border-radius:7px;
-    font-size:9px;
+    font-size:11px;
     white-space:nowrap;
   }
   .headerTools :global(.plus-icon){
     width:16px;
     height:16px;
-    font-size:13px;
+    font-size:14px;
   }
   .cardHeader{
     display:grid;
@@ -124,13 +124,13 @@
     height:28px;
     flex-basis:28px;
     border-radius:7px;
-    font-size:12px;
+    font-size:13px;
   }
   .companyTitleBlock>div:last-child{min-width:0}
   .companyTitleBlock h3{
     max-width:none;
     overflow:visible;
-    font-size:12.5px;
+    font-size:13.5px;
     line-height:1.1;
     text-overflow:clip;
     white-space:normal;
@@ -147,7 +147,7 @@
   .statusBadge{
     min-height:18px;
     padding:2px 6px;
-    font-size:7px;
+    font-size:9px;
   }
   .headerActions :global(.company-status-control){
     gap:4px;
@@ -156,7 +156,7 @@
   .headerActions :global(.company-status-control>span){
     min-height:18px;
     padding:2px 5px;
-    font-size:7px;
+    font-size:9px;
   }
   .headerActions :global(.company-status-control .secondary-button),
   .headerActions>:global(.secondary-button){
@@ -164,7 +164,7 @@
     min-height:27px!important;
     padding:4px 7px!important;
     border-radius:6px!important;
-    font-size:9px!important;
+    font-size:11px!important;
     line-height:1!important;
     white-space:nowrap;
   }
@@ -189,7 +189,7 @@
     gap:6px;
   }
   .integratedHeader h2{
-    font-size:17px;
+    font-size:18px;
     white-space:nowrap;
   }
   .headerTools{
@@ -201,20 +201,20 @@
     min-height:27px;
     padding:0 5px;
   }
-  .searchField>span{font-size:10px}
+  .searchField>span{font-size:12px}
   .searchField input{
-    font-size:7.5px;
+    font-size:9.5px;
   }
   .headerTools :global(.add-building-button){
     min-height:27px;
     padding:3px 5px;
     gap:3px;
-    font-size:8px;
+    font-size:10px;
   }
   .headerTools :global(.plus-icon){
     width:14px;
     height:14px;
-    font-size:11px;
+    font-size:13px;
   }
 }
 
@@ -223,22 +223,22 @@
   .companyList{gap:7px}
   .companyCard{border-radius:9px}
   .cardHeader{padding:5px 7px;gap:4px}
-  .companyAvatar{width:26px;height:26px;flex-basis:26px;font-size:11px}
+  .companyAvatar{width:26px;height:26px;flex-basis:26px;font-size:13px}
   .companyTitleBlock{gap:6px}
-  .companyTitleBlock h3{max-width:none;font-size:11.5px;white-space:normal;overflow:visible;text-overflow:clip}
+  .companyTitleBlock h3{max-width:none;font-size:13.5px;white-space:normal;overflow:visible;text-overflow:clip}
   .headerActions{gap:3px}
   .headerActions :global(.company-status-control){gap:3px}
   .headerActions :global(.company-status-control .secondary-button),
   .headerActions>:global(.secondary-button){
     min-height:25px!important;
     padding:3px 5px!important;
-    font-size:8px!important;
+    font-size:10px!important;
   }
   .statusBadge,
   .headerActions :global(.company-status-control>span){
     min-height:17px;
     padding:2px 4px;
-    font-size:6.5px;
+    font-size:8.5px;
   }
   .expandButton{width:21px;height:21px;flex-basis:21px}
   .expandButton>span{width:7px;height:7px}
