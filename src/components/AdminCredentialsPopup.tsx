@@ -107,8 +107,8 @@ export default function AdminCredentialsPopup() {
       .admin-credentials-grid>div{padding:14px 15px;border:1px solid #d7e0db;border-radius:11px;background:#f8faf9}
       .admin-credentials-grid span,.admin-password-status span{display:block;color:#6b7770;font-size:12px;font-weight:800}
       .admin-credentials-grid strong{display:block;margin-top:7px;color:#1769c2;font-size:16px}
-      .admin-password-status{margin-top:12px;padding:14px 15px;border:1px solid #ddd5e5;border-radius:11px;background:#fbf8fd}
-      .admin-password-status strong{display:block;margin-top:7px;color:#7040a2;font-size:18px;letter-spacing:3px}
+      .admin-password-status{margin-top:12px;padding:14px 15px;border:1px solid #ddd5e5;border-radius:11px;background:#f7fbff}
+      .admin-password-status strong{display:block;margin-top:7px;color:#1769c2;font-size:18px;letter-spacing:3px}
       .admin-password-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:12px}
       .admin-password-form .password-field{min-width:0}
       .admin-password-form .password-input-wrap input{height:42px}
