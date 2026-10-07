@@ -67,7 +67,7 @@ export default function BuildingParkingEditor({
     <div className={canEditMaximumGate ? "building-parking-primary-grid" : undefined}>
       <ParkingInputs fields={fields} onChange={setFields} disabled={pending} />
       {canEditMaximumGate ? <div className="maximum-gate-editor">
-        <label className="parking-input-card">
+        <label className="parking-input-card maximum-gate-card">
           <span>Maximum Gate</span>
           <div className="parking-input-wrap">
             <input
