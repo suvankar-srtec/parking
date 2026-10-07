@@ -1,4 +1,4 @@
-.integratedHeader{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,auto);align-items:center;gap:14px}.integratedHeader h2{margin:2px 0 0}.headerTools{display:grid;grid-template-columns:minmax(180px,210px) auto;align-items:center;justify-content:end;gap:9px;min-width:0}.searchBar{display:block;min-width:0;margin:0}.searchField{display:flex;align-items:center;gap:6px;width:100%;min-width:0;min-height:34px;padding:0 9px;border:1px solid #cfdad4;border-radius:8px;background:#fff}.searchField>span{color:#7b8780;font-size:15px}.searchField input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:12px}.searchField input::placeholder{color:#8b9690}.searchCount{padding:4px 7px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:10px;font-weight:900;white-space:nowrap}.noResults{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:13px}
+.integratedHeader{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,auto);align-items:center;gap:14px}.integratedHeader h2{margin:2px 0 0}.headerTools{display:grid;grid-template-columns:minmax(180px,210px) auto;align-items:center;justify-content:end;gap:9px;min-width:0}.searchBar{display:block;min-width:0;margin:0}.searchField{display:flex;align-items:center;gap:6px;width:100%;min-width:0;min-height:34px;padding:0 9px;border:1px solid #cbd9e7;border-radius:8px;background:#fff}.searchField>span{color:#7b8780;font-size:15px}.searchField input{width:100%;border:0;outline:0;background:transparent;color:#213128;font:inherit;font-size:12px}.searchField input::placeholder{color:#8b9690}.searchCount{padding:4px 7px;border-radius:999px;background:#f2edf7;color:#71429d;font-size:10px;font-weight:900;white-space:nowrap}.noResults{padding:28px 16px;border:1px dashed #d1dbd5;border-radius:9px;color:#738078;text-align:center;font-size:13px}
 
 .companyList{display:grid;gap:10px}
 .companyCard{overflow:hidden;border:1px solid #d9e3de;border-radius:12px;box-shadow:0 1px 0 rgba(27,47,37,.02)}
@@ -9,7 +9,7 @@
 .companyTitleBlock{display:flex;align-items:center;gap:9px;min-width:0}
 .companyAvatar{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:#7d46ab;color:#fff;font-size:15px;font-weight:900}
 .companyTitleBlock h3{margin:0;color:#182920;font-size:16px;line-height:1.15;overflow-wrap:anywhere}
-.companyTitleBlock span{display:block;margin-top:2px;color:#748078;font-size:10px}
+.companyTitleBlock span{display:block;margin-top:2px;color:#73869a;font-size:10px}
 .headerActions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
 .expandButton{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;background:transparent;color:#7d46ab;cursor:pointer;transition:transform .18s ease,color .18s ease}
 .expandButton:hover{background:transparent;color:#5f2c8c;transform:translateY(2px)}
