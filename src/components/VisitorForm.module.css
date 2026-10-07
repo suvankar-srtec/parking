@@ -46,8 +46,8 @@
   outline:none;
 }
 .field input:focus{
-  border-color:#7c46ac;
-  box-shadow:0 0 0 3px rgba(124,70,172,.10);
+  border-color:#1769c2;
+  box-shadow:0 0 0 3px rgba(23,105,194,.10);
 }
 .field input::placeholder{
   color:#98a39d;
