@@ -23,7 +23,7 @@ type ActiveCard = {
   rfidCardNo: string;
   vehicleNumber: string;
   personName: string;
-  personType: "OWNER" | "EMPLOYEE";
+  personType: "OWNER" | "EMPLOYEE" | "VISITOR";
   companyName: string;
   department: string;
   entryTime: string | null;
@@ -178,7 +178,8 @@ export default function SupervisorHeadcount({
   }, [popup]);
 
   function manualExit(card: ActiveCard) {
-    if (!window.confirm(`Manually exit ${card.personName} · ${card.vehicleNumber}?`)) return;
+    const subject = card.personType === "VISITOR" ? "visitor" : "vehicle";
+    if (!window.confirm(`Manually exit this ${subject}: ${card.personName} · ${card.vehicleNumber}?`)) return;
     void executeManualExit(async () => {
       const response = await fetch("/api/supervisor/manual-exit", {
         method: "POST",
@@ -217,17 +218,17 @@ export default function SupervisorHeadcount({
     </section> : null}
 
     {showActiveCards ? <div className={styles.activeCardsBackdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setShowActiveCards(false); }}>
-      <section className={styles.activeCardsModal} role="dialog" aria-modal="true" aria-label="Active RFID cards">
+      <section className={styles.activeCardsModal} role="dialog" aria-modal="true" aria-label="Active RFID and visitor QR entries">
         <div className={styles.activeCardsHeader}>
-          <div><div className="section-kicker">CURRENTLY ON SITE</div><h2>Active RFID cards</h2><p>{data?.activeCards?.length || 0} vehicle{(data?.activeCards?.length || 0) === 1 ? "" : "s"} currently inside.</p></div>
+          <div><div className="section-kicker">CURRENTLY ON SITE</div><h2>Active RFID / QR</h2><p>{data?.activeCards?.length || 0} active entr{(data?.activeCards?.length || 0) === 1 ? "y" : "ies"} currently inside.</p></div>
           <button type="button" className={styles.popupClose} aria-label="Close active cards" onClick={() => setShowActiveCards(false)}>×</button>
         </div>
         <div className={styles.activeCardsTableWrap}>
           <table className={styles.activeCardsTable}>
-            <thead><tr><th>RFID</th><th>Vehicle</th><th>Owner / Employee</th><th>Type</th><th>Company</th><th>Department</th><th>Entry time</th><th>Action</th></tr></thead>
+            <thead><tr><th>RFID / QR</th><th>Vehicle</th><th>Person</th><th>Type</th><th>Company</th><th>Department / Accessory</th><th>Entry time</th><th>Action</th></tr></thead>
             <tbody>{data?.activeCards?.length ? data.activeCards.map((card) => <tr key={card.id}>
-              <td>{card.rfidCardNo}</td><td>{card.vehicleNumber}</td><td>{card.personName}</td><td>{card.personType === "OWNER" ? "Owner" : "Employee"}</td><td>{card.companyName}</td><td>{card.department}</td><td>{card.entryTime ? new Date(card.entryTime).toLocaleString() : "-"}</td><td><button type="button" className={styles.manualExitButton} disabled={manualExitPending} onClick={() => manualExit(card)}>{manualExitPending ? "Please wait…" : "Manual exit"}</button></td>
-            </tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No active RFID cards are currently on site.</td></tr>}</tbody>
+              <td>{card.rfidCardNo}</td><td>{card.vehicleNumber}</td><td>{card.personName}</td><td>{card.personType === "OWNER" ? "Owner" : card.personType === "VISITOR" ? "Visitor" : "Employee"}</td><td>{card.companyName}</td><td>{card.department}</td><td>{card.entryTime ? new Date(card.entryTime).toLocaleString() : "-"}</td><td><button type="button" className={styles.manualExitButton} disabled={manualExitPending} onClick={() => manualExit(card)}>{manualExitPending ? "Please wait…" : "Manual exit"}</button></td>
+            </tr>) : <tr><td colSpan={8} className={styles.emptyTable}>No active RFID cards or visitor QR entries are currently on site.</td></tr>}</tbody>
           </table>
         </div>
       </section>
