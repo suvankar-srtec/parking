@@ -74,7 +74,7 @@ export default async function DashboardPage() {
     const canCreateCompanies = hasPermission(user, "building.createCompanies");
 
     return <main className="dashboard-page"><Sidebar role={user.role} permissions={permissions} /><section className="dashboard-main">
-      <header className="topbar"><div><div className="section-kicker">ADMIN</div><h1>{building.name}</h1></div><div className="topbar-right"><div className="summary-card"><span>User ID</span><strong>{user.userId}</strong></div><SignOutButton /></div></header>
+      <header className="topbar"><div><h1>{building.name}</h1></div><div className="topbar-right"><SignOutButton /></div></header>
       <section className="portfolio-card building-management">
         <div className="portfolio-header"><div><h2>Parking allocation</h2></div></div>
         <div className="portfolio-divider" />
