@@ -40,7 +40,6 @@ export default function OwnerParkingVehicleModal({
   const [loadingAllocations, setLoadingAllocations] = useState(false);
   const [vehicles, setVehicles] = useState<OwnerVehicle[]>([]);
   const [card, setCard] = useState<CapturedCard | null>(null);
-  const parkingFull = registeredVehicles >= ownerParking;
 
   async function openManage() {
     setManageOpen(true);
@@ -83,10 +82,9 @@ export default function OwnerParkingVehicleModal({
       <button
         type="button"
         className="secondary-button vehicle-add-button"
-        disabled={parkingFull || ownerParking <= 0}
         onClick={() => { setCard(null); setOpen(true); }}
       >
-        {parkingFull ? "Owner parking full" : "Add vehicle"}
+        Add vehicle
       </button>
       {registeredVehicles > 0 ? <button type="button" className="secondary-button" onClick={() => void openManage()}>Manage allocations</button> : null}
     </div>
@@ -97,7 +95,7 @@ export default function OwnerParkingVehicleModal({
           <div>
             <div className="section-kicker">OWNER PARKING</div>
             <h2 id="owner-vehicle-modal-title">Add vehicle</h2>
-            <p>Register a vehicle against the building&apos;s allotted Owner Parking spaces.</p>
+            <p>Register Owner Parking vehicles and RFID cards. Entry is limited by the allotted Owner Parking capacity.</p>
           </div>
           <button type="button" className="modal-close" aria-label="Close form" disabled={pending} onClick={() => setOpen(false)}>×</button>
         </div>
