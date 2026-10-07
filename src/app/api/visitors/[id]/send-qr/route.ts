@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -73,7 +74,8 @@ export async function POST(
       }, { status: 503 });
     }
 
-    const qrPayload = `SRTEC-VISITOR|ID:${visitor.id}`;
+    const nextQrToken = randomUUID().replaceAll("-", "");
+    const qrPayload = `SRTEC-VISITOR|ID:${visitor.id}|TOKEN:${nextQrToken}`;
 
     const qrResponse = await fetch("https://quickchart.io/qr", {
       method: "POST",
@@ -148,9 +150,14 @@ export async function POST(
       }, { status: 502 });
     }
 
+    await prisma.visitor.update({
+      where: { id: visitor.id },
+      data: { qrToken: nextQrToken },
+    });
+
     return NextResponse.json({
       ok: true,
-      message: `Visitor QR sent successfully to ${visitor.email}.`,
+      message: `New visitor QR sent successfully to ${visitor.email}. Previous QR is now disabled.`,
     });
   } catch (error) {
     console.error("SEND_VISITOR_QR_FAILED", error);

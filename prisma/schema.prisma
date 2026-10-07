@@ -262,6 +262,7 @@ model Visitor {
   isInside        Boolean  @default(false)
   lastAccessAt    DateTime?
   lastAccessDevice String?
+  qrToken         String?
 
   building  Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)

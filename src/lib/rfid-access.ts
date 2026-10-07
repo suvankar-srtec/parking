@@ -42,6 +42,8 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
   // included BUILDING / COMPANY fields, so already-emailed passes keep working.
   const visitorMatch = /^SRTEC-VISITOR\|ID:([^|]{1,80})(?:\|.*)?$/i.exec(rawScan);
   const visitorId = visitorMatch?.[1]?.trim() || null;
+  const visitorTokenMatch = /(?:^|\|)TOKEN:([^|]{1,80})(?:\||$)/i.exec(rawScan);
+  const scannedVisitorToken = visitorTokenMatch?.[1]?.trim() || null;
   const cardNo = visitorId ? "VISITOR-QR" : normalizeCard(input.decodedResult);
   const receivedAt = Date.now();
   return prisma.$transaction(async (tx) => {
@@ -171,6 +173,13 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
         include: { company: { select: { id: true, enabled: true, buildingId: true, visitorParkingAllocation: true } } },
       });
       if (!visitor) return record(READER_NO_SUCCESS_CODE, "Visitor QR is not registered", "DENIED", undefined, undefined, undefined, visitorId);
+
+      // Legacy QR passes remain valid only until the first replacement QR is sent.
+      // Once qrToken is set, only the latest emailed QR is accepted.
+      if (visitor.qrToken && scannedVisitorToken !== visitor.qrToken) {
+        return record(READER_NO_SUCCESS_CODE, "New QR generated", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+
       if (visitor.buildingId !== reader.buildingId) {
         return record(READER_NO_SUCCESS_CODE, "Visitor QR belongs to another building", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
       }
