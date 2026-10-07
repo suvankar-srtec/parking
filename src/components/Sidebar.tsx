@@ -5,6 +5,7 @@ import Link from "@/components/AppLink";
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import SidebarReaderStatus from "./SidebarReaderStatus";
+import AdminCredentialsPopup from "./AdminCredentialsPopup";
 import SignOutButton from "./SignOutButton";
 import { dashboardLabel, roleLabel } from "@/lib/roles";
 import { defaultPermissionsForRole } from "@/lib/permissions";
@@ -85,6 +86,7 @@ export default function Sidebar({
   const supervisorParkingActive = role === "EMPLOYEE" && (pathname === "/dashboard/employee-parking" || pathname.startsWith("/dashboard/employee-parking/"));
   const adminParkingActive = role === "BUILDING_ADMIN" && (pathname === "/dashboard/parking-allocation" || pathname.startsWith("/dashboard/parking-allocation/"));
   const companyParkingActive = (role === "COMPANY_ADMIN" || role === "BUILDING_OWNER") && (pathname === "/dashboard/company-parking" || pathname.startsWith("/dashboard/company-parking/"));
+  const supervisorManagementActive = role === "BUILDING_ADMIN" && (pathname === "/dashboard/supervisor" || pathname.startsWith("/dashboard/supervisor/"));
   const dashboardLinkActive = role === "EMPLOYEE" || role === "BUILDING_ADMIN" || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER"
     ? pathname === dashboardHref
     : dashboardPageActive;
@@ -127,6 +129,7 @@ export default function Sidebar({
     && assigned.has("building.manageOwnerParking");
   const showCompanyParking = (role === "COMPANY_ADMIN" || role === "BUILDING_OWNER")
     && assigned.has("company.allocateEmployeeParking");
+  const showSupervisorManagement = role === "BUILDING_ADMIN" && assigned.has("building.manageSupervisor");
   const showVisitorForm = role === "BUILDING_ADMIN" || role === "COMPANY_ADMIN" || role === "BUILDING_OWNER";
   const showReports = isSuperAdmin
     || (role === "BUILDING_ADMIN" && assigned.has("building.viewReports"))
@@ -179,7 +182,7 @@ export default function Sidebar({
       <div className="logo-box" aria-hidden="true">S</div>
       <div className="sidebar-brand-copy">
         <strong>SRTEC Access Control</strong>
-        <span className="sidebar-role-pill">{roleLabel(role)}</span>
+        {role === "BUILDING_ADMIN" ? <AdminCredentialsPopup /> : <span className="sidebar-role-pill">{roleLabel(role)}</span>}
       </div>
       <button
         type="button"
@@ -247,6 +250,13 @@ export default function Sidebar({
             href="/dashboard/employee-parking"
           >
             <NavRow icon="parking" label="Employee parking" />
+          </Link> : null}
+
+          {showSupervisorManagement ? <Link
+            className={`sidebar-submenu-link${supervisorManagementActive ? " is-active" : ""}`}
+            href="/dashboard/supervisor"
+          >
+            <NavRow icon="admin" label="Supervisor" />
           </Link> : null}
 
           {canCreateSuperAdmins ? <Link
