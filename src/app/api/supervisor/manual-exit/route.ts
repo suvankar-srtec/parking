@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const id = String(body?.id ?? "").trim();
   const [kind, recordId] = id.split(":");
-  if (!["vehicle", "owner"].includes(kind) || !recordId) {
+  if (!["vehicle", "owner", "visitor"].includes(kind) || !recordId) {
     return NextResponse.json({ ok: false, message: "Invalid active-card selection." }, { status: 400 });
   }
 
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
       let cardNo = "";
       let vehicleId: string | null = null;
       let ownerVehicleId: string | null = null;
+      let visitorId: string | null = null;
 
       if (kind === "vehicle") {
         const vehicle = await tx.vehicle.findUnique({
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
         companyId = vehicle.companyId;
         cardNo = vehicle.rfidCardNo || "";
         vehicleId = vehicle.id;
-      } else {
+      } else if (kind === "owner") {
         const vehicle = await tx.buildingOwnerVehicle.findUnique({
           where: { id: recordId },
           select: { id: true, isInside: true, rfidCardNo: true, buildingId: true },
@@ -63,6 +64,18 @@ export async function POST(request: Request) {
         targetBuildingId = vehicle.buildingId;
         cardNo = vehicle.rfidCardNo || "";
         ownerVehicleId = vehicle.id;
+      } else {
+        const visitor = await tx.visitor.findUnique({
+          where: { id: recordId },
+          select: { id: true, isInside: true, buildingId: true, companyId: true },
+        });
+        if (!visitor) throw new Error("Visitor not found.");
+        if (!visitor.isInside) throw new Error("This visitor is already outside.");
+
+        targetBuildingId = visitor.buildingId;
+        companyId = visitor.companyId;
+        cardNo = "VISITOR-QR";
+        visitorId = visitor.id;
       }
 
       if (user!.role === "BUILDING_ADMIN" || user!.role === "EMPLOYEE") {
@@ -82,8 +95,17 @@ export async function POST(request: Request) {
             lastAccessDevice: "MANUAL",
           },
         });
-      } else {
+      } else if (kind === "owner") {
         await tx.buildingOwnerVehicle.update({
+          where: { id: recordId },
+          data: {
+            isInside: false,
+            lastAccessAt: now,
+            lastAccessDevice: "MANUAL",
+          },
+        });
+      } else {
+        await tx.visitor.update({
           where: { id: recordId },
           data: {
             isInside: false,
@@ -100,18 +122,19 @@ export async function POST(request: Request) {
           companyId,
           vehicleId,
           ownerVehicleId,
+          visitorId,
           deviceNumber: "MANUAL",
           cardNo: cardNo || "MANUAL",
           action: "EXIT",
           code: "0000",
-          message: "Manual exit allowed",
+          message: kind === "visitor" ? "Visitor manual exit allowed" : "Manual exit allowed",
         },
       });
     });
 
     return NextResponse.json({
       ok: true,
-      message: "Manual exit completed.",
+      message: kind === "visitor" ? "Visitor manual exit completed." : "Manual exit completed.",
     });
   } catch (error) {
     console.error("MANUAL_EXIT_FAILED", error);
