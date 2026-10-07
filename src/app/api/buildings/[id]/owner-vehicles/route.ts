@@ -42,11 +42,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const result = await prisma.$transaction(async (tx) => {
       await lockRfid(tx);
       await lockBuildingParking(tx, buildingId);
-      const building = await tx.building.findUnique({ where: { id: buildingId }, select: { id: true, enabled: true, ownerParking: true } });
+      const building = await tx.building.findUnique({ where: { id: buildingId }, select: { id: true, enabled: true } });
       if (!building) throw new ParkingError("Building not found.", 404);
       if (!building.enabled) throw new ParkingError("Building is disabled. Vehicle registration is unavailable.", 403);
-      const used = await tx.buildingOwnerVehicle.count({ where: { buildingId } });
-      if (used >= building.ownerParking) throw new ParkingError(`Owner Parking is full. ${building.ownerParking} spaces are allotted.`, 400);
 
       let cardNo: string | null = null;
       let readerId: string | null = null;
@@ -65,11 +63,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
       const vehicle = await tx.buildingOwnerVehicle.create({ data: { ownerName, plateNumber, vehicleType, rfidCardNo: cardNo, buildingId } });
       if (cardNo && readerId && deviceNumber) await tx.rfidEvent.create({ data: { readerId, buildingId, ownerVehicleId: vehicle.id, deviceNumber, cardNo, action: "REGISTER", code: "0000", message: "Card registered to Owner Parking vehicle." } });
-      return { vehicle, available: building.ownerParking - used - 1 };
+      return { vehicle };
     }, RFID_TRANSACTION);
 
     revalidatePath("/dashboard");
-    return NextResponse.json({ ok: true, message: `Owner Parking vehicle registered successfully. ${result.available} spaces remain.`, vehicle: result.vehicle }, { status: 201 });
+    return NextResponse.json({ ok: true, message: "Owner Parking vehicle registered successfully.", vehicle: result.vehicle }, { status: 201 });
   } catch (error) {
     if (error instanceof ParkingError) return NextResponse.json({ ok: false, message: error.message }, { status: error.status });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return NextResponse.json({ ok: false, message: "This plate number or RFID card is already registered." }, { status: 409 });
