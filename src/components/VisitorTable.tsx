@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { requestJson } from "@/lib/client-request";
 import { useFeedback, useMutation } from "@/components/FeedbackProvider";
 import { ActionButton } from "@/components/LoadingIndicator";
@@ -15,22 +15,67 @@ export type VisitorTableRow = {
   accessory: string;
   validFrom: string;
   validUntil: string;
+  validFromIso: string;
+  validUntilIso: string;
 };
+
+type EditDraft = {
+  name: string;
+  phoneNumber: string;
+  email: string;
+  vehicleNumber: string;
+  accessory: string;
+  validFrom: string;
+  validUntil: string;
+};
+
+function toDateTimeLocal(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
+}
+
+function formatVisitorTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
 
 export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[] }) {
   const [rows, setRows] = useState(visitors);
   const [query, setQuery] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
-  const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
-  const [emailDraft, setEmailDraft] = useState("");
-  const { notify } = useFeedback();
+  const [editingVisitor, setEditingVisitor] = useState<VisitorTableRow | null>(null);
+  const [draft, setDraft] = useState<EditDraft | null>(null);
+  const { notify, refresh } = useFeedback();
   const { pending: sending, execute: executeSend } = useMutation();
-  const { pending: updatingEmail, execute: executeEmailUpdate } = useMutation();
+  const { pending: updating, execute: executeUpdate } = useMutation();
   const search = query.trim().toLowerCase();
 
   useEffect(() => {
     setRows(visitors);
   }, [visitors]);
+
+  useEffect(() => {
+    if (!editingVisitor) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !updating) {
+        setEditingVisitor(null);
+        setDraft(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editingVisitor, updating]);
 
   const filtered = useMemo(() => {
     if (!search) return rows;
@@ -47,7 +92,7 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
   }, [rows, search]);
 
   function sendQr(visitor: VisitorTableRow) {
-    if (sending) return;
+    if (sending || updating) return;
     setSendingId(visitor.id);
     void executeSend(async () => {
       try {
@@ -62,37 +107,94 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
     });
   }
 
-  function startEmailEdit(visitor: VisitorTableRow) {
-    if (updatingEmail) return;
-    setEditingEmailId(visitor.id);
-    setEmailDraft(visitor.email);
+  function openEdit(visitor: VisitorTableRow) {
+    if (updating) return;
+    setEditingVisitor(visitor);
+    setDraft({
+      name: visitor.name,
+      phoneNumber: visitor.phoneNumber,
+      email: visitor.email,
+      vehicleNumber: visitor.vehicleNumber,
+      accessory: visitor.accessory,
+      validFrom: toDateTimeLocal(visitor.validFromIso),
+      validUntil: toDateTimeLocal(visitor.validUntilIso),
+    });
   }
 
-  function cancelEmailEdit() {
-    if (updatingEmail) return;
-    setEditingEmailId(null);
-    setEmailDraft("");
+  function closeEdit() {
+    if (updating) return;
+    setEditingVisitor(null);
+    setDraft(null);
   }
 
-  function saveEmail(visitor: VisitorTableRow) {
-    const nextEmail = emailDraft.trim().toLowerCase();
-    if (!nextEmail) {
-      notify("Enter the visitor email address.", "error");
+  function changeDraft(field: keyof EditDraft, value: string) {
+    setDraft((current) => current ? { ...current, [field]: value } : current);
+  }
+
+  function saveVisitor(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingVisitor || !draft || updating) return;
+
+    const validFrom = new Date(draft.validFrom);
+    const validUntil = new Date(draft.validUntil);
+    if (!draft.name.trim() || !draft.phoneNumber.trim() || !draft.email.trim() || !draft.accessory.trim()) {
+      notify("Name, Phone Number, Mail, and Accessory are required.", "error");
+      return;
+    }
+    if (Number.isNaN(validFrom.getTime()) || Number.isNaN(validUntil.getTime())) {
+      notify("Valid From and Valid Until are required.", "error");
+      return;
+    }
+    if (validUntil <= validFrom) {
+      notify("Valid Until must be later than Valid From.", "error");
       return;
     }
 
-    void executeEmailUpdate(async () => {
-      const result = await requestJson<{ ok: true; message: string; visitor: { id: string; email: string } }>(
-        `/api/visitors/${visitor.id}`,
+    void executeUpdate(async () => {
+      const result = await requestJson<{
+        ok: true;
+        message: string;
+        visitor: {
+          id: string;
+          name: string;
+          phoneNumber: string;
+          email: string;
+          vehicleNumber: string | null;
+          accessory: string;
+          validFrom: string;
+          validUntil: string;
+        };
+      }>(
+        `/api/visitors/${editingVisitor.id}`,
         "PATCH",
-        { email: nextEmail },
+        {
+          name: draft.name.trim(),
+          phoneNumber: draft.phoneNumber.trim(),
+          email: draft.email.trim(),
+          vehicleNumber: draft.vehicleNumber.trim(),
+          accessory: draft.accessory.trim(),
+          validFrom: validFrom.toISOString(),
+          validUntil: validUntil.toISOString(),
+        },
       );
-      setRows((current) => current.map((row) =>
-        row.id === visitor.id ? { ...row, email: result.visitor.email } : row
-      ));
-      setEditingEmailId(null);
-      setEmailDraft("");
-      notify(result.message || "Visitor email updated successfully.");
+
+      setRows((current) => current.map((row) => row.id === editingVisitor.id ? {
+        ...row,
+        name: result.visitor.name,
+        phoneNumber: result.visitor.phoneNumber,
+        email: result.visitor.email,
+        vehicleNumber: result.visitor.vehicleNumber || "",
+        accessory: result.visitor.accessory,
+        validFrom: formatVisitorTime(result.visitor.validFrom),
+        validUntil: formatVisitorTime(result.visitor.validUntil),
+        validFromIso: result.visitor.validFrom,
+        validUntilIso: result.visitor.validUntil,
+      } : row));
+
+      setEditingVisitor(null);
+      setDraft(null);
+      notify(result.message || "Visitor details updated successfully.");
+      refresh();
     });
   }
 
@@ -143,62 +245,96 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
               <td className="visitor-date">{visitor.dateTime}</td>
               <td><strong>{visitor.name}</strong></td>
               <td>{visitor.phoneNumber}</td>
-              <td>
-                {editingEmailId === visitor.id ? <div className="visitor-email-editor">
-                  <input
-                    type="email"
-                    value={emailDraft}
-                    onChange={(event) => setEmailDraft(event.target.value)}
-                    disabled={updatingEmail}
-                    aria-label={`Edit email for ${visitor.name}`}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        saveEmail(visitor);
-                      }
-                      if (event.key === "Escape") cancelEmailEdit();
-                    }}
-                    autoFocus
-                  />
-                  <button type="button" className="visitor-email-save" disabled={updatingEmail} onClick={() => saveEmail(visitor)} aria-label={`Save email for ${visitor.name}`}>✓</button>
-                  <button type="button" className="visitor-email-cancel" disabled={updatingEmail} onClick={cancelEmailEdit} aria-label="Cancel email edit">×</button>
-                </div> : <div className="visitor-email-cell">
-                  <span>{visitor.email}</span>
-                  <button
-                    type="button"
-                    className="visitor-email-edit"
-                    aria-label={`Edit email for ${visitor.name}`}
-                    title="Edit email"
-                    disabled={updatingEmail}
-                    onClick={() => startEmailEdit(visitor)}
-                  >
-                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
-                    </svg>
-                  </button>
-                </div>}
-              </td>
-              <td>{visitor.vehicleNumber}</td>
+              <td>{visitor.email}</td>
+              <td>{visitor.vehicleNumber || "—"}</td>
               <td>{visitor.accessory}</td>
               <td className="visitor-date">{visitor.validFrom}</td>
               <td className="visitor-date">{visitor.validUntil}</td>
               <td>
-                <ActionButton
-                  type="button"
-                  className="visitor-send-qr"
-                  pending={sending && sendingId === visitor.id}
-                  pendingText="Sending..."
-                  disabled={sending || updatingEmail}
-                  onClick={() => sendQr(visitor)}
-                >
-                  Send QR
-                </ActionButton>
+                <div className="visitor-actions">
+                  <ActionButton
+                    type="button"
+                    className="visitor-send-qr"
+                    pending={sending && sendingId === visitor.id}
+                    pendingText="Sending..."
+                    disabled={sending || updating}
+                    onClick={() => sendQr(visitor)}
+                  >
+                    Send QR
+                  </ActionButton>
+                  <button
+                    type="button"
+                    className="visitor-edit-button"
+                    disabled={sending || updating}
+                    onClick={() => openEdit(visitor)}
+                  >
+                    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                    </svg>
+                    Edit
+                  </button>
+                </div>
               </td>
             </tr>)}
           </tbody>
         </table>
       </div>}
+
+    {editingVisitor && draft ? <div className="visitor-modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) closeEdit();
+    }}>
+      <section className="visitor-edit-modal" role="dialog" aria-modal="true" aria-labelledby="visitor-edit-title">
+        <button type="button" className="visitor-modal-close" onClick={closeEdit} disabled={updating} aria-label="Close edit visitor form">×</button>
+        <div className="visitor-modal-heading">
+          <div className="section-kicker">EDIT VISITOR</div>
+          <h2 id="visitor-edit-title">Edit visitor details</h2>
+          <p>Update the visitor information and QR validity window.</p>
+        </div>
+
+        <form className="visitor-edit-form" onSubmit={saveVisitor}>
+          <fieldset disabled={updating}>
+            <div className="visitor-edit-grid">
+              <label>
+                <span>Name</span>
+                <input type="text" value={draft.name} onChange={(event) => changeDraft("name", event.target.value)} maxLength={120} required />
+              </label>
+              <label>
+                <span>Phone Number</span>
+                <input type="tel" value={draft.phoneNumber} onChange={(event) => changeDraft("phoneNumber", event.target.value)} minLength={7} maxLength={30} required />
+              </label>
+              <label>
+                <span>Mail</span>
+                <input type="email" value={draft.email} onChange={(event) => changeDraft("email", event.target.value)} maxLength={180} required />
+              </label>
+              <label>
+                <span>Vehicle Number <small>(if any)</small></span>
+                <input type="text" value={draft.vehicleNumber} onChange={(event) => changeDraft("vehicleNumber", event.target.value)} maxLength={40} />
+              </label>
+              <label>
+                <span>Accessory</span>
+                <input type="text" value={draft.accessory} onChange={(event) => changeDraft("accessory", event.target.value)} maxLength={250} required />
+              </label>
+              <label>
+                <span>Valid From</span>
+                <input type="datetime-local" value={draft.validFrom} onChange={(event) => changeDraft("validFrom", event.target.value)} required />
+              </label>
+              <label>
+                <span>Valid Until</span>
+                <input type="datetime-local" value={draft.validUntil} onChange={(event) => changeDraft("validUntil", event.target.value)} required />
+              </label>
+            </div>
+          </fieldset>
+
+          <div className="visitor-modal-actions">
+            <button type="button" className="secondary-button" onClick={closeEdit} disabled={updating}>Cancel</button>
+            <ActionButton type="submit" className="primary-button" pending={updating} pendingText="Saving changes...">
+              Update Visitor
+            </ActionButton>
+          </div>
+        </form>
+      </section>
+    </div> : null}
 
     <style>{`
       .visitor-list-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -218,20 +354,34 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       .visitor-table tbody tr:last-child td{border-bottom:0}
       .visitor-table tbody tr:hover{background:#faf8fc}
       .visitor-table td strong{color:#111713;font-size:11px;font-weight:900}
-      .visitor-email-cell{display:flex;align-items:center;gap:6px;min-width:0}
-      .visitor-email-cell>span{min-width:0}
-      .visitor-email-edit{width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;padding:0;border:1px solid #d4ddd8;border-radius:5px;background:#fff;color:#6f3da0;cursor:pointer}
-      .visitor-email-edit:hover:not(:disabled){background:#f2ebf7;border-color:#c9b2dc}
-      .visitor-email-editor{display:flex;align-items:center;gap:4px;min-width:220px}
-      .visitor-email-editor input{min-width:0;width:180px;height:29px;padding:5px 7px;border:1px solid #bfcfc6;border-radius:5px;background:#fff;color:#17231d;outline:0;font-size:10px}
-      .visitor-email-editor input:focus{border-color:#7c46ac;box-shadow:0 0 0 2px rgba(124,70,172,.09)}
-      .visitor-email-save,.visitor-email-cancel{width:27px;height:27px;display:grid;place-items:center;padding:0;border-radius:5px;font-size:12px;font-weight:900}
-      .visitor-email-save{border:1px solid #7c46ac;background:#7c46ac;color:#fff}
-      .visitor-email-cancel{border:1px solid #ccd7d1;background:#fff;color:#66736c}
-      .visitor-send-qr{min-width:76px;min-height:29px;padding:5px 9px;border:1px solid #70409a;border-radius:6px;background:#7c46ac;color:#fff;font-size:9px;font-weight:900;white-space:nowrap}
+      .visitor-actions{display:grid;gap:5px;min-width:78px}
+      .visitor-send-qr,.visitor-edit-button{width:100%;min-height:28px;padding:5px 8px;border-radius:6px;font-size:9px;font-weight:900;white-space:nowrap}
+      .visitor-send-qr{border:1px solid #70409a;background:#7c46ac;color:#fff}
       .visitor-send-qr:hover:not(:disabled){background:#693492}
+      .visitor-edit-button{display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #c6b3d6;background:#fff;color:#6f3da0;cursor:pointer}
+      .visitor-edit-button:hover:not(:disabled){background:#f4eef8}
+      .visitor-edit-button:disabled{opacity:.55;cursor:not-allowed}
       .visitor-date{white-space:nowrap;color:#5f6d65!important;font-size:10px}
       .visitor-empty{padding:22px 12px;text-align:center;color:#78847d;font-size:11px}
+
+      .visitor-modal-backdrop{position:fixed;inset:0;z-index:1400;display:grid;place-items:center;padding:20px;background:rgba(20,31,25,.52);backdrop-filter:blur(3px)}
+      .visitor-edit-modal{position:relative;width:min(820px,calc(100vw - 32px));max-height:calc(100vh - 40px);overflow:auto;border:1px solid #d4ddd8;border-radius:14px;background:#fff;padding:20px;box-shadow:0 28px 80px rgba(18,31,24,.28)}
+      .visitor-modal-close{position:absolute;right:11px;top:9px;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:#65736b;font-size:22px;line-height:1;cursor:pointer}
+      .visitor-modal-close:hover:not(:disabled){background:#f0f3f1;color:#17251d}
+      .visitor-modal-heading{padding-right:34px}
+      .visitor-modal-heading h2{margin:4px 0 3px;font-size:21px}
+      .visitor-modal-heading p{margin:0;color:#6f7b74;font-size:11px}
+      .visitor-edit-form{margin-top:15px}
+      .visitor-edit-form fieldset{margin:0;padding:0;border:0}
+      .visitor-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+      .visitor-edit-grid label{display:grid;gap:5px;color:#31453a;font-size:10.5px;font-weight:800}
+      .visitor-edit-grid label span{display:flex;align-items:baseline;gap:4px}
+      .visitor-edit-grid small{color:#7a867f;font-size:8.5px;font-weight:600}
+      .visitor-edit-grid input{width:100%;height:38px;padding:7px 9px;border:1px solid #cbd7cf;border-radius:7px;background:#fff;color:#24332b;font-size:11px;font-weight:600;outline:none}
+      .visitor-edit-grid input:focus{border-color:#7c46ac;box-shadow:0 0 0 3px rgba(124,70,172,.10)}
+      .visitor-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:13px;border-top:1px solid #e0e6e2}
+      .visitor-modal-actions button{min-height:35px;padding:7px 13px;font-size:10.5px}
+
       @media(max-width:760px){
         .visitor-list-heading{align-items:flex-start}
         .visitor-list-tools{width:min(235px,60%);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px}
@@ -239,11 +389,17 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
         .visitor-search input{height:29px;font-size:9px}
         .visitor-count{min-height:24px;padding:3px 7px;font-size:8px}
         .visitor-table{min-width:1080px}
+        .visitor-edit-modal{padding:16px}
+        .visitor-edit-grid{grid-template-columns:1fr}
       }
       @media(max-width:520px){
         .visitor-list-heading{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}
         .visitor-list-tools{width:100%;max-width:235px;justify-self:end}
         .visitor-list-heading h2{font-size:17px!important}
+        .visitor-modal-backdrop{padding:10px}
+        .visitor-edit-modal{width:calc(100vw - 20px);max-height:calc(100vh - 20px);border-radius:11px;padding:14px}
+        .visitor-modal-actions{width:100%}
+        .visitor-modal-actions button{flex:1}
       }
     `}</style>
   </>;

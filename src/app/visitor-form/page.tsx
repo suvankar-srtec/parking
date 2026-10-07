@@ -76,10 +76,12 @@ export default async function VisitorFormPage() {
     name: visitor.name,
     phoneNumber: visitor.phoneNumber,
     email: visitor.email,
-    vehicleNumber: visitor.vehicleNumber || "—",
+    vehicleNumber: visitor.vehicleNumber || "",
     accessory: visitor.accessory,
     validFrom: formatVisitorTime(visitor.validFrom),
     validUntil: formatVisitorTime(visitor.validUntil),
+    validFromIso: visitor.validFrom.toISOString(),
+    validUntilIso: visitor.validUntil.toISOString(),
   }));
 
   return <main className="dashboard-page">
