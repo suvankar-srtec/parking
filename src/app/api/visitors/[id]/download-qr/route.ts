@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { renderVisitorPassPng } from "@/lib/visitor-pass";
+import { renderVisitorPassPng } from "@/lib/visitor-pass-image";
 
 function formatIndia(value: Date) {
   return new Intl.DateTimeFormat("en-IN", {
