@@ -54,6 +54,7 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
   const [rows, setRows] = useState(visitors);
   const [query, setQuery] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [editingVisitor, setEditingVisitor] = useState<VisitorTableRow | null>(null);
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const { notify, refresh } = useFeedback();
@@ -105,6 +106,39 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
         setSendingId(null);
       }
     });
+  }
+
+  async function downloadQr(visitor: VisitorTableRow) {
+    if (sending || updating || downloadingId) return;
+    setDownloadingId(visitor.id);
+    try {
+      const response = await fetch(`/api/visitors/${visitor.id}/download-qr`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.message || "Unable to download the visitor QR.");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const safeName = visitor.name.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "") || "visitor";
+      anchor.href = url;
+      anchor.download = `visitor-qr-${safeName}.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      notify("Visitor QR downloaded successfully.");
+      refresh();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Unable to download the visitor QR.", "error");
+    } finally {
+      setDownloadingId(null);
+    }
   }
 
   function openEdit(visitor: VisitorTableRow) {
@@ -257,11 +291,19 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
                     className="visitor-send-qr"
                     pending={sending && sendingId === visitor.id}
                     pendingText="Sending..."
-                    disabled={sending || updating}
+                    disabled={sending || updating || Boolean(downloadingId)}
                     onClick={() => sendQr(visitor)}
                   >
                     Send QR
                   </ActionButton>
+                  <button
+                    type="button"
+                    className="visitor-download-qr"
+                    disabled={sending || updating || Boolean(downloadingId)}
+                    onClick={() => void downloadQr(visitor)}
+                  >
+                    {downloadingId === visitor.id ? "Downloading..." : "Download QR"}
+                  </button>
                   <button
                     type="button"
                     className="visitor-edit-button"
@@ -355,11 +397,14 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       .visitor-table tbody tr:hover{background:#faf8fc}
       .visitor-table td strong{color:#111713;font-size:11px;font-weight:900}
       .visitor-actions{display:grid;gap:5px;min-width:78px}
-      .visitor-send-qr,.visitor-edit-button{width:100%;min-height:28px;padding:5px 8px;border-radius:6px;font-size:9px;font-weight:900;white-space:nowrap}
-      .visitor-send-qr{border:1px solid #70409a;background:#7c46ac;color:#fff}
-      .visitor-send-qr:hover:not(:disabled){background:#693492}
-      .visitor-edit-button{display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #c6b3d6;background:#fff;color:#6f3da0;cursor:pointer}
-      .visitor-edit-button:hover:not(:disabled){background:#f4eef8}
+      .visitor-send-qr,.visitor-download-qr,.visitor-edit-button{width:100%;min-height:28px;padding:5px 8px;border-radius:6px;font-size:9px;font-weight:900;white-space:nowrap}
+      .visitor-send-qr{border:1px solid #1769c2;background:#1769c2;color:#fff}
+      .visitor-send-qr:hover:not(:disabled){background:#0f4f97}
+      .visitor-download-qr{border:1px solid #8db9e8;background:#eef6ff;color:#0f4f97;cursor:pointer}
+      .visitor-download-qr:hover:not(:disabled){background:#e4f0ff}
+      .visitor-download-qr:disabled{opacity:.55;cursor:not-allowed}
+      .visitor-edit-button{display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #bcd4ec;background:#fff;color:#1769c2;cursor:pointer}
+      .visitor-edit-button:hover:not(:disabled){background:#eef6ff}
       .visitor-edit-button:disabled{opacity:.55;cursor:not-allowed}
       .visitor-date{white-space:nowrap;color:#5f6d65!important;font-size:10px}
       .visitor-empty{padding:22px 12px;text-align:center;color:#78847d;font-size:11px}
