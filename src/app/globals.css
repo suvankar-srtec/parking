@@ -359,3 +359,46 @@ input,button,select,textarea{font-size:inherit}
 @media(max-width:420px){
   .building-summary-grid,.account-parking-grid,.account-company-parking-grid{grid-template-columns:1fr}
 }
+
+/* Strong, clearly visible borders for cards, boxes and form controls across all roles. */
+:where(
+  .portfolio-card,
+  .large-stat,
+  .stat-box,
+  .summary-card,
+  .parking-input-card,
+  .parking-input-wrap,
+  .building-card,
+  .entity-row,
+  .reader-card,
+  .modal-card,
+  .computed-box,
+  .account-info>div,
+  [class*="Card"],
+  [class*="card"],
+  [class*="Box"],
+  [class*="box"],
+  [class*="Modal"],
+  [class*="modal"]
+){
+  border-width:2px!important;
+  border-color:#8faecc!important;
+}
+
+:where(input,select,textarea){
+  border-width:2px!important;
+  border-color:#8faecc!important;
+}
+
+:where(
+  .portfolio-card,
+  .large-stat,
+  .stat-box,
+  .parking-input-card,
+  .building-card,
+  .entity-row,
+  .reader-card,
+  .modal-card
+){
+  box-shadow:0 2px 8px rgba(39,88,135,.06);
+}
