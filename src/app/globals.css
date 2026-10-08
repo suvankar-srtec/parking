@@ -317,3 +317,45 @@ button[aria-busy="true"]{cursor:wait}
 .maximum-gate-card>span{color:#0f4f97!important}
 .maximum-gate-card .parking-input-wrap{border-color:#b7d2ee!important}
 .maximum-gate-card .parking-input-wrap input{color:#0f4f97!important}
+
+/* Shared responsive baseline for every role/user */
+html{-webkit-text-size-adjust:100%}
+body,input,button,select,textarea{font-family:var(--font-sans-default)!important}
+body{font-size:16px;line-height:1.45}
+input,button,select,textarea{font-size:inherit}
+
+@media(max-width:950px){
+  .dashboard-page{display:block;min-height:100dvh}
+  .dashboard-main{width:100%;min-width:0;padding:14px 12px 28px}
+  .portfolio-card{width:100%;min-width:0;margin-top:12px;padding:14px;border-radius:10px}
+  .portfolio-header{width:100%;gap:10px}
+  .portfolio-header h2{font-size:21px}
+  .portfolio-header p{font-size:13px;line-height:1.4}
+  .topbar{align-items:center!important;flex-direction:row!important;justify-content:space-between;padding-bottom:12px}
+  .topbar h1{font-size:22px!important;line-height:1.15}
+  .summary-card{display:none}
+  .building-summary-grid,.account-parking-grid,.account-company-parking-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .large-stat{min-width:0;min-height:78px;padding:10px}
+  .large-stat span{font-size:13px}
+  .large-stat strong{font-size:22px}
+}
+
+@media(max-width:640px){
+  body{font-size:15px}
+  .dashboard-main{padding:12px 10px 24px}
+  .portfolio-card{padding:12px}
+  .section-kicker{font-size:12px}
+  .portfolio-header h2{font-size:20px}
+  .primary-button,.secondary-button,.add-building-button,.logout-button{font-size:14px;min-height:38px}
+  .building-summary-grid,.account-parking-grid,.account-company-parking-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .large-stat{min-height:74px;padding:9px}
+  .large-stat span{font-size:12px}
+  .large-stat strong{font-size:21px}
+  .modal-card{width:min(96vw,620px);padding:16px}
+  .modal-head h2{font-size:20px}
+  .modal-form{grid-template-columns:1fr}
+}
+
+@media(max-width:420px){
+  .building-summary-grid,.account-parking-grid,.account-company-parking-grid{grid-template-columns:1fr}
+}
