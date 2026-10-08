@@ -143,9 +143,34 @@ export default function BuildingPortfolio({ buildings }: { buildings: Building[]
         cursor:pointer;
       }
 
+      .building-grid{
+        grid-template-columns:repeat(auto-fill,minmax(320px,340px));
+      }
+
+      .building-card .stats-grid{
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:5px;
+      }
+
+      .building-card .stat-box{
+        min-width:0;
+        padding:7px 6px;
+      }
+
+      .building-card .stat-box span{
+        font-size:10px;
+        line-height:1.2;
+      }
+
+      .building-card .stat-box strong{
+        font-size:17px;
+      }
+
       @media(max-width:640px){
         .building-search{width:100%}
         .building-search-field{width:100%}
+        .building-grid{grid-template-columns:minmax(0,1fr)}
+        .building-card .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
       }
     `}</style>
   </section>;
