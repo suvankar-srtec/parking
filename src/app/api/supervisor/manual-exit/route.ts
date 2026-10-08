@@ -109,6 +109,7 @@ export async function POST(request: Request) {
           where: { id: recordId },
           data: {
             isInside: false,
+            qrEntryUsed: true,
             lastAccessAt: now,
             lastAccessDevice: "MANUAL",
           },
