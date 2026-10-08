@@ -129,7 +129,7 @@ export async function POST(
               <tr><td style="padding:5px 14px 5px 0"><strong>Valid From</strong></td><td>${safeValidFrom}</td></tr>
               <tr><td style="padding:5px 14px 5px 0"><strong>Valid Until</strong></td><td>${safeValidUntil}</td></tr>
             </table>
-            <p>The QR can be used for both entry and exit only within the validity time shown above.</p>
+            <p>This QR allows one entry only. After that entry, it can be used only for the corresponding exit. It cannot be used for another entry.</p>
           </div>
         `,
         attachments: [{
@@ -152,7 +152,7 @@ export async function POST(
 
     await prisma.visitor.update({
       where: { id: visitor.id },
-      data: { qrToken: nextQrToken },
+      data: { qrToken: nextQrToken, qrEntryUsed: false },
     });
 
     return NextResponse.json({
