@@ -244,3 +244,18 @@
   .expandButton>span{width:7px;height:7px}
   .headerActions>*{max-width:none}
 }
+
+@media(max-width:760px){
+  .integratedHeader{grid-template-columns:1fr;align-items:stretch}
+  .integratedHeader h2{font-size:21px}
+  .headerTools{width:100%;grid-template-columns:minmax(0,1fr) auto}
+  .searchField{min-height:36px}
+  .searchField input{font-size:13px}
+  .headerTools :global(.add-building-button){min-height:36px;font-size:13px}
+  .cardHeader{grid-template-columns:minmax(0,1fr);align-items:start}
+  .headerActions{width:100%;justify-content:flex-start;flex-wrap:wrap}
+  .companyTitleBlock h3{font-size:16px}
+  .statusBadge,.headerActions :global(.company-status-control>span){font-size:11px}
+  .headerActions :global(.company-status-control .secondary-button),
+  .headerActions>:global(.secondary-button){min-height:32px!important;font-size:12px!important;padding:6px 8px!important}
+}
