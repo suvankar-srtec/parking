@@ -102,8 +102,6 @@ export default async function VisitorFormPage() {
         <div className="portfolio-header visitor-form-heading">
           <div>
             <div className="section-kicker">VISITOR ACCESS</div>
-            <h2>Visitor details</h2>
-            <p>Vehicle Number is optional. Set the exact time window in which the QR can be used for both entry and exit.</p>
           </div>
         </div>
         <div className="portfolio-divider" />
@@ -117,8 +115,6 @@ export default async function VisitorFormPage() {
       <style>{`
         .visitor-form-card{padding-top:15px;padding-bottom:15px}
         .visitor-form-card .portfolio-divider{margin:10px 0 12px}
-        .visitor-form-heading h2{margin:3px 0 2px!important;font-size:18px!important}
-        .visitor-form-heading p{font-size:10px!important}
         .visitor-list-card{padding-top:15px}
         @media(max-width:760px){
           .visitor-form-card,.visitor-list-card{padding:13px}
