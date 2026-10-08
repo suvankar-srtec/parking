@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { buildVisitorPassSvg } from "@/lib/visitor-pass";
 
 export async function GET(
   _request: Request,
@@ -27,8 +28,13 @@ export async function GET(
         name: true,
         buildingId: true,
         companyId: true,
+        validFrom: true,
         validUntil: true,
+        vehicleNumber: true,
+        accessory: true,
         qrToken: true,
+        building: { select: { name: true } },
+        company: { select: { name: true } },
       },
     });
 
@@ -79,14 +85,24 @@ export async function GET(
       return NextResponse.json({ ok: false, message: "Unable to generate the visitor QR." }, { status: 502 });
     }
 
-    const qrBytes = await qrResponse.arrayBuffer();
+    const qrBytes = Buffer.from(await qrResponse.arrayBuffer());
+    const passSvg = buildVisitorPassSvg({
+      name: visitor.name,
+      scopeLabel: visitor.company ? "COMPANY" : "BUILDING",
+      scopeName: visitor.company?.name || visitor.building.name,
+      validFrom: visitor.validFrom,
+      validUntil: visitor.validUntil,
+      vehicleNumber: visitor.vehicleNumber,
+      accessory: visitor.accessory,
+      qrBase64: qrBytes.toString("base64"),
+    });
     const safeName = visitor.name.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "") || "visitor";
 
-    return new Response(qrBytes, {
+    return new Response(passSvg, {
       status: 200,
       headers: {
-        "Content-Type": "image/png",
-        "Content-Disposition": `attachment; filename="visitor-qr-${safeName}.png"`,
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Content-Disposition": `inline; filename="visitor-pass-${safeName}.svg"`,
         "Cache-Control": "no-store",
       },
     });
