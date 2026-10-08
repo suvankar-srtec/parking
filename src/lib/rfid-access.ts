@@ -107,7 +107,7 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
       const enrollment = await tx.rfidEnrollment.findFirst({
         where: { readerId: reader.id, status: { in: ["WAITING", "CAPTURED"] } },
       });
-      if (!enrollment) return record("1005", "Start card registration from a vehicle form.");
+      if (!enrollment) return record("1005", "Reader is in register mode.");
 
       if (enrollment.ownerParking) {
         if (enrollment.buildingId !== reader.buildingId) return record("1004", "Registration belongs to another building.");
