@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { renderVisitorPassPng } from "@/lib/visitor-pass";
 
 function formatIndia(value: Date) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -96,7 +97,7 @@ export async function POST(
     }
 
     const qrBytes = Buffer.from(await qrResponse.arrayBuffer());
-    const qrBase64 = qrBytes.toString("base64");
+    const qrDataUrl = `data:image/png;base64,${qrBytes.toString("base64")}`;
     const scopeName = visitor.company?.name || visitor.building.name;
     const safeName = escapeHtml(visitor.name);
     const safeScope = escapeHtml(scopeName);
@@ -105,6 +106,18 @@ export async function POST(
     const safeAccessory = escapeHtml(visitor.accessory);
     const safeValidFrom = escapeHtml(formatIndia(visitor.validFrom));
     const safeValidUntil = escapeHtml(formatIndia(visitor.validUntil));
+
+    const passBytes = await renderVisitorPassPng({
+      visitorName: visitor.name,
+      scopeName,
+      phoneNumber: visitor.phoneNumber,
+      vehicleNumber: visitor.vehicleNumber || "Not provided",
+      accessory: visitor.accessory,
+      validFrom: formatIndia(visitor.validFrom),
+      validUntil: formatIndia(visitor.validUntil),
+      qrDataUrl,
+    });
+    const passBase64 = passBytes.toString("base64");
 
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -121,7 +134,7 @@ export async function POST(
             <h2 style="margin:0 0 8px">SRTEC Access Control</h2>
             <p style="margin:0 0 18px">Visitor QR Pass</p>
             <p>Hello <strong>${safeName}</strong>,</p>
-            <p>Your visitor QR for <strong>${safeScope}</strong> is attached to this email.</p>
+            <p>Your complete visitor pass for <strong>${safeScope}</strong> is attached to this email.</p>
             <table style="border-collapse:collapse;margin:16px 0;font-size:14px">
               <tr><td style="padding:5px 14px 5px 0"><strong>Phone</strong></td><td>${safePhone}</td></tr>
               <tr><td style="padding:5px 14px 5px 0"><strong>Vehicle</strong></td><td>${safeVehicle}</td></tr>
@@ -133,8 +146,8 @@ export async function POST(
           </div>
         `,
         attachments: [{
-          filename: `visitor-qr-${visitor.id}.png`,
-          content: qrBase64,
+          filename: `visitor-pass-${visitor.id}.png`,
+          content: passBase64,
         }],
       }),
       signal: AbortSignal.timeout(20000),
