@@ -127,7 +127,7 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       const anchor = document.createElement("a");
       const safeName = visitor.name.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "") || "visitor";
       anchor.href = url;
-      anchor.download = `visitor-qr-${safeName}.png`;
+      anchor.download = `visitor-pass-${safeName}.svg`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -399,10 +399,10 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       .visitor-search input::placeholder{color:#8a968f;font-weight:500}
       .visitor-count{display:inline-flex;align-items:center;min-height:26px;padding:4px 9px;border-radius:999px;background:#f0e8f6;color:#73409e;font-size:12px;font-weight:800;white-space:nowrap}
       .visitor-list-card .portfolio-divider{margin:10px 0 0}
-      .visitor-table-wrap{width:100%;overflow-x:auto}
-      .visitor-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:13px}
-      .visitor-table th{padding:9px 10px;border-bottom:1px solid #cbd6d0;background:#f3f6f4;color:#0a0d0b;font-size:12px;font-weight:900;letter-spacing:.15px;text-align:left;white-space:nowrap}
-      .visitor-table td{padding:9px 10px;border-bottom:1px solid #e2e8e4;color:#45564d;line-height:1.35;vertical-align:middle}
+      .visitor-table-wrap{width:100%;overflow-x:hidden}
+      .visitor-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}
+      .visitor-table th{padding:9px 8px;border-bottom:1px solid #cbd6d0;background:#f3f6f4;color:#0a0d0b;font-size:12px;font-weight:900;letter-spacing:.15px;text-align:left;white-space:normal;overflow-wrap:anywhere}
+      .visitor-table td{padding:9px 8px;border-bottom:1px solid #e2e8e4;color:#45564d;line-height:1.35;vertical-align:middle;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
       .visitor-table tbody tr:last-child td{border-bottom:0}
       .visitor-table tbody tr:hover{background:#faf8fc}
       .visitor-table td strong{color:#111713;font-size:13px;font-weight:900}
@@ -418,7 +418,7 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       .visitor-edit-button{display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #bcd4ec;background:#fff;color:#1769c2;cursor:pointer}
       .visitor-edit-button:hover:not(:disabled){background:#eef6ff}
       .visitor-edit-button:disabled{opacity:.55;cursor:not-allowed}
-      .visitor-date{white-space:nowrap;color:#5f6d65!important;font-size:12px}
+      .visitor-date{white-space:normal;color:#5f6d65!important;font-size:12px}
       .visitor-empty{padding:22px 12px;text-align:center;color:#78847d;font-size:13px}
 
       .visitor-modal-backdrop{position:fixed;inset:0;z-index:1400;display:grid;place-items:center;padding:20px;background:rgba(20,31,25,.52);backdrop-filter:blur(3px)}
@@ -445,7 +445,6 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
         .visitor-search{width:100%}
         .visitor-search input{height:29px;font-size:11px}
         .visitor-count{min-height:24px;padding:3px 7px;font-size:8px}
-        .visitor-table{min-width:1080px}
         .visitor-edit-modal{padding:16px}
         .visitor-edit-grid{grid-template-columns:1fr}
       }
