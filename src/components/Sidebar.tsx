@@ -414,7 +414,7 @@ export default function Sidebar({
         border-radius:999px;
         background:#eef6ff;
         color:var(--sidebar-blue)!important;
-        font-size:8.5px!important;
+        font-size:10px!important;
         font-weight:800;
         letter-spacing:.35px;
         text-transform:uppercase;
@@ -468,7 +468,7 @@ export default function Sidebar({
         border-radius:9px;
         background:transparent;
         color:var(--sidebar-blue);
-        font-size:11.5px;
+        font-size:13px;
         font-weight:750;
       }
 
@@ -563,7 +563,7 @@ export default function Sidebar({
         border-radius:8px;
         color:var(--sidebar-blue);
         background:transparent;
-        font-size:10.5px;
+        font-size:12px;
         font-weight:650;
       }
 
@@ -613,14 +613,14 @@ export default function Sidebar({
 
       .sidebar-shell :global(.sidebar-reader-title){
         color:var(--sidebar-blue)!important;
-        font-size:9px!important;
+        font-size:10.5px!important;
         letter-spacing:.35px;
         text-transform:uppercase;
       }
 
       .sidebar-shell :global(.sidebar-reader-item){
         color:var(--sidebar-blue)!important;
-        font-size:9.5px!important;
+        font-size:11px!important;
       }
 
       .sidebar-shell :global(.sidebar-reader-item strong){
@@ -696,7 +696,7 @@ export default function Sidebar({
           min-width:0;
           overflow:hidden;
           color:#0f4f97;
-          font-size:12px;
+          font-size:14px;
           font-weight:900;
           text-overflow:ellipsis;
           white-space:nowrap;
@@ -716,7 +716,7 @@ export default function Sidebar({
           border-radius:8px!important;
           background:#fff!important;
           color:#1769c2!important;
-          font-size:10px!important;
+          font-size:12px!important;
           font-weight:800!important;
           white-space:nowrap;
           box-shadow:none!important;
