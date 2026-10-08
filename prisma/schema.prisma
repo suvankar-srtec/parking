@@ -265,6 +265,7 @@ model Visitor {
   lastAccessAt    DateTime?
   lastAccessDevice String?
   qrToken         String?
+  qrEntryUsed     Boolean  @default(false)
 
   building  Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
