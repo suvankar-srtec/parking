@@ -144,7 +144,8 @@ export default function BuildingPortfolio({ buildings }: { buildings: Building[]
       }
 
       .building-grid{
-        grid-template-columns:repeat(auto-fill,minmax(320px,340px));
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        gap:12px;
       }
 
       .building-card .stats-grid{
@@ -164,6 +165,10 @@ export default function BuildingPortfolio({ buildings }: { buildings: Building[]
 
       .building-card .stat-box strong{
         font-size:17px;
+      }
+
+      @media(max-width:1080px){
+        .building-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
       }
 
       @media(max-width:640px){
