@@ -76,11 +76,9 @@ export default function CompanyParkingSplitEditor({
         <div className="parking-input-wrap"><input value={employeeParking} readOnly /><span>spaces</span></div>
       </label>
     </div>
-    <p className="parking-split-note">Visitor parking is deducted from Company Owner parking. Employee parking stays unchanged when Visitor parking is changed.</p>
     <div className="parking-editor-footer"><div className="parking-edit-actions"><ActionButton type="submit" className="primary-button" pending={pending} pendingText="Updating…">Update parking split</ActionButton></div></div>
     <style>{`
       .company-parking-split-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
-      .parking-split-note{margin:9px 0 0;color:#68776f;font-size:10px;line-height:1.45}
       @media(max-width:900px){.company-parking-split-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:640px){.company-parking-split-grid{grid-template-columns:1fr}}
     `}</style>
