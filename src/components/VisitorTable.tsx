@@ -277,7 +277,25 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
           <tbody>
             {filtered.map((visitor) => <tr key={visitor.id}>
               <td className="visitor-date">{visitor.dateTime}</td>
-              <td><strong>{visitor.name}</strong></td>
+              <td>
+                <div className="visitor-name-cell">
+                  <strong>{visitor.name}</strong>
+                  <button
+                    type="button"
+                    className="visitor-download-icon"
+                    title="Download QR"
+                    aria-label={`Download QR for ${visitor.name}`}
+                    disabled={sending || updating || Boolean(downloadingId)}
+                    onClick={() => void downloadQr(visitor)}
+                  >
+                    {downloadingId === visitor.id ? <span className="visitor-download-wait">…</span> : <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 3v12" />
+                      <path d="m7 10 5 5 5-5" />
+                      <path d="M5 21h14" />
+                    </svg>}
+                  </button>
+                </div>
+              </td>
               <td>{visitor.phoneNumber}</td>
               <td>{visitor.email}</td>
               <td>{visitor.vehicleNumber || "—"}</td>
@@ -296,14 +314,6 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
                   >
                     Send QR
                   </ActionButton>
-                  <button
-                    type="button"
-                    className="visitor-download-qr"
-                    disabled={sending || updating || Boolean(downloadingId)}
-                    onClick={() => void downloadQr(visitor)}
-                  >
-                    {downloadingId === visitor.id ? "Downloading..." : "Download QR"}
-                  </button>
                   <button
                     type="button"
                     className="visitor-edit-button"
@@ -384,30 +394,32 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       .visitor-list-tools{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
       .visitor-search{position:relative;display:block;width:190px;min-width:0}
       .visitor-search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#6f7d75;font-size:14px;line-height:1;pointer-events:none}
-      .visitor-search input{width:100%;height:30px;padding:5px 9px 5px 29px;border:1px solid #cad6cf;border-radius:7px;background:#fff;color:#17231d;outline:0;font-size:10px;font-weight:600}
+      .visitor-search input{width:100%;height:30px;padding:5px 9px 5px 29px;border:1px solid #cad6cf;border-radius:7px;background:#fff;color:#17231d;outline:0;font-size:12px;font-weight:600}
       .visitor-search input:focus{border-color:#7c46ac;box-shadow:0 0 0 3px rgba(124,70,172,.09)}
       .visitor-search input::placeholder{color:#8a968f;font-weight:500}
-      .visitor-count{display:inline-flex;align-items:center;min-height:26px;padding:4px 9px;border-radius:999px;background:#f0e8f6;color:#73409e;font-size:10px;font-weight:800;white-space:nowrap}
+      .visitor-count{display:inline-flex;align-items:center;min-height:26px;padding:4px 9px;border-radius:999px;background:#f0e8f6;color:#73409e;font-size:12px;font-weight:800;white-space:nowrap}
       .visitor-list-card .portfolio-divider{margin:10px 0 0}
       .visitor-table-wrap{width:100%;overflow-x:auto}
-      .visitor-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:11px}
-      .visitor-table th{padding:9px 10px;border-bottom:1px solid #cbd6d0;background:#f3f6f4;color:#0a0d0b;font-size:10px;font-weight:900;letter-spacing:.15px;text-align:left;white-space:nowrap}
+      .visitor-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:13px}
+      .visitor-table th{padding:9px 10px;border-bottom:1px solid #cbd6d0;background:#f3f6f4;color:#0a0d0b;font-size:12px;font-weight:900;letter-spacing:.15px;text-align:left;white-space:nowrap}
       .visitor-table td{padding:9px 10px;border-bottom:1px solid #e2e8e4;color:#45564d;line-height:1.35;vertical-align:middle}
       .visitor-table tbody tr:last-child td{border-bottom:0}
       .visitor-table tbody tr:hover{background:#faf8fc}
-      .visitor-table td strong{color:#111713;font-size:11px;font-weight:900}
+      .visitor-table td strong{color:#111713;font-size:13px;font-weight:900}
       .visitor-actions{display:grid;gap:5px;min-width:78px}
-      .visitor-send-qr,.visitor-download-qr,.visitor-edit-button{width:100%;min-height:28px;padding:5px 8px;border-radius:6px;font-size:9px;font-weight:900;white-space:nowrap}
+      .visitor-send-qr,.visitor-edit-button{width:100%;min-height:30px;padding:6px 9px;border-radius:6px;font-size:13px;font-weight:900;white-space:nowrap}
       .visitor-send-qr{border:1px solid #1769c2;background:#1769c2;color:#fff}
       .visitor-send-qr:hover:not(:disabled){background:#0f4f97}
-      .visitor-download-qr{border:1px solid #8db9e8;background:#eef6ff;color:#0f4f97;cursor:pointer}
-      .visitor-download-qr:hover:not(:disabled){background:#e4f0ff}
-      .visitor-download-qr:disabled{opacity:.55;cursor:not-allowed}
+      .visitor-name-cell{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+      .visitor-download-icon{width:28px;height:26px;display:grid;place-items:center;padding:0;border:1px solid #8db9e8;border-radius:6px;background:#eef6ff;color:#0f4f97;cursor:pointer}
+      .visitor-download-icon:hover:not(:disabled){background:#e4f0ff}
+      .visitor-download-icon:disabled{opacity:.55;cursor:not-allowed}
+      .visitor-download-wait{font-size:14px;font-weight:900;line-height:1}
       .visitor-edit-button{display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #bcd4ec;background:#fff;color:#1769c2;cursor:pointer}
       .visitor-edit-button:hover:not(:disabled){background:#eef6ff}
       .visitor-edit-button:disabled{opacity:.55;cursor:not-allowed}
-      .visitor-date{white-space:nowrap;color:#5f6d65!important;font-size:10px}
-      .visitor-empty{padding:22px 12px;text-align:center;color:#78847d;font-size:11px}
+      .visitor-date{white-space:nowrap;color:#5f6d65!important;font-size:12px}
+      .visitor-empty{padding:22px 12px;text-align:center;color:#78847d;font-size:13px}
 
       .visitor-modal-backdrop{position:fixed;inset:0;z-index:1400;display:grid;place-items:center;padding:20px;background:rgba(20,31,25,.52);backdrop-filter:blur(3px)}
       .visitor-edit-modal{position:relative;width:min(820px,calc(100vw - 32px));max-height:calc(100vh - 40px);overflow:auto;border:1px solid #d4ddd8;border-radius:14px;background:#fff;padding:20px;box-shadow:0 28px 80px rgba(18,31,24,.28)}
@@ -415,14 +427,14 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
       .visitor-modal-close:hover:not(:disabled){background:#f0f3f1;color:#17251d}
       .visitor-modal-heading{padding-right:34px}
       .visitor-modal-heading h2{margin:4px 0 3px;font-size:21px}
-      .visitor-modal-heading p{margin:0;color:#6f7b74;font-size:11px}
+      .visitor-modal-heading p{margin:0;color:#6f7b74;font-size:13px}
       .visitor-edit-form{margin-top:15px}
       .visitor-edit-form fieldset{margin:0;padding:0;border:0}
       .visitor-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
       .visitor-edit-grid label{display:grid;gap:5px;color:#31453a;font-size:10.5px;font-weight:800}
       .visitor-edit-grid label span{display:flex;align-items:baseline;gap:4px}
-      .visitor-edit-grid small{color:#7a867f;font-size:8.5px;font-weight:600}
-      .visitor-edit-grid input{width:100%;height:38px;padding:7px 9px;border:1px solid #cbd7cf;border-radius:7px;background:#fff;color:#24332b;font-size:11px;font-weight:600;outline:none}
+      .visitor-edit-grid small{color:#7a867f;font-size:10.5px;font-weight:600}
+      .visitor-edit-grid input{width:100%;height:38px;padding:7px 9px;border:1px solid #cbd7cf;border-radius:7px;background:#fff;color:#24332b;font-size:13px;font-weight:600;outline:none}
       .visitor-edit-grid input:focus{border-color:#7c46ac;box-shadow:0 0 0 3px rgba(124,70,172,.10)}
       .visitor-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:13px;border-top:1px solid #e0e6e2}
       .visitor-modal-actions button{min-height:35px;padding:7px 13px;font-size:10.5px}
@@ -431,7 +443,7 @@ export default function VisitorTable({ visitors }: { visitors: VisitorTableRow[]
         .visitor-list-heading{align-items:flex-start}
         .visitor-list-tools{width:min(235px,60%);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px}
         .visitor-search{width:100%}
-        .visitor-search input{height:29px;font-size:9px}
+        .visitor-search input{height:29px;font-size:11px}
         .visitor-count{min-height:24px;padding:3px 7px;font-size:8px}
         .visitor-table{min-width:1080px}
         .visitor-edit-modal{padding:16px}
