@@ -11,3 +11,58 @@
 .scanTable th:nth-child(8),.scanTable td:nth-child(8){width:11%}
 .scanTable th:nth-child(9),.scanTable td:nth-child(9){width:8%}
 .scanTable th:nth-child(10),.scanTable td:nth-child(10){width:19%}
+
+@media(max-width:700px){
+  .headcount{margin-top:12px}
+  .titleRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}
+  .titleRow h2{font-size:22px;margin:3px 0}
+  .titleRow p{font-size:13px;line-height:1.35}
+  .clock{min-width:0;padding:8px 10px;border-radius:8px;text-align:right}
+  .clock strong{font-size:13px}
+  .clock span{font-size:12px}
+
+  .totals{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px}
+  .totalCard{min-height:92px;padding:10px 7px;border-radius:12px}
+  .totalCard span{font-size:13px;line-height:1.2}
+  .totalCard strong{font-size:30px}
+  .clickableTotal small{margin-top:4px;font-size:10px;line-height:1.2}
+
+  .scanTableCard{overflow:visible}
+  .scanTableHeader{padding:13px 14px}
+  .scanTableHeader h2{font-size:21px}
+  .tableWrap{max-height:none;overflow:visible;padding:0 10px 10px}
+  .scanTable{display:block;width:100%;table-layout:auto}
+  .scanTable thead{display:none}
+  .scanTable tbody{display:grid;gap:10px}
+  .scanTable tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px;padding:10px 11px;border:1px solid #dbe6f2;border-radius:10px;background:#fff}
+  .scanTable td{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:start;gap:7px;padding:6px 0!important;border:0!important;font-size:13px!important;line-height:1.35;word-break:normal;overflow-wrap:anywhere}
+  .scanTable td::before{content:attr(data-label);color:#6b7c90;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}
+  .scanTable td:nth-child(9){grid-column:1/-1}
+  .actionBadge{justify-self:start;min-width:60px;font-size:11px}
+  .successResult,.deniedResult{font-size:13px!important}
+
+  .activeCardsBackdrop{padding:10px}
+  .activeCardsModal{width:100%;max-height:calc(100dvh - 20px);border-radius:12px}
+  .activeCardsHeader{padding:14px}
+  .activeCardsHeader h2{font-size:21px}
+  .activeCardsHeader p{font-size:12px}
+  .activeCardsTableWrap{max-height:calc(100dvh - 145px);overflow-y:auto;overflow-x:hidden;padding:10px}
+  .activeCardsTable{display:block;min-width:0;width:100%}
+  .activeCardsTable thead{display:none}
+  .activeCardsTable tbody{display:grid;gap:9px}
+  .activeCardsTable tr{display:grid;grid-template-columns:1fr;border:1px solid #dbe6f2;border-radius:9px;padding:9px 10px;background:#fff}
+  .activeCardsTable td{display:grid;grid-template-columns:105px minmax(0,1fr);gap:8px;padding:5px 0;border:0;font-size:13px;white-space:normal;overflow-wrap:anywhere}
+  .activeCardsTable td::before{content:attr(data-label);color:#6b7c90;font-size:11px;font-weight:900;text-transform:uppercase}
+  .manualExitButton{justify-self:start;font-size:12px;padding:7px 10px}
+}
+@media(max-width:430px){
+  .titleRow{grid-template-columns:1fr}
+  .clock{justify-self:start;text-align:left}
+  .totals{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .totalCard{min-height:84px}
+  .totalCard span{font-size:12px}
+  .totalCard strong{font-size:27px}
+  .clickableTotal small{font-size:9px}
+  .scanTable tr{grid-template-columns:1fr}
+  .scanTable td:nth-child(9){grid-column:auto}
+}
