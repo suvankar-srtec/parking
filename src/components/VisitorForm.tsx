@@ -51,13 +51,13 @@ export default function VisitorForm() {
     };
 
     void execute(async () => {
-      const result = await requestJson<{ ok: true; message: string; visitor: { id: string } }>(
+      const result = await requestJson<{ ok: true; message: string; emailSent: boolean; visitor: { id: string } }>(
         "/api/visitors",
         "POST",
         body,
       );
       formRef.current?.reset();
-      notify(result.message || "Visitor details saved successfully.");
+      notify(result.message || "Visitor details saved successfully.", result.emailSent ? "success" : "error");
       refresh();
     });
   }

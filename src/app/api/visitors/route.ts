@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { sendVisitorQrEmail } from "@/lib/visitor-qr-mail";
 
 function cleanText(value: unknown, maxLength: number) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, maxLength);
@@ -91,13 +92,43 @@ export async function POST(request: Request) {
         companyId,
         createdByUserId: user.id,
       },
-      select: { id: true },
+      include: {
+        building: { select: { name: true } },
+        company: { select: { name: true } },
+      },
     });
+
+    let emailSent = false;
+    let message = "Visitor details saved successfully.";
+    try {
+      const { qrToken } = await sendVisitorQrEmail({
+        id: visitor.id,
+        name: visitor.name,
+        email: visitor.email,
+        phoneNumber: visitor.phoneNumber,
+        vehicleNumber: visitor.vehicleNumber,
+        accessory: visitor.accessory,
+        validFrom: visitor.validFrom,
+        validUntil: visitor.validUntil,
+        scopeName: visitor.company?.name || visitor.building.name,
+      });
+      await prisma.visitor.update({
+        where: { id: visitor.id },
+        data: { qrToken, qrEntryUsed: false },
+      });
+      emailSent = true;
+      message = `Visitor saved and QR pass automatically sent to ${visitor.email}.`;
+    } catch (mailError) {
+      console.error("AUTO_SEND_VISITOR_QR_FAILED", mailError);
+      const reason = mailError instanceof Error ? mailError.message : "Email could not be sent.";
+      message = `Visitor saved, but QR email could not be sent: ${reason} Use Send QR to retry.`;
+    }
 
     return NextResponse.json({
       ok: true,
-      message: "Visitor details saved successfully.",
-      visitor,
+      message,
+      emailSent,
+      visitor: { id: visitor.id },
     }, { status: 201 });
   } catch (error) {
     console.error("CREATE_VISITOR_FAILED", error);

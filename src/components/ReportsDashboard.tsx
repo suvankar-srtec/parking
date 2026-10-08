@@ -7,6 +7,7 @@ import styles from "./ReportsDashboard.module.css";
 type ScopeOption = { id: string; name: string; buildingId?: string };
 type ReportRow = {
   id: string;
+  entityKey: string;
   buildingId: string | null;
   buildingName: string;
   companyId: string | null;
@@ -71,6 +72,72 @@ function withinDate(value: string, from: string, to: string) {
   if (from && time < new Date(`${from}T00:00:00`).getTime()) return false;
   if (to && time > new Date(`${to}T23:59:59.999`).getTime()) return false;
   return true;
+}
+
+function indiaDateKey(value: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const get = (type: string) => parts.find((part) => part.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function spanDuration(from: string, to: string | null) {
+  const milliseconds = Math.max((to ? new Date(to).getTime() : Date.now()) - new Date(from).getTime(), 0);
+  const totalMinutes = Math.floor(milliseconds / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days) return `${days}d ${hours}h ${minutes}m`;
+  if (hours) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+function firstInLastOutRows(rows: ReportRow[]) {
+  const groups = new Map<string, {
+    first: ReportRow;
+    lastOut: string | null;
+    lastPunchAt: number;
+    lastStatus: ReportRow["status"];
+  }>();
+
+  for (const row of rows) {
+    const groupKey = `${row.entityKey}|${indiaDateKey(row.inTime)}`;
+    const inAt = new Date(row.inTime).getTime();
+    const outAt = row.outTime ? new Date(row.outTime).getTime() : null;
+    const punchAt = outAt ?? inAt;
+    const existing = groups.get(groupKey);
+
+    if (!existing) {
+      groups.set(groupKey, {
+        first: row,
+        lastOut: row.outTime,
+        lastPunchAt: punchAt,
+        lastStatus: row.status,
+      });
+      continue;
+    }
+
+    if (inAt < new Date(existing.first.inTime).getTime()) existing.first = row;
+    if (outAt !== null && (!existing.lastOut || outAt > new Date(existing.lastOut).getTime())) {
+      existing.lastOut = row.outTime;
+    }
+    if (punchAt >= existing.lastPunchAt) {
+      existing.lastPunchAt = punchAt;
+      existing.lastStatus = row.status;
+    }
+  }
+
+  return Array.from(groups.entries()).map(([groupKey, group]) => ({
+    ...group.first,
+    id: `first-last:${groupKey}`,
+    outTime: group.lastOut,
+    parkedFor: spanDuration(group.first.inTime, group.lastOut),
+    status: group.lastStatus,
+  })).sort((a, b) => new Date(b.inTime).getTime() - new Date(a.inTime).getTime());
 }
 
 function htmlEscape(value: unknown) {
@@ -166,7 +233,7 @@ export default function ReportsDashboard({
   const [toDate, setToDate] = useState("");
   const [buildingId, setBuildingId] = useState(role === "SUPER_ADMIN" ? "" : buildings[0]?.id || "");
   const [companyId, setCompanyId] = useState(role === "COMPANY_ADMIN" ? companies[0]?.id || "" : "");
-  const [reportType, setReportType] = useState<"vehicle" | "visitor" | "exitPending" | "exitPendingTime">("vehicle");
+  const [reportType, setReportType] = useState<"firstInLastOut" | "vehicle" | "visitor" | "exitPending" | "exitPendingTime">("firstInLastOut");
   const [pending24Hours, setPending24Hours] = useState(true);
   const [pending48Hours, setPending48Hours] = useState(false);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<ColumnKey>>(() => new Set(ALL_COLUMN_KEYS));
@@ -188,7 +255,7 @@ export default function ReportsDashboard({
     return companies.filter((company) => company.buildingId === buildingId);
   }, [buildingId, companies]);
 
-  const filtered = useMemo(() => rows.filter((row) => {
+  const scopedRows = useMemo(() => rows.filter((row) => {
     if (buildingId && row.buildingId !== buildingId) return false;
     if (companyId === "__owner__") {
       if (row.companyId || row.accessType !== "Vehicle") return false;
@@ -196,30 +263,45 @@ export default function ReportsDashboard({
       if (row.companyId || row.accessType !== "Visitor") return false;
     } else if (companyId && row.companyId !== companyId) return false;
     if (!withinDate(row.inTime, fromDate, toDate)) return false;
-
-    if (reportType === "vehicle" && row.accessType !== "Vehicle") return false;
-    if (reportType === "visitor" && row.accessType !== "Visitor") return false;
-    if (reportType === "exitPending" && row.status !== "Inside") return false;
-    if (reportType === "exitPendingTime") {
-      if (row.status !== "Inside") return false;
-      const elapsedHours = (Date.now() - new Date(row.inTime).getTime()) / 3600000;
-      if (!pending24Hours && !pending48Hours) return false;
-      if (pending24Hours && pending48Hours) return elapsedHours >= 24;
-      if (pending24Hours) return elapsedHours >= 24 && elapsedHours < 48;
-      if (pending48Hours) return elapsedHours >= 48;
-    }
-
     return true;
-  }), [rows, buildingId, companyId, fromDate, toDate, reportType, pending24Hours, pending48Hours]);
+  }), [rows, buildingId, companyId, fromDate, toDate]);
+
+  const filtered = useMemo(() => {
+    if (reportType === "firstInLastOut") return firstInLastOutRows(scopedRows);
+
+    return scopedRows.filter((row) => {
+      if (reportType === "vehicle" && row.accessType !== "Vehicle") return false;
+      if (reportType === "visitor" && row.accessType !== "Visitor") return false;
+      if (reportType === "exitPending" && row.status !== "Inside") return false;
+      if (reportType === "exitPendingTime") {
+        if (row.status !== "Inside") return false;
+        const elapsedHours = (Date.now() - new Date(row.inTime).getTime()) / 3600000;
+        if (!pending24Hours && !pending48Hours) return false;
+        if (pending24Hours && pending48Hours) return elapsedHours >= 24;
+        if (pending24Hours) return elapsedHours >= 24 && elapsedHours < 48;
+        if (pending48Hours) return elapsedHours >= 48;
+      }
+      return true;
+    });
+  }, [scopedRows, reportType, pending24Hours, pending48Hours]);
 
   const visibleColumns = useMemo(
-    () => COLUMN_DEFINITIONS.filter((column) => visibleColumnKeys.has(column.key)),
-    [visibleColumnKeys],
+    () => COLUMN_DEFINITIONS
+      .filter((column) => visibleColumnKeys.has(column.key))
+      .map((column) => reportType === "firstInLastOut"
+        ? {
+            ...column,
+            label: column.key === "inTime" ? "1st IN time" : column.key === "outTime" ? "Last OUT time" : column.label,
+          }
+        : column),
+    [visibleColumnKeys, reportType],
   );
 
   const inside = filtered.filter((row) => row.status === "Inside").length;
   const exited = filtered.filter((row) => row.status === "Exited").length;
-  const reportTitle = reportType === "exitPending"
+  const reportTitle = reportType === "firstInLastOut"
+    ? "1st IN / Last OUT"
+    : reportType === "exitPending"
     ? "Exit Pending"
     : reportType === "exitPendingTime"
       ? "Exit Pending with time"
@@ -304,7 +386,8 @@ export default function ReportsDashboard({
         <span>Generated {browserReady ? new Date().toLocaleString() : "..."} · Auto-updating every 3 seconds</span>
       </div>
       <div className={styles.toolbarActions}>
-        <select value={reportType} onChange={(event) => setReportType(event.target.value as "vehicle" | "visitor" | "exitPending" | "exitPendingTime")} aria-label="Report type">
+        <select value={reportType} onChange={(event) => setReportType(event.target.value as "firstInLastOut" | "vehicle" | "visitor" | "exitPending" | "exitPendingTime")} aria-label="Report type">
+          <option value="firstInLastOut">1st IN / Last OUT</option>
           <option value="vehicle">Vehicle IN / OUT time</option>
           <option value="visitor">Visitor IN / OUT time</option>
           <option value="exitPending">Exit Pending</option>
