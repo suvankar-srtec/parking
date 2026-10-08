@@ -66,3 +66,82 @@
   .scanTable tr{grid-template-columns:1fr}
   .scanTable td:nth-child(9){grid-column:auto}
 }
+
+/* Definitive mobile reset for the Live Dashboard table.
+   Desktop percentage column widths must not leak into the mobile card layout. */
+@media(max-width:700px){
+  .scanTableCard,
+  .tableWrap,
+  .scanTable,
+  .scanTable tbody,
+  .scanTable tr{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+  }
+
+  .scanTableCard{overflow:hidden}
+  .tableWrap{
+    overflow-x:hidden!important;
+    overflow-y:visible;
+  }
+
+  .scanTable{
+    display:block;
+    border-collapse:separate;
+    table-layout:auto!important;
+  }
+
+  .scanTable tbody{display:grid}
+
+  .scanTable th,
+  .scanTable td,
+  .scanTable th:nth-child(n),
+  .scanTable td:nth-child(n){
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+  }
+
+  .scanTable tr{
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+
+  .scanTable td{
+    box-sizing:border-box;
+    grid-template-columns:96px minmax(0,1fr)!important;
+    align-items:start;
+    white-space:normal!important;
+    word-break:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+
+  .scanTable td::before{
+    min-width:0;
+    white-space:normal;
+    overflow-wrap:normal;
+    word-break:normal;
+  }
+
+  .scanTable td > *,
+  .scanTable td{
+    min-width:0;
+  }
+
+  .actionBadge{
+    width:auto!important;
+    max-width:100%;
+    white-space:nowrap;
+  }
+}
+
+@media(max-width:430px){
+  .scanTable tr{
+    grid-template-columns:1fr!important;
+  }
+
+  .scanTable td{
+    grid-template-columns:88px minmax(0,1fr)!important;
+  }
+}
