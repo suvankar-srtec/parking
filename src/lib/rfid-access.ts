@@ -224,6 +224,10 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
         enter = false;
       }
 
+      if (enter && visitor.qrEntryUsed) {
+        return record(READER_NO_SUCCESS_CODE, "Visitor QR already used", "DENIED", undefined, visitor.companyId || undefined, undefined, visitor.id);
+      }
+
       // The validity window restricts ENTRY only. A visitor who entered while
       // the QR was valid must always be able to EXIT, even after validUntil.
       if (enter && now < visitor.validFrom) {
@@ -272,7 +276,12 @@ export async function processReaderScan(input: ParsedRfidReaderMessage) {
 
       await tx.visitor.update({
         where: { id: visitor.id },
-        data: { isInside: enter, lastAccessAt: now, lastAccessDevice: reader.deviceNumber },
+        data: {
+          isInside: enter,
+          qrEntryUsed: true,
+          lastAccessAt: now,
+          lastAccessDevice: reader.deviceNumber,
+        },
       });
       return record(
         READER_SUCCESS_CODE,
