@@ -259,16 +259,9 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
 
   return <>
     <section className="portfolio-card">
-      <div className="portfolio-header">
-        <div>
-          <div className="section-kicker">ACCESS CONTROL</div>
-          <h2>{data?.canAssignReaders ? "Reader allocation" : "Reader configuration"}</h2>
-          <p>{data?.canAssignReaders ? "Allot detected physical readers to buildings. Reader purpose is configured by the Building Admin." : "Configure the purpose of readers allotted to your building."}</p>
-        </div>
-        <div className="reader-toolbar">
-          {data?.canAddReaders && <button className="secondary-button" type="button" onClick={openAddReader}>+ Add reader</button>}
-          <strong>{activity.inside} vehicles inside</strong>
-        </div>
+      <div className="reader-toolbar reader-toolbar-top">
+        {data?.canAddReaders && <button className="secondary-button" type="button" onClick={openAddReader}>+ Add reader</button>}
+        <strong>{activity.inside} vehicles inside</strong>
       </div>
 
       {!data ? <p><Spinner /> Loading readers…</p> : <div className="reader-grid">
@@ -288,7 +281,6 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
           </article>;
         })}
       </div>}
-      <p className="muted">HTTPS readers are green after recent scan/heartbeat activity. The hardware red LED is separate and belongs to a successful scan response.</p>
     </section>
 
     {showAvailable && <div className="modal-backdrop reader-modal-backdrop">
@@ -427,6 +419,7 @@ export default function ReaderConsole({ compact = false }: { compact?: boolean }
 
     <style>{`
       .reader-toolbar,.reader-card-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+      .reader-toolbar-top{justify-content:flex-end;margin-bottom:12px}
       .reader-modal-backdrop{padding:12px}
       .reader-selector-modal,.reader-config-modal{overflow:visible;max-height:none;border-radius:12px;box-shadow:0 24px 70px rgba(20,34,27,.22)}
       .reader-selector-modal{width:min(760px,96vw);padding:16px 18px 14px}
