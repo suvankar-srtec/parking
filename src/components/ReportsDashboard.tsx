@@ -20,6 +20,7 @@ type ReportRow = {
   accessory: string;
   inTime: string;
   outTime: string | null;
+  exitType: string;
   parkedFor: string;
   status: "Inside" | "Exited";
 };
@@ -35,6 +36,7 @@ type ColumnKey =
   | "accessory"
   | "inTime"
   | "outTime"
+  | "exitType"
   | "parkedFor"
   | "status";
 
@@ -61,6 +63,7 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: "accessory", label: "Accessory", pdfWidth: 12, value: (row) => row.accessory },
   { key: "inTime", label: "IN time", pdfWidth: 20, value: (row) => formatDateTime(row.inTime) },
   { key: "outTime", label: "OUT time", pdfWidth: 20, value: (row) => formatDateTime(row.outTime) },
+  { key: "exitType", label: "Exit type", pdfWidth: 24, value: (row) => row.exitType },
   { key: "parkedFor", label: "Parked for", pdfWidth: 10, value: (row) => row.parkedFor },
   { key: "status", label: "Status", pdfWidth: 10, value: (row) => row.status },
 ];
@@ -100,6 +103,7 @@ function firstInLastOutRows(rows: ReportRow[]) {
   const groups = new Map<string, {
     first: ReportRow;
     lastOut: string | null;
+    lastExitType: string;
     lastPunchAt: number;
     lastStatus: ReportRow["status"];
   }>();
@@ -115,6 +119,7 @@ function firstInLastOutRows(rows: ReportRow[]) {
       groups.set(groupKey, {
         first: row,
         lastOut: row.outTime,
+        lastExitType: row.exitType,
         lastPunchAt: punchAt,
         lastStatus: row.status,
       });
@@ -124,6 +129,7 @@ function firstInLastOutRows(rows: ReportRow[]) {
     if (inAt < new Date(existing.first.inTime).getTime()) existing.first = row;
     if (outAt !== null && (!existing.lastOut || outAt > new Date(existing.lastOut).getTime())) {
       existing.lastOut = row.outTime;
+      existing.lastExitType = row.exitType;
     }
     if (punchAt >= existing.lastPunchAt) {
       existing.lastPunchAt = punchAt;
@@ -135,6 +141,7 @@ function firstInLastOutRows(rows: ReportRow[]) {
     ...group.first,
     id: `first-last:${groupKey}`,
     outTime: group.lastOut,
+    exitType: group.lastOut ? group.lastExitType : "-",
     parkedFor: spanDuration(group.first.inTime, group.lastOut),
     status: group.lastStatus,
   })).sort((a, b) => new Date(b.inTime).getTime() - new Date(a.inTime).getTime());

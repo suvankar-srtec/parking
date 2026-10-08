@@ -68,6 +68,7 @@ function popupTitle(event: PopupState) {
 }
 
 function eventResult(event: ScanEvent) {
+  if (event.deviceNumber === "MANUAL" && event.action === "EXIT") return event.message || "Manual exit";
   if (event.code === "0000") return event.action === "ENTRY" ? "Entry allowed" : event.action === "EXIT" ? "Exit allowed" : event.message;
   return event.message || "Denied";
 }

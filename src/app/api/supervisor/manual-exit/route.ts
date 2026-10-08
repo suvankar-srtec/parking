@@ -116,6 +116,12 @@ export async function POST(request: Request) {
         });
       }
 
+      const manualExitMessage = user!.role === "EMPLOYEE"
+        ? "Manual exit by supervisor"
+        : user!.role === "BUILDING_ADMIN"
+          ? "Manual exit by admin"
+          : "Manual exit by super admin";
+
       await tx.rfidEvent.create({
         data: {
           readerId: null,
@@ -128,7 +134,7 @@ export async function POST(request: Request) {
           cardNo: cardNo || "MANUAL",
           action: "EXIT",
           code: "0000",
-          message: kind === "visitor" ? "Visitor manual exit allowed" : "Manual exit allowed",
+          message: manualExitMessage,
         },
       });
     });

@@ -67,7 +67,7 @@ export default async function ReportsPage() {
   ]);
 
   const openEntries = new Map<string, (typeof events)[number]>();
-  const rows: Array<{ id: string; entityKey: string; buildingId: string | null; buildingName: string; companyId: string | null; companyName: string; accessType: "Vehicle" | "Visitor"; vehicleNumber: string; rfidUid: string; rider: string; department: string; accessory: string; inTime: string; outTime: string | null; parkedFor: string; status: "Inside" | "Exited" }> = [];
+  const rows: Array<{ id: string; entityKey: string; buildingId: string | null; buildingName: string; companyId: string | null; companyName: string; accessType: "Vehicle" | "Visitor"; vehicleNumber: string; rfidUid: string; rider: string; department: string; accessory: string; inTime: string; outTime: string | null; exitType: string; parkedFor: string; status: "Inside" | "Exited" }> = [];
 
   function eventKey(event: (typeof events)[number]) {
     if (event.visitorId) return `visitor:${event.visitorId}`;
@@ -95,12 +95,12 @@ export default async function ReportsPage() {
     const building = entry.building || event.building;
     const company = entry.company || event.company;
     const report = reportVehicle(entry, event);
-    rows.push({ id: `${entry.id}-${event.id}`, entityKey: key, buildingId: entry.buildingId || event.buildingId, buildingName: building?.name || "-", companyId: entry.companyId || event.companyId, companyName: company?.name || (report.accessType === "Visitor" ? "Building visitor" : "Building owner"), accessType: report.accessType, vehicleNumber: report.vehicleNumber, rfidUid: report.accessType === "Visitor" ? "Visitor QR" : entry.cardNo, rider: report.rider, department: report.department, accessory: report.accessory, inTime: entry.createdAt.toISOString(), outTime: event.createdAt.toISOString(), parkedFor: parkedFor(entry.createdAt, event.createdAt), status: "Exited" });
+    rows.push({ id: `${entry.id}-${event.id}`, entityKey: key, buildingId: entry.buildingId || event.buildingId, buildingName: building?.name || "-", companyId: entry.companyId || event.companyId, companyName: company?.name || (report.accessType === "Visitor" ? "Building visitor" : "Building owner"), accessType: report.accessType, vehicleNumber: report.vehicleNumber, rfidUid: report.accessType === "Visitor" ? "Visitor QR" : entry.cardNo, rider: report.rider, department: report.department, accessory: report.accessory, inTime: entry.createdAt.toISOString(), outTime: event.createdAt.toISOString(), exitType: event.deviceNumber === "MANUAL" ? event.message || "Manual exit" : "Reader exit", parkedFor: parkedFor(entry.createdAt, event.createdAt), status: "Exited" });
   }
 
   for (const entry of openEntries.values()) {
     const report = reportVehicle(entry);
-    rows.push({ id: `${entry.id}-inside`, entityKey: eventKey(entry), buildingId: entry.buildingId, buildingName: entry.building?.name || "-", companyId: entry.companyId, companyName: entry.company?.name || (report.accessType === "Visitor" ? "Building visitor" : "Building owner"), accessType: report.accessType, vehicleNumber: report.vehicleNumber, rfidUid: report.accessType === "Visitor" ? "Visitor QR" : entry.cardNo, rider: report.rider, department: report.department, accessory: report.accessory, inTime: entry.createdAt.toISOString(), outTime: null, parkedFor: parkedFor(entry.createdAt, null), status: "Inside" });
+    rows.push({ id: `${entry.id}-inside`, entityKey: eventKey(entry), buildingId: entry.buildingId, buildingName: entry.building?.name || "-", companyId: entry.companyId, companyName: entry.company?.name || (report.accessType === "Visitor" ? "Building visitor" : "Building owner"), accessType: report.accessType, vehicleNumber: report.vehicleNumber, rfidUid: report.accessType === "Visitor" ? "Visitor QR" : entry.cardNo, rider: report.rider, department: report.department, accessory: report.accessory, inTime: entry.createdAt.toISOString(), outTime: null, exitType: "-", parkedFor: parkedFor(entry.createdAt, null), status: "Inside" });
   }
 
   rows.sort((a, b) => new Date(b.inTime).getTime() - new Date(a.inTime).getTime());
