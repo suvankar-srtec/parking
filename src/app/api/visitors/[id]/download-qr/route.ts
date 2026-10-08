@@ -2,7 +2,19 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { buildVisitorPassSvg } from "@/lib/visitor-pass";
+import { renderVisitorPassPng } from "@/lib/visitor-pass";
+
+function formatIndia(value: Date) {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(value);
+}
 
 export async function GET(
   _request: Request,
@@ -30,6 +42,7 @@ export async function GET(
         companyId: true,
         validFrom: true,
         validUntil: true,
+        phoneNumber: true,
         vehicleNumber: true,
         accessory: true,
         qrToken: true,
@@ -86,23 +99,24 @@ export async function GET(
     }
 
     const qrBytes = Buffer.from(await qrResponse.arrayBuffer());
-    const passSvg = buildVisitorPassSvg({
-      name: visitor.name,
-      scopeLabel: visitor.company ? "COMPANY" : "BUILDING",
+    const qrDataUrl = `data:image/png;base64,${qrBytes.toString("base64")}`;
+    const passBytes = await renderVisitorPassPng({
+      visitorName: visitor.name,
       scopeName: visitor.company?.name || visitor.building.name,
-      validFrom: visitor.validFrom,
-      validUntil: visitor.validUntil,
-      vehicleNumber: visitor.vehicleNumber,
+      phoneNumber: visitor.phoneNumber,
+      vehicleNumber: visitor.vehicleNumber || "Not provided",
       accessory: visitor.accessory,
-      qrBase64: qrBytes.toString("base64"),
+      validFrom: formatIndia(visitor.validFrom),
+      validUntil: formatIndia(visitor.validUntil),
+      qrDataUrl,
     });
     const safeName = visitor.name.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "") || "visitor";
 
-    return new Response(passSvg, {
+    return new Response(new Uint8Array(passBytes), {
       status: 200,
       headers: {
-        "Content-Type": "image/svg+xml; charset=utf-8",
-        "Content-Disposition": `inline; filename="visitor-pass-${safeName}.svg"`,
+        "Content-Type": "image/png",
+        "Content-Disposition": `inline; filename="visitor-pass-${safeName}.png"`,
         "Cache-Control": "no-store",
       },
     });
