@@ -638,6 +638,66 @@ export default function Sidebar({
         outline-offset:2px;
       }
 
+      @media(min-width:951px){
+        .sidebar-shell{
+          padding:10px 9px 8px;
+        }
+        .sidebar-shell .sidebar-brand{
+          gap:8px;
+          padding:1px 4px 9px;
+        }
+        .sidebar-shell .logo-box{
+          width:34px;
+          height:34px;
+          flex-basis:34px;
+          border-radius:8px;
+          font-size:14px;
+        }
+        .sidebar-brand-copy{gap:3px}
+        .sidebar-brand-copy strong{font-size:11px}
+        .sidebar-role-pill{
+          min-height:16px;
+          padding:2px 6px;
+          font-size:8.5px!important;
+        }
+        .sidebar-divider{margin-bottom:8px}
+        .sidebar-shell .sidebar-nav{gap:4px;padding-bottom:7px}
+        .sidebar-nav-parent,.sidebar-nav-link{
+          min-height:34px;
+          grid-template-columns:24px minmax(0,1fr) auto;
+          gap:6px;
+          padding:5px 7px;
+          font-size:11.5px;
+        }
+        .sidebar-nav-icon{
+          width:24px;
+          height:24px;
+          border-radius:6px;
+        }
+        .sidebar-submenu{
+          gap:2px;
+          padding-left:13px;
+        }
+        .sidebar-submenu-link{
+          min-height:29px;
+          grid-template-columns:22px minmax(0,1fr) auto;
+          margin-left:6px;
+          width:calc(100% - 6px);
+          padding:3px 6px 3px 8px;
+          font-size:10.5px;
+        }
+        .sidebar-submenu-link .sidebar-nav-icon{
+          width:21px;
+          height:21px;
+        }
+        .sidebar-shell :global(.sidebar-reader-status){
+          margin-top:5px!important;
+          padding:7px 4px 0!important;
+        }
+        .sidebar-shell :global(.sidebar-reader-title){font-size:9px!important}
+        .sidebar-shell :global(.sidebar-reader-item){font-size:9.5px!important}
+      }
+
       @media(max-height:760px) and (min-width:951px){
         .sidebar-shell{padding-top:10px;padding-bottom:8px}
         .sidebar-shell .sidebar-brand{padding-bottom:8px}

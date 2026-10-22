@@ -402,3 +402,71 @@ input,button,select,textarea{font-size:inherit}
 ){
   box-shadow:0 2px 8px rgba(39,88,135,.06);
 }
+
+
+/* Compact desktop density: keeps 100% browser zoom practical on standard 1366–1920px screens. */
+@media(min-width:951px){
+  body{font-size:14px;line-height:1.4}
+  .dashboard-page{grid-template-columns:195px minmax(0,1fr)}
+  .dashboard-main{padding:18px 26px 34px}
+  .topbar{gap:16px;padding-bottom:14px}
+  .topbar h1{margin-top:4px;font-size:24px}
+  .topbar-right{gap:8px}
+  .section-kicker{font-size:11px}
+  .summary-card{min-width:82px;min-height:50px;padding:7px 9px}
+  .summary-card span{font-size:11px}
+  .summary-card strong{margin-top:4px;font-size:13px}
+
+  .portfolio-card{margin-top:14px;padding:16px 15px 15px}
+  .portfolio-header{gap:14px}
+  .portfolio-header h2{margin:4px 0 3px;font-size:20px}
+  .portfolio-header p{font-size:12px}
+  .portfolio-divider{margin:11px 0 13px}
+
+  .primary-button,.secondary-button,.add-building-button,.logout-button{
+    min-height:34px;
+    padding:7px 10px;
+    font-size:12px;
+    border-radius:6px;
+  }
+
+  .building-grid{gap:10px}
+  .building-card{padding:10px}
+  .building-card h3{margin-top:3px;font-size:15px}
+  .building-card-top{gap:6px}
+  .tiny-label{font-size:11px}
+  .building-code{padding:4px 6px;font-size:11px}
+  .stats-grid{margin-top:8px;gap:4px}
+  .stat-box{min-height:54px;padding:6px}
+  .stat-box span{font-size:9.5px;line-height:1.15}
+  .stat-box strong{margin-top:4px;font-size:16px}
+  .building-footer{margin-top:8px;padding-top:7px;font-size:11px}
+  .building-footer a{padding:6px 8px;font-size:12px}
+  .create-building-card{min-height:170px;gap:11px;padding:17px 12px;font-size:14px}
+  .create-building-icon{width:40px;height:40px;font-size:26px}
+
+  .large-stat{min-height:72px;padding:9px}
+  .large-stat span{font-size:12px}
+  .large-stat strong{margin-top:5px;font-size:21px}
+  .building-management{padding:14px 15px}
+  .building-management .portfolio-header h2{font-size:19px}
+  .building-management .portfolio-header p{font-size:12px}
+  .building-management .portfolio-divider{margin:10px 0}
+
+  .parking-input-card{padding:9px 10px}
+  .parking-input-card>span{margin-bottom:5px;font-size:12px}
+  .parking-input-wrap{padding:0 8px}
+  .parking-input-wrap input{height:34px;font-size:19px}
+  .parking-input-wrap>span{font-size:11px}
+
+  .modal-card{padding:16px}
+  .modal-head h2{font-size:18px}
+  .modal-head p{font-size:12px}
+  .modal-form{gap:10px}
+  .login-form label,.modal-form label{font-size:12px}
+  .login-form input,.modal-form input,.modal-form select{padding:8px 10px}
+
+  .entity-row{padding:8px 10px}
+  .entity-row strong{font-size:13px}
+  .entity-row span{font-size:11px}
+}

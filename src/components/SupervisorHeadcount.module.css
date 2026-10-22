@@ -145,3 +145,44 @@
     grid-template-columns:88px minmax(0,1fr)!important;
   }
 }
+
+
+@media(min-width:951px){
+  .headcount{margin-top:14px}
+  .titleRow{gap:14px}
+  .titleRow h2{margin:4px 0 3px;font-size:23px}
+  .titleRow p{font-size:12px}
+  .clock{min-width:145px;padding:7px 10px}
+  .clock strong{font-size:13px}
+  .clock span{margin-top:3px;font-size:12px}
+
+  .totals{gap:10px}
+  .totalCard{min-height:96px;padding:11px;border-radius:14px}
+  .totalCard span{font-size:16px}
+  .totalCard strong{margin-top:5px;font-size:31px}
+  .clickableTotal small{margin-top:4px;font-size:11px}
+
+  .scanTableCard{margin-top:14px}
+  .scanTableHeader{padding:11px 14px}
+  .scanTableHeader h2{margin-top:2px;font-size:19px}
+  .tableWrap{max-height:360px}
+  .scanTable th{padding:7px 8px;font-size:10px}
+  .scanTable td{padding:7px 7px;font-size:12px;line-height:1.3}
+  .actionBadge{min-width:48px;padding:3px 6px;font-size:10px}
+
+  .employeeParkingCard{margin-top:14px}
+  .employeeParkingHeader h2{font-size:21px}
+  .employeeParkingHeader p{font-size:12px}
+  .employeeParkingTotals{min-width:260px}
+  .employeeParkingTotals>div{padding:9px 11px;border-radius:10px}
+  .employeeParkingTotals span{font-size:11px}
+  .employeeParkingTotals strong{font-size:23px}
+
+  .activeCardsModal{width:min(980px,calc(100vw - 44px))}
+  .activeCardsHeader{padding:14px 16px}
+  .activeCardsHeader h2{font-size:21px}
+  .activeCardsHeader p{font-size:12px}
+  .activeCardsTable th{padding:7px 8px;font-size:10px}
+  .activeCardsTable td{padding:8px;font-size:12px}
+  .manualExitButton{padding:6px 8px;font-size:11px}
+}
